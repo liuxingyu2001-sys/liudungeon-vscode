@@ -196,6 +196,9 @@ function checkScriptRegion(
     // 时间写法（3秒钟 / 5分钟 这类会静默变成 0）
     out.push(...checkTimeStrings(line, i));
 
+    // 引号漏写（选择器 / 颜色代码 / 中文文本）—— 插件会直接抛语法错误
+    out.push(...checkQuoteMistakes(line, i));
+
     // player 不可用
     if (region.hook && !hookHasTrigger(region.hook)) {
       const m = /\b(player|trigger)\b/.exec(line);
@@ -471,9 +474,128 @@ function checkPlaceholders(line: string, lineNo: number): Diagnostic[] {
   return out;
 }
 
+/**
+ * 引号漏写：选择器 / 颜色代码 / 中文文本。
+ *
+ * <p>与插件侧 `ScriptHints.java` 是同一套判定（两边各有自检）。插件加载时会直接抛
+ * `SyntaxError: Expected an operand but found error`，**整个脚本块都不执行**，
+ * 而报错信息完全看不出"少的是引号"；文档里的选择器表又都是不带引号的写法，照抄就中招。
+ * 所以在编辑器里先把这三类标出来，并给一次点击就能套上引号的修复。
+ */
+function checkQuoteMistakes(line: string, lineNo: number): Diagnostic[] {
+  const out: Diagnostic[] = [];
+  let inSingle = false;
+  let inDouble = false;
+  let escaped = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if ((inSingle || inDouble) && c === '\\') {
+      escaped = true;
+      continue;
+    }
+    if (!inDouble && c === "'") {
+      inSingle = !inSingle;
+      continue;
+    }
+    if (!inSingle && c === '"') {
+      inDouble = !inDouble;
+      continue;
+    }
+    if (inSingle || inDouble) continue;
+
+    // 注释不算代码（YAML 行尾注释里常出现 @all 这种词）
+    if (c === '/' && (line[i + 1] === '/' || line[i + 1] === '*')) return out;
+    if (c === '#' && (i === 0 || /\s/.test(line[i - 1]))) return out;
+
+    let what: string | null = null;
+    let severity: DiagnosticSeverity = SEVERITY_ERROR;
+    if (c === '@' && isNameChar(line[i + 1])) {
+      what = '选择器';
+    } else if (c === '&' && isColorCode(line[i + 1])) {
+      what = '颜色代码';
+    } else if (isCjk(c) && i > 0 && isArgStart(line, i) && isWholeArg(line, i)) {
+      // 只在"它自己就是整个参数"时才算：if (玩家数 >= 1) 这种正常表达式不误报
+      what = '文本';
+      severity = SEVERITY_WARN;
+    }
+    if (!what) continue;
+
+    const end = argEnd(line, i);
+    const arg = line.slice(i, end).replace(/\s+$/, '');
+    out.push({
+      range: Range.create(lineNo, i, lineNo, i + arg.length),
+      severity,
+      source: 'liudungeon',
+      message:
+        `参数 \`${arg}\` 少了引号 —— ${what}必须写成字符串：'${arg}'。` +
+        `\n插件加载时会报语法错误（Expected an operand but found error），整个脚本块都不会执行。`,
+      code: 'script-quote',
+    });
+    i = end - 1;
+  }
+  return out;
+}
+
+/** 从 start 起的"参数"到哪里结束：括号深度 0 处的 , 或 ) 为止。 */
+function argEnd(line: string, start: number): number {
+  let depth = 0;
+  for (let i = start; i < line.length; i++) {
+    const c = line[i];
+    if (c === "'" || c === '"') {
+      const q = c;
+      i++;
+      while (i < line.length && line[i] !== q) {
+        if (line[i] === '\\') i++;
+        i++;
+      }
+      continue;
+    }
+    if (c === '(' || c === '[') depth++;
+    else if (c === ')' || c === ']') {
+      if (depth === 0) return i;
+      depth--;
+    } else if (c === ',' && depth === 0) {
+      return i;
+    }
+  }
+  return line.length;
+}
+
+function isArgStart(line: string, i: number): boolean {
+  for (let k = i - 1; k >= 0; k--) {
+    const c = line[k];
+    if (c === ' ' || c === '\t') continue;
+    return c === '(' || c === ',';
+  }
+  return false;
+}
+
+function isWholeArg(line: string, i: number): boolean {
+  let wordEnd = i;
+  while (wordEnd < line.length && isCjk(line[wordEnd])) wordEnd++;
+  if (wordEnd === i) return false;
+  return line.slice(wordEnd, argEnd(line, i)).trim() === '';
+}
+
+function isNameChar(c: string | undefined): boolean {
+  return c !== undefined && /[A-Za-z0-9_\u4e00-\u9fff]/.test(c);
+}
+
+function isCjk(c: string): boolean {
+  return c >= '\u4e00' && c <= '\u9fff';
+}
+
+function isColorCode(c: string | undefined): boolean {
+  return c !== undefined && '0123456789abcdefklmnorABCDEFKLMNOR'.includes(c);
+}
+
 /** 时间字符串：单位必须紧跟数字，且只用 s/秒 m/分/min h/时 t/tick ms/毫秒/纯数字。 */
 const BAD_TIME = /(['"])(\d+)\s*(秒钟|分钟|小时|seconds?|minutes?|hours?|ticks?)\1/g;
-
 function checkTimeStrings(line: string, lineNo: number): Diagnostic[] {
   const out: Diagnostic[] = [];
   const re = new RegExp(BAD_TIME.source, 'g');

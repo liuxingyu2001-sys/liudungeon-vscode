@@ -143,6 +143,22 @@ export function provideCodeActions(input: CodeActionInput): PendingAction[] {
         break;
       }
 
+      case 'script-quote': {
+        // 选择器 / 颜色代码 / 文本少了引号：把整个参数套上引号（诊断范围就是参数本身）
+        const raw = line.slice(d.range.start.character, d.range.end.character);
+        if (raw.trim() !== '') {
+          out.push({
+            title: `给参数加上引号（'${raw}'）`,
+            kind: CodeActionKind.QuickFix,
+            diagnostics: [d],
+            isPreferred: true,
+            edits: [TextEdit.replace(d.range, `'${raw}'`)],
+            code: 'script-quote',
+          });
+        }
+        break;
+      }
+
       case 'placeholder': {
         // 占位符写错：给出最接近的正确写法
         const raw = line.slice(d.range.start.character, d.range.end.character);

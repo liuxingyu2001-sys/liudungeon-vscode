@@ -852,6 +852,59 @@ function labelDump(items) {
   closeDoc(cleanUri);
 }
 
+// ---------- 用例 17e：引号漏写（选择器 / 颜色代码 / 中文文本）----------
+{
+  // 真实现场：插件日志只给得出 "Expected an operand but found error"
+  const bad =
+    'groups:\n' +
+    '  wave_1:\n' +
+    '    on_start: |-\n' +
+    '      action.title(@all, &e文本, &e文本)\n' +
+    "      action.message('@all', '&e你好')\n" +
+    '      action.teleport_zone(@all, 前厅)\n';
+  const uri = openDoc('monsters.yml', bad);
+  const diags = await client.waitFor(() => {
+    const d = client.diagnosticsFor(uri);
+    return d.some((x) => x.code === 'script-quote') ? d : undefined;
+  });
+  const quotes = (diags ?? []).filter((d) => d.code === 'script-quote');
+  check('选择器/颜色代码/中文裸词共报 5 处（写对的那行不报）', quotes.length === 5,
+    JSON.stringify(quotes.map((q) => `${q.range.start.line}:${q.range.start.character}`)));
+
+  const sel = quotes.find((q) => q.range.start.line === 3);
+  check('未加引号的选择器是 Error（插件会直接抛语法错误）', sel?.severity === 1,
+    JSON.stringify(quotes.map((q) => `${q.range.start.line}:${q.severity}`)));
+  check('诊断范围正好盖住参数 @all',
+    sel?.range.start.character === 19 && sel?.range.end.character === 23,
+    JSON.stringify(sel?.range ?? {}));
+  check('提示里给出正确写法', /'@all'/.test(sel?.message ?? ''), sel?.message ?? '');
+
+  const cjk = quotes.find((q) => q.range.start.line === 5 && q.severity === 2);
+  check('中文裸词是 Warning（可能只是变量名）', Boolean(cjk),
+    JSON.stringify(quotes.map((q) => `${q.range.start.line}:${q.severity}`)));
+
+  // 快速修复：一键给参数套上引号
+  const acts = await request('textDocument/codeAction', {
+    textDocument: { uri },
+    range: { start: { line: 3, character: 19 }, end: { line: 3, character: 23 } },
+    context: { diagnostics: [sel] },
+  });
+  const fix = (acts ?? [])[0]?.edit?.changes?.[uri]?.[0];
+  check('提供「给参数加上引号」的修复', /引号/.test((acts ?? [])[0]?.title ?? ''),
+    JSON.stringify((acts ?? []).map((a) => a.title)));
+  check("修复内容是把 @all 变成 '@all'", fix?.newText === "'@all'", JSON.stringify(fix ?? {}));
+  closeDoc(uri);
+
+  // 正确写法零误报（含行尾注释里的 @）
+  const okUri = openDoc('scripts.yml',
+    'start:\n  - "action.title(\'@all\', \'&e准备开始\')" # 给 @all 发\n');
+  await new Promise((r) => setTimeout(r, 250));
+  check('全引号 + 注释里的 @ 都不报',
+    !(client.diagnosticsFor(okUri) ?? []).some((d) => d.code === 'script-quote'),
+    JSON.stringify(client.diagnosticsFor(okUri) ?? []).slice(0, 200));
+  closeDoc(okUri);
+}
+
 // ---------- 用例 18：数据完整性（补全数据与插件源码对齐） ----------
 {
   const action = JSON.parse(readFileSync('data/action-methods.json', 'utf8'));
