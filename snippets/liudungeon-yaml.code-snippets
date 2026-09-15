@@ -53,7 +53,7 @@
       "all_death:",
       "  - \"action.fail('全队阵亡')\""
     ],
-    "description": "全员均为死亡状态时只触发一次，需自己调用 fail 结束副本（触发者：无）"
+    "description": "全员均为死亡状态时只触发一次；脚本跑完后若仍无活人，插件会自动 fail 并退出（脚本里 action.revive('@all') 可拦截）（触发者：无）"
   },
   "ld-configyml": {
     "prefix": "ld-configyml",

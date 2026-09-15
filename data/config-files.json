@@ -681,7 +681,7 @@
           "path": "revive.on_exhausted",
           "key": "on_exhausted",
           "type": "脚本",
-          "doc": "复活次数用尽时执行一次",
+          "doc": "最后一次复活成功、剩余次数刚变 0 时执行一次（人已起来，副本继续；不是\"副本结束\"）",
           "aliases": [
             "on-exhausted",
             "耗尽脚本"
@@ -1926,7 +1926,7 @@
     },
     {
       "name": "all_death",
-      "doc": "全员均为死亡状态时只触发一次，需自己调用 fail 结束副本",
+      "doc": "全员均为死亡状态时只触发一次；脚本跑完后若仍无活人，插件会自动 fail 并退出（脚本里 action.revive('@all') 可拦截）",
       "hasTrigger": false,
       "example": "action.fail('全队阵亡')"
     }
