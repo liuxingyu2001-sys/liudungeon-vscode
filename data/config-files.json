@@ -1,0 +1,2006 @@
+{
+  "files": [
+    {
+      "file": "config.yml",
+      "title": "副本主配置",
+      "summary": "副本唯一必需的文件：基础信息、世界、进入要求、限制与复活等总开关",
+      "containerAliases": {},
+      "example": "dungeon:\n  name: '&6示例副本'\n  difficulty: 普通\nworld:\n  template: 你的地图模板名\n  spawn: '0,64,0,0,0'\n  world_rules:\n    time: night\n    keep_inventory: true\nrequirements:\n  min_players: 1\n  max_players: 4\ntime:\n  limit: 1800\n  timeout_action: FAIL\n",
+      "nodes": [
+        {
+          "path": "dungeon",
+          "key": "dungeon",
+          "type": "映射",
+          "doc": "基础信息段：显示名、图标、难度与描述",
+          "aliases": [
+            "地牢"
+          ],
+          "required": false
+        },
+        {
+          "path": "dungeon.name",
+          "key": "name",
+          "type": "文本",
+          "doc": "副本显示名，支持 & 颜色代码；不写则用目录名",
+          "aliases": [
+            "名称"
+          ],
+          "required": false
+        },
+        {
+          "path": "dungeon.icon",
+          "key": "icon",
+          "type": "文本",
+          "doc": "GUI 列表里的图标材质，如 DIAMOND_SWORD",
+          "aliases": [
+            "图标"
+          ],
+          "required": false
+        },
+        {
+          "path": "dungeon.difficulty",
+          "key": "difficulty",
+          "type": "文本",
+          "doc": "难度标签，仅用于展示",
+          "aliases": [
+            "难度"
+          ],
+          "required": false
+        },
+        {
+          "path": "dungeon.description",
+          "key": "description",
+          "type": "列表",
+          "doc": "描述行列表，显示在 GUI 与 /ld info",
+          "aliases": [
+            "描述"
+          ],
+          "required": false
+        },
+        {
+          "path": "dungeon.death_check_mode",
+          "key": "death_check_mode",
+          "type": "枚举",
+          "doc": "全灭判定模式；仅用于展示，不影响实际判定",
+          "values": [
+            "strict",
+            "lenient"
+          ],
+          "aliases": [
+            "death-check-mode",
+            "死亡判定"
+          ],
+          "required": false
+        },
+        {
+          "path": "world",
+          "key": "world",
+          "type": "映射",
+          "doc": "世界段：模板、出生点、边界与世界规则",
+          "aliases": [
+            "世界"
+          ],
+          "required": false
+        },
+        {
+          "path": "world.template",
+          "key": "template",
+          "type": "文本",
+          "doc": "地图模板名，对应 maps/<模板名>/ 目录",
+          "aliases": [
+            "模板"
+          ],
+          "required": false
+        },
+        {
+          "path": "world.spawn",
+          "key": "spawn",
+          "type": "坐标",
+          "doc": "出生点 x,y,z,yaw,pitch；写在 world 段才生效",
+          "aliases": [
+            "出生点"
+          ],
+          "required": false
+        },
+        {
+          "path": "world.border",
+          "key": "border",
+          "type": "数字",
+          "doc": "世界边界半径，-1 或不写表示不设置",
+          "aliases": [
+            "边界"
+          ],
+          "required": false
+        },
+        {
+          "path": "world.world_rules",
+          "key": "world_rules",
+          "type": "映射",
+          "doc": "世界规则段；除 time/storm/border 外都按 GameRule 写入",
+          "aliases": [
+            "world-rules",
+            "世界规则"
+          ],
+          "required": false
+        },
+        {
+          "path": "world.world_rules.time",
+          "key": "time",
+          "type": "时间",
+          "doc": "世界时间：day/noon/night/midnight 或 tick 数字；不写不改时间",
+          "aliases": [
+            "时间"
+          ],
+          "required": false
+        },
+        {
+          "path": "world.world_rules.storm",
+          "key": "storm",
+          "type": "布尔",
+          "doc": "是否雷雨天气",
+          "aliases": [
+            "雷暴",
+            "天气"
+          ],
+          "required": false
+        },
+        {
+          "path": "world.world_rules.border",
+          "key": "border",
+          "type": "数字",
+          "doc": "边界半径，优先级高于 world.border",
+          "aliases": [
+            "边界"
+          ],
+          "required": false
+        },
+        {
+          "path": "world.world_rules.keep_inventory",
+          "key": "keep_inventory",
+          "type": "布尔",
+          "doc": "死亡不掉落，副本推荐开启",
+          "aliases": [],
+          "required": false
+        },
+        {
+          "path": "world.world_rules.spawn_mobs",
+          "key": "spawn_mobs",
+          "type": "布尔",
+          "doc": "自然刷怪，副本内置默认关闭",
+          "aliases": [],
+          "required": false
+        },
+        {
+          "path": "world.world_rules.advance_time",
+          "key": "advance_time",
+          "type": "布尔",
+          "doc": "昼夜交替，副本内置默认关闭",
+          "aliases": [],
+          "required": false
+        },
+        {
+          "path": "world.world_rules.advance_weather",
+          "key": "advance_weather",
+          "type": "布尔",
+          "doc": "天气循环，副本内置默认关闭",
+          "aliases": [],
+          "required": false
+        },
+        {
+          "path": "world.world_rules.mob_griefing",
+          "key": "mob_griefing",
+          "type": "布尔",
+          "doc": "怪物破坏方块，副本内置默认关闭",
+          "aliases": [],
+          "required": false
+        },
+        {
+          "path": "world.world_rules.natural_health_regeneration",
+          "key": "natural_health_regeneration",
+          "type": "布尔",
+          "doc": "自然回血，副本内置默认关闭",
+          "aliases": [],
+          "required": false
+        },
+        {
+          "path": "world.world_rules.show_advancement_messages",
+          "key": "show_advancement_messages",
+          "type": "布尔",
+          "doc": "成就播报，副本内置默认关闭",
+          "aliases": [],
+          "required": false
+        },
+        {
+          "path": "world.world_rules.immediate_respawn",
+          "key": "immediate_respawn",
+          "type": "布尔",
+          "doc": "立即重生；复活系统需要保留死亡界面故为 false",
+          "aliases": [],
+          "required": false
+        },
+        {
+          "path": "world.world_rules.mob_drops",
+          "key": "mob_drops",
+          "type": "布尔",
+          "doc": "怪物掉落，内置默认开启",
+          "aliases": [],
+          "required": false
+        },
+        {
+          "path": "world.world_rules.entity_drops",
+          "key": "entity_drops",
+          "type": "布尔",
+          "doc": "实体掉落，内置默认开启",
+          "aliases": [],
+          "required": false
+        },
+        {
+          "path": "world.world_rules.random_tick_speed",
+          "key": "random_tick_speed",
+          "type": "数字",
+          "doc": "随机刻速度，整数型 GameRule",
+          "aliases": [],
+          "required": false
+        },
+        {
+          "path": "world.world_rules.<规则名>",
+          "key": "<规则名>",
+          "type": "布尔",
+          "doc": "其它 GameRule 名同样可写；名字写错只会静默不生效",
+          "aliases": [],
+          "required": false
+        },
+        {
+          "path": "requirements",
+          "key": "requirements",
+          "type": "映射",
+          "doc": "进入要求段：等级、人数、费用与门票",
+          "aliases": [
+            "进入要求",
+            "要求"
+          ],
+          "required": false
+        },
+        {
+          "path": "requirements.min_level",
+          "key": "min_level",
+          "type": "数字",
+          "doc": "最低等级要求",
+          "aliases": [
+            "min-level",
+            "最低等级"
+          ],
+          "required": false
+        },
+        {
+          "path": "requirements.max_level",
+          "key": "max_level",
+          "type": "数字",
+          "doc": "最高等级要求",
+          "aliases": [
+            "max-level",
+            "最高等级"
+          ],
+          "required": false
+        },
+        {
+          "path": "requirements.min_players",
+          "key": "min_players",
+          "type": "数字",
+          "doc": "最少进本人数",
+          "aliases": [
+            "min-players",
+            "最少人数"
+          ],
+          "required": false
+        },
+        {
+          "path": "requirements.max_players",
+          "key": "max_players",
+          "type": "数字",
+          "doc": "最多进本人数",
+          "aliases": [
+            "max-players",
+            "最多人数"
+          ],
+          "required": false
+        },
+        {
+          "path": "requirements.cooldown",
+          "key": "cooldown",
+          "type": "时间",
+          "doc": "再次进入的冷却秒数，0 表示无冷却",
+          "aliases": [
+            "冷却"
+          ],
+          "required": false
+        },
+        {
+          "path": "requirements.money_cost",
+          "key": "money_cost",
+          "type": "数字",
+          "doc": "入场费用，按每人结算，需要 Vault",
+          "aliases": [
+            "money-cost",
+            "money",
+            "金币消耗",
+            "入场费"
+          ],
+          "required": false
+        },
+        {
+          "path": "requirements.stamina_cost",
+          "key": "stamina_cost",
+          "type": "数字",
+          "doc": "体力消耗，当前版本未实现",
+          "aliases": [
+            "stamina-cost",
+            "体力消耗"
+          ],
+          "required": false
+        },
+        {
+          "path": "requirements.required_items",
+          "key": "required_items",
+          "type": "列表",
+          "doc": "门票物品，格式 物品ID:数量",
+          "aliases": [
+            "required-items",
+            "需要物品",
+            "门票"
+          ],
+          "required": false
+        },
+        {
+          "path": "requirements.item_check_mode",
+          "key": "item_check_mode",
+          "type": "枚举",
+          "doc": "门票持有判定范围",
+          "values": [
+            "ALL",
+            "LEADER"
+          ],
+          "aliases": [
+            "item-check-mode",
+            "物品检查模式"
+          ],
+          "required": false
+        },
+        {
+          "path": "requirements.required_permissions",
+          "key": "required_permissions",
+          "type": "列表",
+          "doc": "进入所需权限节点，可自定义节点名",
+          "aliases": [
+            "required-permissions",
+            "需要权限"
+          ],
+          "required": false
+        },
+        {
+          "path": "requirements.placeholder_conditions",
+          "key": "placeholder_conditions",
+          "type": "列表",
+          "doc": "PAPI 条件，格式 %占位符% 运算符 值",
+          "aliases": [
+            "placeholder-conditions",
+            "变量条件"
+          ],
+          "required": false
+        },
+        {
+          "path": "requirements.daily_limit",
+          "key": "daily_limit",
+          "type": "数字",
+          "doc": "每日进入次数上限，0 表示不限",
+          "aliases": [
+            "daily-limit",
+            "每日次数"
+          ],
+          "required": false
+        },
+        {
+          "path": "blacklist",
+          "key": "blacklist",
+          "type": "映射",
+          "doc": "副本内限制段：禁用指令与物品",
+          "aliases": [
+            "黑名单"
+          ],
+          "required": false
+        },
+        {
+          "path": "blacklist.commands",
+          "key": "commands",
+          "type": "列表",
+          "doc": "副本内禁用的指令，不带前导斜杠",
+          "aliases": [
+            "命令"
+          ],
+          "required": false
+        },
+        {
+          "path": "blacklist.items",
+          "key": "items",
+          "type": "列表",
+          "doc": "禁用或禁止带入的物品，装备槽也会检查",
+          "aliases": [
+            "物品"
+          ],
+          "required": false
+        },
+        {
+          "path": "time",
+          "key": "time",
+          "type": "映射",
+          "doc": "时间限制段",
+          "aliases": [
+            "时间"
+          ],
+          "required": false
+        },
+        {
+          "path": "time.limit",
+          "key": "limit",
+          "type": "时间",
+          "doc": "副本时限秒数，0 表示不限时；默认 1800 秒",
+          "aliases": [
+            "限制"
+          ],
+          "required": false
+        },
+        {
+          "path": "time.timeout_action",
+          "key": "timeout_action",
+          "type": "枚举",
+          "doc": "超时处理：标记失败或直接踢出",
+          "values": [
+            "FAIL",
+            "KICK"
+          ],
+          "aliases": [
+            "timeout-action",
+            "超时处理"
+          ],
+          "required": false
+        },
+        {
+          "path": "instance",
+          "key": "instance",
+          "type": "映射",
+          "doc": "实例限制段",
+          "aliases": [
+            "实例"
+          ],
+          "required": false
+        },
+        {
+          "path": "instance.max_instances",
+          "key": "max_instances",
+          "type": "数字",
+          "doc": "同时运行的最大实例数，-1 表示无限制",
+          "aliases": [
+            "max-instances",
+            "最大实例"
+          ],
+          "required": false
+        },
+        {
+          "path": "revive",
+          "key": "revive",
+          "type": "映射",
+          "doc": "复活段；写 auto.delay 之类才真正启用",
+          "aliases": [
+            "复活"
+          ],
+          "required": false
+        },
+        {
+          "path": "revive.count",
+          "key": "count",
+          "type": "数字",
+          "doc": "复活次数，-1 无限、0 禁止，默认 0",
+          "aliases": [
+            "次数"
+          ],
+          "required": false
+        },
+        {
+          "path": "revive.count_mode",
+          "key": "count_mode",
+          "type": "枚举",
+          "doc": "次数池模式：全队共用或每人独立",
+          "values": [
+            "shared",
+            "independent"
+          ],
+          "aliases": [
+            "count-mode",
+            "次数模式"
+          ],
+          "required": false
+        },
+        {
+          "path": "revive.auto",
+          "key": "auto",
+          "type": "映射",
+          "doc": "自动复活子段；有延迟键才启用",
+          "aliases": [
+            "自动"
+          ],
+          "required": false
+        },
+        {
+          "path": "revive.auto.delay",
+          "key": "delay",
+          "type": "时间",
+          "doc": "自动复活延迟秒数，写了才算启用自动复活",
+          "aliases": [
+            "延迟"
+          ],
+          "required": false
+        },
+        {
+          "path": "revive.auto.at",
+          "key": "at",
+          "type": "文本",
+          "doc": "自动复活落点：spawn / inplace / 区域.点位",
+          "aliases": [
+            "位置"
+          ],
+          "required": false
+        },
+        {
+          "path": "revive.item",
+          "key": "item",
+          "type": "映射",
+          "doc": "道具复活子段；写了 id 才启用（文档正文未列出）",
+          "aliases": [
+            "道具"
+          ],
+          "required": false
+        },
+        {
+          "path": "revive.item.id",
+          "key": "id",
+          "type": "文本",
+          "doc": "复活道具，可写 物品ID:数量 或 mm:ID:数量",
+          "aliases": [
+            "item",
+            "物品"
+          ],
+          "required": false
+        },
+        {
+          "path": "revive.item.consume_count",
+          "key": "consume_count",
+          "type": "布尔",
+          "doc": "道具复活是否消耗复活次数",
+          "aliases": [
+            "consume-count",
+            "扣次数"
+          ],
+          "required": false
+        },
+        {
+          "path": "revive.item.at",
+          "key": "at",
+          "type": "文本",
+          "doc": "道具复活落点：spawn / inplace / 区域.点位",
+          "aliases": [
+            "位置"
+          ],
+          "required": false
+        },
+        {
+          "path": "revive.ally",
+          "key": "ally",
+          "type": "映射",
+          "doc": "队友救起子段；有读条键才启用",
+          "aliases": [
+            "队友"
+          ],
+          "required": false
+        },
+        {
+          "path": "revive.ally.cast_time",
+          "key": "cast_time",
+          "type": "时间",
+          "doc": "队友救起的读条秒数",
+          "aliases": [
+            "cast-time",
+            "读条"
+          ],
+          "required": false
+        },
+        {
+          "path": "revive.ally.range",
+          "key": "range",
+          "type": "数字",
+          "doc": "队友救援距离，单位格",
+          "aliases": [
+            "距离"
+          ],
+          "required": false
+        },
+        {
+          "path": "revive.ally.consume_count",
+          "key": "consume_count",
+          "type": "布尔",
+          "doc": "队友救起是否消耗复活次数",
+          "aliases": [
+            "consume-count",
+            "扣次数"
+          ],
+          "required": false
+        },
+        {
+          "path": "revive.ally.at",
+          "key": "at",
+          "type": "文本",
+          "doc": "队友救起落点：spawn / inplace / 区域.点位",
+          "aliases": [
+            "位置"
+          ],
+          "required": false
+        },
+        {
+          "path": "revive.on_revive",
+          "key": "on_revive",
+          "type": "脚本",
+          "doc": "复活成功后执行，@trigger 是被复活者",
+          "aliases": [
+            "on-revive",
+            "复活脚本"
+          ],
+          "required": false
+        },
+        {
+          "path": "revive.on_exhausted",
+          "key": "on_exhausted",
+          "type": "脚本",
+          "doc": "复活次数用尽时执行一次",
+          "aliases": [
+            "on-exhausted",
+            "耗尽脚本"
+          ],
+          "required": false
+        },
+        {
+          "path": "sweep",
+          "key": "sweep",
+          "type": "映射",
+          "doc": "扫荡段，配置能解析但当前版本完全未实现",
+          "aliases": [
+            "扫荡"
+          ],
+          "required": false
+        },
+        {
+          "path": "sweep.reward",
+          "key": "reward",
+          "type": "文本",
+          "doc": "扫荡发放的奖励名，写了才视为启用扫荡",
+          "aliases": [
+            "奖励"
+          ],
+          "required": false
+        },
+        {
+          "path": "sweep.multiplier",
+          "key": "multiplier",
+          "type": "数字",
+          "doc": "扫荡奖励倍率，作用于金钱经验与物品",
+          "aliases": [
+            "倍率"
+          ],
+          "required": false
+        },
+        {
+          "path": "sweep.max_times",
+          "key": "max_times",
+          "type": "数字",
+          "doc": "单次命令最多扫荡几遍，范围 1-20",
+          "aliases": [
+            "max-times",
+            "最大次数"
+          ],
+          "required": false
+        }
+      ]
+    },
+    {
+      "file": "monsters.yml",
+      "title": "怪物组（波次）",
+      "summary": "定义刷怪波次、刷新时机与怪物成员，是副本流程的主要驱动",
+      "containerAliases": {
+        "groups": [
+          "groups",
+          "怪物组",
+          "waves",
+          "波次"
+        ]
+      },
+      "example": "groups:\n  wave_1:\n    spawn_timing:\n      type: AUTO_START\n    monsters:\n      - id: Zombie\n        location: '0,64,-10'\n        amount: 3\n        level: 1\n  boss:\n    spawn_timing:\n      type: TRIGGERED\n    trigger_group: wave_1\n    monsters:\n      - id: Husk\n        location: '0,64,-20'\n        amount: 1\n        boss: true\n",
+      "nodes": [
+        {
+          "path": "groups",
+          "key": "groups",
+          "type": "映射",
+          "doc": "怪物组容器；组名就是波次名，被脚本与任务引用",
+          "aliases": [
+            "怪物组",
+            "waves",
+            "波次"
+          ],
+          "required": false
+        },
+        {
+          "path": "groups.<组ID>.spawn_timing",
+          "key": "spawn_timing",
+          "type": "映射",
+          "doc": "刷新时机子段",
+          "aliases": [
+            "spawn-timing",
+            "刷新时机"
+          ],
+          "required": false
+        },
+        {
+          "path": "groups.<组ID>.spawn_timing.type",
+          "key": "type",
+          "type": "枚举",
+          "doc": "该组的刷新时机",
+          "values": [
+            "AUTO_START",
+            "DELAYED",
+            "TRIGGERED",
+            "MANUAL",
+            "SCRIPTED"
+          ],
+          "aliases": [
+            "类型"
+          ],
+          "required": false
+        },
+        {
+          "path": "groups.<组ID>.spawn_timing.delay",
+          "key": "delay",
+          "type": "时间",
+          "doc": "DELAYED 时的延迟秒数",
+          "aliases": [
+            "延迟"
+          ],
+          "required": false
+        },
+        {
+          "path": "groups.<组ID>.trigger_group",
+          "key": "trigger_group",
+          "type": "文本",
+          "doc": "TRIGGERED 的触发者；写在组这一层而不是 spawn_timing 里",
+          "aliases": [
+            "trigger-group",
+            "触发的组"
+          ],
+          "required": false
+        },
+        {
+          "path": "groups.<组ID>.trigger_script",
+          "key": "trigger_script",
+          "type": "脚本",
+          "doc": "已解析但无读取点，配了不生效",
+          "aliases": [
+            "trigger-script",
+            "触发的脚本"
+          ],
+          "required": false
+        },
+        {
+          "path": "groups.<组ID>.condition",
+          "key": "condition",
+          "type": "条件",
+          "doc": "组生成条件，不成立时本次不生成",
+          "aliases": [
+            "条件"
+          ],
+          "required": false
+        },
+        {
+          "path": "groups.<组ID>.zone",
+          "key": "zone",
+          "type": "文本",
+          "doc": "组默认区域，成员可用 point 引用该区域点位",
+          "aliases": [
+            "区域"
+          ],
+          "required": false
+        },
+        {
+          "path": "groups.<组ID>.repeat",
+          "key": "repeat",
+          "type": "映射",
+          "doc": "重复生成子段",
+          "aliases": [
+            "重复"
+          ],
+          "required": false
+        },
+        {
+          "path": "groups.<组ID>.repeat.interval",
+          "key": "interval",
+          "type": "时间",
+          "doc": "重复生成间隔，单位 tick，最小 20",
+          "aliases": [
+            "间隔"
+          ],
+          "required": false
+        },
+        {
+          "path": "groups.<组ID>.repeat.max",
+          "key": "max",
+          "type": "数字",
+          "doc": "重复次数上限，必须写否则会无限增援",
+          "aliases": [
+            "次数"
+          ],
+          "required": true
+        },
+        {
+          "path": "groups.<组ID>.repeat.wait_cleared",
+          "key": "wait_cleared",
+          "type": "布尔",
+          "doc": "前一轮没清完就跳过本轮且不计轮次",
+          "aliases": [
+            "wait-cleared",
+            "等待清空"
+          ],
+          "required": false
+        },
+        {
+          "path": "groups.<组ID>.monsters",
+          "key": "monsters",
+          "type": "列表",
+          "doc": "怪物条目列表；列表形态只认英文键名",
+          "aliases": [],
+          "required": false
+        },
+        {
+          "path": "groups.<组ID>.monsters[].id",
+          "key": "id",
+          "type": "文本",
+          "doc": "怪物 ID：优先当 MythicMobs ID，否则原版实体名",
+          "aliases": [
+            "mob",
+            "怪物"
+          ],
+          "required": false
+        },
+        {
+          "path": "groups.<组ID>.monsters[].location",
+          "key": "location",
+          "type": "坐标",
+          "doc": "绝对坐标 x,y,z",
+          "aliases": [
+            "位置"
+          ],
+          "required": false
+        },
+        {
+          "path": "groups.<组ID>.monsters[].point",
+          "key": "point",
+          "type": "文本",
+          "doc": "命名点位 区域.点位，优先于 location",
+          "aliases": [
+            "点位"
+          ],
+          "required": false
+        },
+        {
+          "path": "groups.<组ID>.monsters[].amount",
+          "key": "amount",
+          "type": "文本",
+          "doc": "数量，可写 3-6 区间；单条上限 32",
+          "aliases": [
+            "数量"
+          ],
+          "required": false
+        },
+        {
+          "path": "groups.<组ID>.monsters[].level",
+          "key": "level",
+          "type": "数字",
+          "doc": "怪物等级，用于展示与脚本判断",
+          "aliases": [
+            "等级"
+          ],
+          "required": false
+        },
+        {
+          "path": "groups.<组ID>.monsters[].chance",
+          "key": "chance",
+          "type": "数字",
+          "doc": "出现概率百分比，0-100",
+          "aliases": [
+            "概率"
+          ],
+          "required": false
+        },
+        {
+          "path": "groups.<组ID>.monsters[].delay",
+          "key": "delay",
+          "type": "时间",
+          "doc": "延迟生成，单位 tick，用于分批登场",
+          "aliases": [
+            "延迟"
+          ],
+          "required": false
+        },
+        {
+          "path": "groups.<组ID>.monsters[].boss",
+          "key": "boss",
+          "type": "布尔",
+          "doc": "标记 Boss：击杀触发 boss_kill 任务并推进阶段",
+          "aliases": [],
+          "required": false
+        },
+        {
+          "path": "groups.<组ID>.monsters[].when",
+          "key": "when",
+          "type": "条件",
+          "doc": "条目条件，不成立则跳过该条目",
+          "aliases": [
+            "条件"
+          ],
+          "required": false
+        },
+        {
+          "path": "groups.<组ID>.monsters[].replace_with",
+          "key": "replace_with",
+          "type": "文本",
+          "doc": "when 成立时改用这个怪物 ID",
+          "aliases": [
+            "replace-with",
+            "替换为"
+          ],
+          "required": false
+        },
+        {
+          "path": "groups.<组ID>.auto_start",
+          "key": "auto_start",
+          "type": "布尔",
+          "doc": "旧写法：等价于 spawn_timing AUTO_START",
+          "aliases": [
+            "auto-start",
+            "自动开始"
+          ],
+          "required": false
+        },
+        {
+          "path": "groups.<组ID>.on_start",
+          "key": "on_start",
+          "type": "脚本",
+          "doc": "该组开始刷怪前执行一次",
+          "aliases": [
+            "on-start",
+            "开始脚本"
+          ],
+          "required": false
+        },
+        {
+          "path": "groups.<组ID>.on_end",
+          "key": "on_end",
+          "type": "脚本",
+          "doc": "该组全灭或被跳过后执行一次",
+          "aliases": [
+            "on-end",
+            "完成脚本"
+          ],
+          "required": false
+        }
+      ]
+    },
+    {
+      "file": "stages.yml",
+      "title": "阶段流程机",
+      "summary": "事件驱动的阶段主线：通关条件、限时与分支跳转",
+      "containerAliases": {
+        "阶段": [
+          "阶段",
+          "stages"
+        ]
+      },
+      "example": "入口: 清怪\n清怪:\n  名称: '&e清理前厅'\n  通关条件: \"dungeon.isGroupCleared('wave_1')\"\n  超时: 300\n  开始脚本: \"action.title('@all', '&e第一阶段', '&7清理所有敌人')\"\n  下一阶段: Boss战\nBoss战:\n  通关条件: \"dungeon.isGroupCleared('boss')\"\n",
+      "nodes": [
+        {
+          "path": "阶段",
+          "key": "阶段",
+          "type": "映射",
+          "doc": "阶段容器；也可以不写这一层，直接把阶段写在根上",
+          "aliases": [
+            "stages"
+          ],
+          "required": false
+        },
+        {
+          "path": "入口",
+          "key": "入口",
+          "type": "文本",
+          "doc": "进本后从哪个阶段开始；不写则用第一个阶段",
+          "aliases": [
+            "entry"
+          ],
+          "required": false
+        },
+        {
+          "path": "阶段.<阶段ID>.名称",
+          "key": "名称",
+          "type": "文本",
+          "doc": "阶段显示名，支持颜色代码",
+          "aliases": [
+            "name"
+          ],
+          "required": false
+        },
+        {
+          "path": "阶段.<阶段ID>.通关条件",
+          "key": "通关条件",
+          "type": "条件",
+          "doc": "JS 表达式，返回真值即完成该阶段；缺失则该阶段永不完成",
+          "aliases": [
+            "complete_when",
+            "complete-when"
+          ],
+          "required": true
+        },
+        {
+          "path": "阶段.<阶段ID>.超时",
+          "key": "超时",
+          "type": "时间",
+          "doc": "阶段限时秒数，0 或不写表示不限时",
+          "aliases": [
+            "timeout"
+          ],
+          "required": false
+        },
+        {
+          "path": "阶段.<阶段ID>.开始脚本",
+          "key": "开始脚本",
+          "type": "脚本",
+          "doc": "进入该阶段时执行，同一阶段只执行一次",
+          "aliases": [
+            "on_start",
+            "on-start"
+          ],
+          "required": false
+        },
+        {
+          "path": "阶段.<阶段ID>.通关脚本",
+          "key": "通关脚本",
+          "type": "脚本",
+          "doc": "条件成立、推进之前执行",
+          "aliases": [
+            "on_complete",
+            "on-complete"
+          ],
+          "required": false
+        },
+        {
+          "path": "阶段.<阶段ID>.超时脚本",
+          "key": "超时脚本",
+          "type": "脚本",
+          "doc": "阶段超时只触发一次；脚本里不处理就停在原阶段",
+          "aliases": [
+            "on_timeout",
+            "on-timeout"
+          ],
+          "required": false
+        },
+        {
+          "path": "阶段.<阶段ID>.下一阶段",
+          "key": "下一阶段",
+          "type": "文本",
+          "doc": "单个阶段名表示无条件跳转；写列表则为条件分支",
+          "aliases": [
+            "next"
+          ],
+          "required": false
+        },
+        {
+          "path": "阶段.<阶段ID>.下一阶段[].目标",
+          "key": "目标",
+          "type": "文本",
+          "doc": "分支成立的跳转目标阶段名",
+          "aliases": [
+            "target"
+          ],
+          "required": false
+        },
+        {
+          "path": "阶段.<阶段ID>.下一阶段[].条件",
+          "key": "条件",
+          "type": "条件",
+          "doc": "分支条件，按列表顺序取第一个成立的",
+          "aliases": [
+            "condition"
+          ],
+          "required": false
+        }
+      ]
+    },
+    {
+      "file": "zones.yml",
+      "title": "区域与命名点位",
+      "summary": "集中维护长方体区域与命名坐标，供怪物组、交互点与脚本引用",
+      "containerAliases": {
+        "区域": [
+          "区域",
+          "zones"
+        ]
+      },
+      "example": "战斗区:\n  名称: '&e前厅战斗区'\n  范围: '-20,60,-30 ~ 20,80,10'\n  默认开启: true\n  进入脚本: \"action.message('@trigger', '&e你进入了前厅战斗区')\"\n  点位:\n    中心: '0,64,-10'\n    落点: '0,64,0,0,0'\n",
+      "nodes": [
+        {
+          "path": "区域",
+          "key": "区域",
+          "type": "映射",
+          "doc": "区域容器；区域名即 key，最多 64 个",
+          "aliases": [
+            "zones"
+          ],
+          "required": false
+        },
+        {
+          "path": "区域.<区域ID>.名称",
+          "key": "名称",
+          "type": "文本",
+          "doc": "区域显示名，不写则回落 key",
+          "aliases": [
+            "name"
+          ],
+          "required": false
+        },
+        {
+          "path": "区域.<区域ID>.范围",
+          "key": "范围",
+          "type": "坐标",
+          "doc": "长方体范围 x,y,z ~ x,y,z，两点顺序随意",
+          "aliases": [
+            "bounds"
+          ],
+          "required": false
+        },
+        {
+          "path": "区域.<区域ID>.最小点",
+          "key": "最小点",
+          "type": "坐标",
+          "doc": "改用两点写法时的最小角坐标",
+          "aliases": [
+            "min"
+          ],
+          "required": false
+        },
+        {
+          "path": "区域.<区域ID>.最大点",
+          "key": "最大点",
+          "type": "坐标",
+          "doc": "改用两点写法时的最大角坐标",
+          "aliases": [
+            "max"
+          ],
+          "required": false
+        },
+        {
+          "path": "区域.<区域ID>.默认开启",
+          "key": "默认开启",
+          "type": "布尔",
+          "doc": "false 的区域开局不生效，需脚本 enable_zone 打开",
+          "aliases": [
+            "enabled"
+          ],
+          "required": false
+        },
+        {
+          "path": "区域.<区域ID>.进入脚本",
+          "key": "进入脚本",
+          "type": "脚本",
+          "doc": "玩家进入区域时执行，可用 {zone} 等占位符",
+          "aliases": [
+            "on_enter",
+            "on-enter"
+          ],
+          "required": false
+        },
+        {
+          "path": "区域.<区域ID>.离开脚本",
+          "key": "离开脚本",
+          "type": "脚本",
+          "doc": "玩家离开区域时执行",
+          "aliases": [
+            "on_leave",
+            "on-leave"
+          ],
+          "required": false
+        },
+        {
+          "path": "区域.<区域ID>.点位",
+          "key": "点位",
+          "type": "映射",
+          "doc": "命名点位容器，供怪物组与脚本按 区域.点位 引用",
+          "aliases": [
+            "points"
+          ],
+          "required": false
+        },
+        {
+          "path": "区域.<区域ID>.点位.<点位名>",
+          "key": "<点位名>",
+          "type": "坐标",
+          "doc": "点位坐标 x,y,z 或带朝向的 x,y,z,yaw,pitch",
+          "aliases": [],
+          "required": false
+        }
+      ]
+    },
+    {
+      "file": "interacts.yml",
+      "title": "交互点",
+      "summary": "定义可触发的方块、区域与实体交互，触发时执行脚本",
+      "containerAliases": {
+        "交互": [
+          "交互",
+          "interacts"
+        ]
+      },
+      "example": "interacts:\n  机关按钮:\n    type: RIGHT_CLICK_BLOCK\n    once: false\n    parameters:\n      location: '3,64,3'\n    script: \"action.setblock('0,64,5,AIR')\"\n  陷阱区域:\n    type: ENTER_REGION\n    once: false\n    parameters:\n      min: '-15,63,-15'\n      max: '-10,68,-10'\n",
+      "nodes": [
+        {
+          "path": "交互",
+          "key": "交互",
+          "type": "映射",
+          "doc": "交互点容器；不写这一层时交互点直接写在根上",
+          "aliases": [
+            "interacts"
+          ],
+          "required": false
+        },
+        {
+          "path": "交互.<交互ID>.type",
+          "key": "type",
+          "type": "枚举",
+          "doc": "触发方式；默认 RIGHT_CLICK_BLOCK",
+          "values": [
+            "RIGHT_CLICK_BLOCK",
+            "LEFT_CLICK_BLOCK",
+            "BREAK_BLOCK",
+            "PLACE_BLOCK",
+            "STEP_ON",
+            "ENTER_REGION",
+            "RIGHT_CLICK_ENTITY"
+          ],
+          "aliases": [
+            "类型"
+          ],
+          "required": false
+        },
+        {
+          "path": "交互.<交互ID>.once",
+          "key": "once",
+          "type": "布尔",
+          "doc": "是否每个玩家只能触发一次，默认 true",
+          "aliases": [
+            "仅一次"
+          ],
+          "required": false
+        },
+        {
+          "path": "交互.<交互ID>.parameters",
+          "key": "parameters",
+          "type": "映射",
+          "doc": "参数子段；不写这个段时参数直接写在交互点这一层",
+          "aliases": [
+            "参数"
+          ],
+          "required": false
+        },
+        {
+          "path": "交互.<交互ID>.parameters.location",
+          "key": "location",
+          "type": "坐标",
+          "doc": "触发位置；非 ENTER_REGION 类型必需",
+          "aliases": [
+            "位置"
+          ],
+          "required": false
+        },
+        {
+          "path": "交互.<交互ID>.parameters.min",
+          "key": "min",
+          "type": "坐标",
+          "doc": "ENTER_REGION 的范围最小角",
+          "aliases": [
+            "最小点"
+          ],
+          "required": false
+        },
+        {
+          "path": "交互.<交互ID>.parameters.max",
+          "key": "max",
+          "type": "坐标",
+          "doc": "ENTER_REGION 的范围最大角",
+          "aliases": [
+            "最大点"
+          ],
+          "required": false
+        },
+        {
+          "path": "交互.<交互ID>.parameters.required_block",
+          "key": "required_block",
+          "type": "文本",
+          "doc": "必须放置的方块，仅 PLACE_BLOCK 生效",
+          "aliases": [
+            "required-block",
+            "需要方块"
+          ],
+          "required": false
+        },
+        {
+          "path": "交互.<交互ID>.parameters.required_item",
+          "key": "required_item",
+          "type": "文本",
+          "doc": "触发所需物品",
+          "aliases": [
+            "required-item",
+            "需要物品"
+          ],
+          "required": false
+        },
+        {
+          "path": "交互.<交互ID>.parameters.required_item_name",
+          "key": "required_item_name",
+          "type": "文本",
+          "doc": "触发所需物品的名称",
+          "aliases": [
+            "required-item-name",
+            "需要物品名称"
+          ],
+          "required": false
+        },
+        {
+          "path": "交互.<交互ID>.parameters.entity_type",
+          "key": "entity_type",
+          "type": "文本",
+          "doc": "RIGHT_CLICK_ENTITY 限定的实体类型",
+          "aliases": [
+            "entity-type",
+            "实体类型"
+          ],
+          "required": false
+        },
+        {
+          "path": "交互.<交互ID>.parameters.fail_message",
+          "key": "fail_message",
+          "type": "文本",
+          "doc": "条件不满足时给玩家发的提示",
+          "aliases": [
+            "fail-message",
+            "失败消息"
+          ],
+          "required": false
+        },
+        {
+          "path": "交互.<交互ID>.parameters.triggered_message",
+          "key": "triggered_message",
+          "type": "文本",
+          "doc": "已触发过的提示",
+          "aliases": [
+            "triggered-message",
+            "已触发消息"
+          ],
+          "required": false
+        },
+        {
+          "path": "交互.<交互ID>.script",
+          "key": "script",
+          "type": "脚本",
+          "doc": "触发时执行的脚本",
+          "aliases": [
+            "脚本"
+          ],
+          "required": false
+        }
+      ]
+    },
+    {
+      "file": "tasks.yml",
+      "title": "定时/循环/事件任务",
+      "summary": "按运行秒数、固定间隔或副本事件执行脚本",
+      "containerAliases": {
+        "tasks": [
+          "tasks",
+          "任务"
+        ]
+      },
+      "example": "tasks:\n  countdown:\n    type: 定时\n    times:\n      300:\n        - \"action.message('@all', '&e还剩 5 分钟！')\"\n  buff_timer:\n    type: loop\n    interval: 60\n    script:\n      - \"action.apply_potion('@all', 'SPEED', '10s', 0)\"\n  wave_done:\n    type: event\n    trigger: wave_complete\n    trigger_target: wave_1\n    script:\n      - \"action.message('@all', '&a第一波已完成')\"\n",
+      "nodes": [
+        {
+          "path": "tasks",
+          "key": "tasks",
+          "type": "映射",
+          "doc": "任务容器；任务名即 key，可由脚本或指令引用",
+          "aliases": [
+            "任务"
+          ],
+          "required": false
+        },
+        {
+          "path": "tasks.<任务ID>.type",
+          "key": "type",
+          "type": "枚举",
+          "doc": "任务类型；默认 TIMED（定时），中文名同样可用",
+          "values": [
+            "TIMED",
+            "LOOP",
+            "EVENT",
+            "定时",
+            "循环",
+            "事件"
+          ],
+          "aliases": [
+            "类型"
+          ],
+          "required": false
+        },
+        {
+          "path": "tasks.<任务ID>.times",
+          "key": "times",
+          "type": "映射",
+          "doc": "定时任务的 秒数 -> 脚本 映射",
+          "aliases": [
+            "时间点"
+          ],
+          "required": false
+        },
+        {
+          "path": "tasks.<任务ID>.times.<秒数>",
+          "key": "<秒数>",
+          "type": "脚本",
+          "doc": "副本运行到该秒数时执行的脚本列表",
+          "aliases": [],
+          "required": false
+        },
+        {
+          "path": "tasks.<任务ID>.interval",
+          "key": "interval",
+          "type": "时间",
+          "doc": "循环任务的间隔秒数，默认 60",
+          "aliases": [
+            "间隔"
+          ],
+          "required": false
+        },
+        {
+          "path": "tasks.<任务ID>.script",
+          "key": "script",
+          "type": "脚本",
+          "doc": "循环任务与事件任务执行的脚本",
+          "aliases": [
+            "脚本"
+          ],
+          "required": false
+        },
+        {
+          "path": "tasks.<任务ID>.trigger",
+          "key": "trigger",
+          "type": "枚举",
+          "doc": "事件类型；事件任务必填",
+          "values": [
+            "monster_kill",
+            "boss_kill",
+            "wave_complete"
+          ],
+          "aliases": [
+            "触发"
+          ],
+          "required": false
+        },
+        {
+          "path": "tasks.<任务ID>.trigger_target",
+          "key": "trigger_target",
+          "type": "文本",
+          "doc": "事件关联的怪物组名",
+          "aliases": [
+            "trigger-target",
+            "触发目标"
+          ],
+          "required": false
+        }
+      ]
+    },
+    {
+      "file": "rewards.yml",
+      "title": "奖励",
+      "summary": "定义固定奖励与随机权重奖励，含跨场次累计的保底计数",
+      "containerAliases": {
+        "rewards": [
+          "rewards",
+          "奖励"
+        ]
+      },
+      "example": "rewards:\n  通关奖励:\n    items:\n      - type: item\n        id: DIAMOND\n        amount: 5\n    money: 1000\n    exp: 500\n    commands:\n      - \"give %player% golden_apple 3\"\n  随机宝箱:\n    type: random\n    保底:\n      次数: 30\n      必出: 传说\n    options:\n      传说: { weight: 5, items: [{ type: mythic_item, id: epic_weapon, amount: 1 }] }\n",
+      "nodes": [
+        {
+          "path": "rewards",
+          "key": "rewards",
+          "type": "映射",
+          "doc": "奖励容器；奖励名即 key，被 grant_reward 引用",
+          "aliases": [
+            "奖励"
+          ],
+          "required": false
+        },
+        {
+          "path": "rewards.<奖励名>.type",
+          "key": "type",
+          "type": "枚举",
+          "doc": "奖励类型；不写即固定奖励",
+          "values": [
+            "fixed",
+            "random"
+          ],
+          "aliases": [
+            "类型"
+          ],
+          "required": false
+        },
+        {
+          "path": "rewards.<奖励名>.items",
+          "key": "items",
+          "type": "列表",
+          "doc": "物品列表；也可写成 物品ID: 数量 的映射",
+          "aliases": [
+            "物品"
+          ],
+          "required": false
+        },
+        {
+          "path": "rewards.<奖励名>.items[].type",
+          "key": "type",
+          "type": "枚举",
+          "doc": "物品来源：原版物品或 MythicMobs 物品",
+          "values": [
+            "item",
+            "mythic_item"
+          ],
+          "aliases": [
+            "类型"
+          ],
+          "required": false
+        },
+        {
+          "path": "rewards.<奖励名>.items[].id",
+          "key": "id",
+          "type": "文本",
+          "doc": "物品 ID 或 MythicMobs 物品 ID",
+          "aliases": [
+            "物品"
+          ],
+          "required": false
+        },
+        {
+          "path": "rewards.<奖励名>.items[].amount",
+          "key": "amount",
+          "type": "数字",
+          "doc": "发放数量，默认 1",
+          "aliases": [
+            "数量"
+          ],
+          "required": false
+        },
+        {
+          "path": "rewards.<奖励名>.money",
+          "key": "money",
+          "type": "数字",
+          "doc": "发放金钱，需要 Vault",
+          "aliases": [
+            "金钱",
+            "金币"
+          ],
+          "required": false
+        },
+        {
+          "path": "rewards.<奖励名>.exp",
+          "key": "exp",
+          "type": "数字",
+          "doc": "发放经验",
+          "aliases": [
+            "经验"
+          ],
+          "required": false
+        },
+        {
+          "path": "rewards.<奖励名>.commands",
+          "key": "commands",
+          "type": "列表",
+          "doc": "以控制台身份执行的命令，支持 %player%",
+          "aliases": [
+            "命令"
+          ],
+          "required": false
+        },
+        {
+          "path": "rewards.<奖励名>.options",
+          "key": "options",
+          "type": "映射",
+          "doc": "随机奖励的选项表，每项带权重",
+          "aliases": [
+            "选项"
+          ],
+          "required": false
+        },
+        {
+          "path": "rewards.<奖励名>.options.<选项名>.weight",
+          "key": "weight",
+          "type": "数字",
+          "doc": "该选项的抽取权重",
+          "aliases": [
+            "权重"
+          ],
+          "required": false
+        },
+        {
+          "path": "rewards.<奖励名>.options.<选项名>.items",
+          "key": "items",
+          "type": "列表",
+          "doc": "该选项发放的物品",
+          "aliases": [
+            "物品"
+          ],
+          "required": false
+        },
+        {
+          "path": "rewards.<奖励名>.options.<选项名>.money",
+          "key": "money",
+          "type": "数字",
+          "doc": "该选项发放的金钱",
+          "aliases": [
+            "金钱",
+            "金币"
+          ],
+          "required": false
+        },
+        {
+          "path": "rewards.<奖励名>.options.<选项名>.exp",
+          "key": "exp",
+          "type": "数字",
+          "doc": "该选项发放的经验",
+          "aliases": [
+            "经验"
+          ],
+          "required": false
+        },
+        {
+          "path": "rewards.<奖励名>.options.<选项名>.commands",
+          "key": "commands",
+          "type": "列表",
+          "doc": "该选项执行的命令",
+          "aliases": [
+            "命令"
+          ],
+          "required": false
+        },
+        {
+          "path": "rewards.<奖励名>.保底",
+          "key": "保底",
+          "type": "映射",
+          "doc": "保底子段，仅随机奖励生效",
+          "aliases": [
+            "pity"
+          ],
+          "required": false
+        },
+        {
+          "path": "rewards.<奖励名>.保底.次数",
+          "key": "次数",
+          "type": "数字",
+          "doc": "抽满该次数必出目标项",
+          "aliases": [
+            "hard",
+            "hard_count",
+            "hard-count"
+          ],
+          "required": false
+        },
+        {
+          "path": "rewards.<奖励名>.保底.必出",
+          "key": "必出",
+          "type": "文本",
+          "doc": "保底必出的选项名，必须与 options 里的键一致",
+          "aliases": [
+            "target"
+          ],
+          "required": false
+        },
+        {
+          "path": "rewards.<奖励名>.保底.软保底起始",
+          "key": "软保底起始",
+          "type": "数字",
+          "doc": "从第几次开始给目标项提权，0 表示不启用",
+          "aliases": [
+            "soft_from",
+            "soft-from"
+          ],
+          "required": false
+        },
+        {
+          "path": "rewards.<奖励名>.保底.软保底增幅",
+          "key": "软保底增幅",
+          "type": "数字",
+          "doc": "每次未出时目标项权重乘以的值，默认 2.0",
+          "aliases": [
+            "soft_step",
+            "soft-step"
+          ],
+          "required": false
+        },
+        {
+          "path": "rewards.<奖励名>.保底.计数域",
+          "key": "计数域",
+          "type": "枚举",
+          "doc": "保底计数范围：副本内单独计数或全局共用",
+          "values": [
+            "副本",
+            "全局"
+          ],
+          "aliases": [
+            "scope"
+          ],
+          "required": false
+        }
+      ]
+    },
+    {
+      "file": "scripts.yml",
+      "title": "生命周期脚本钩子",
+      "summary": "在开本、通关、失败、死亡与退出等节点执行脚本",
+      "containerAliases": {},
+      "example": "init:\n  - \"action.time('night')\"\nstart:\n  条件:\n    - 在线玩家数 >= 1\n  脚本:\n    - \"action.title('@all', '&6&l示例副本', '&7消灭所有敌人')\"\n    - \"action.spawn_group('wave_1')\"\ncomplete:\n  - \"action.grant_reward('@all', '通关奖励')\"\nfail:\n  - \"action.title('@all', '&c挑战失败', '&7再接再厉')\"\n",
+      "nodes": [
+        {
+          "path": "init",
+          "key": "init",
+          "type": "脚本",
+          "doc": "世界加载与规则应用之后、start 之前；触发者为队长",
+          "aliases": [],
+          "required": false
+        },
+        {
+          "path": "start",
+          "key": "start",
+          "type": "脚本",
+          "doc": "开场脚本；可直接写列表，也可写成 条件 / 脚本 子段",
+          "aliases": [],
+          "required": false
+        },
+        {
+          "path": "start.condition",
+          "key": "condition",
+          "type": "条件",
+          "doc": "开场条件，全部为真才执行 start 脚本，空列表视为通过",
+          "aliases": [
+            "条件"
+          ],
+          "required": false
+        },
+        {
+          "path": "start.script",
+          "key": "script",
+          "type": "脚本",
+          "doc": "条件成立后执行的开场脚本",
+          "aliases": [
+            "脚本"
+          ],
+          "required": false
+        },
+        {
+          "path": "complete",
+          "key": "complete",
+          "type": "脚本",
+          "doc": "标记通关之后触发；当前版本脚本会被终态守卫丢弃",
+          "aliases": [],
+          "required": false
+        },
+        {
+          "path": "exit",
+          "key": "exit",
+          "type": "脚本",
+          "doc": "玩家被传送回主世界之前触发；通关与失败路径下不执行",
+          "aliases": [],
+          "required": false
+        },
+        {
+          "path": "fail",
+          "key": "fail",
+          "type": "脚本",
+          "doc": "标记失败之后触发；当前版本同样不会执行",
+          "aliases": [],
+          "required": false
+        },
+        {
+          "path": "player_death",
+          "key": "player_death",
+          "type": "脚本",
+          "doc": "玩家倒下并转旁观者后触发，触发者是倒下的人",
+          "aliases": [
+            "player-death"
+          ],
+          "required": false
+        },
+        {
+          "path": "all_death",
+          "key": "all_death",
+          "type": "脚本",
+          "doc": "全员均为死亡状态时只触发一次，需自己调用 fail",
+          "aliases": [
+            "all-death"
+          ],
+          "required": false
+        }
+      ]
+    },
+    {
+      "file": "functions.js",
+      "title": "JavaScript 函数库",
+      "summary": "目录下的 .js 文件会被读入，供所有脚本调用自定义函数",
+      "containerAliases": {},
+      "example": "// 副本目录下的每个 .js 都会被读入，所有脚本都能直接调用这里的函数\n// 内置对象：action / dungeon / player / trigger\n// 内置函数：getVar(name) / setVar(name, value) / log(msg) / parseTime(str)\n\nfunction announceWave(no, name, tip) {\n    action.title('@all', '&6第 ' + no + ' 波', '&7' + name);\n    action.message('@all', '&e' + tip);\n}\n\nfunction aliveIn(group) {\n    return dungeon.getAliveMonsterCount(group);\n}\n",
+      "nodes": []
+    }
+  ],
+  "scriptHooks": [
+    {
+      "name": "init",
+      "doc": "世界加载与世界规则应用之后、start 之前，触发者为队长",
+      "hasTrigger": true,
+      "example": "action.time('night')"
+    },
+    {
+      "name": "start",
+      "doc": "紧随 init；先跑条件，全部为真才执行脚本，触发者为队长",
+      "hasTrigger": true,
+      "example": "action.title('@all', '&6准备开始', '&7消灭所有敌人')"
+    },
+    {
+      "name": "complete",
+      "doc": "标记通关之后触发，当前版本会被终态守卫丢弃",
+      "hasTrigger": false,
+      "example": "action.grant_reward('@all', '通关奖励')"
+    },
+    {
+      "name": "fail",
+      "doc": "标记失败之后触发，当前版本同样不会执行",
+      "hasTrigger": false,
+      "example": "action.broadcast('&c有队伍挑战失败')"
+    },
+    {
+      "name": "exit",
+      "doc": "玩家被传送回主世界之前触发，通关与失败路径下不执行",
+      "hasTrigger": false,
+      "example": "action.message('@all', '&7感谢游玩，下次再来')"
+    },
+    {
+      "name": "player_death",
+      "doc": "玩家倒下并转旁观者之后触发，触发者是倒下的人",
+      "hasTrigger": true,
+      "example": "action.revive('@trigger', false, 'inplace')"
+    },
+    {
+      "name": "all_death",
+      "doc": "全员均为死亡状态时只触发一次，需自己调用 fail 结束副本",
+      "hasTrigger": false,
+      "example": "action.fail('全队阵亡')"
+    }
+  ],
+  "conditions": {
+    "locations": [
+      {
+        "file": "scripts.yml",
+        "path": "start.condition",
+        "doc": "开场条件；全部为真才执行 start 脚本，空列表视为通过"
+      },
+      {
+        "file": "monsters.yml",
+        "path": "groups.<组ID>.condition",
+        "doc": "组生成条件，只在 spawn_group 调用那一刻求值一次"
+      },
+      {
+        "file": "monsters.yml",
+        "path": "groups.<组ID>.monsters[].when",
+        "doc": "条目条件，构建生成队列时逐条求值，不成立则跳过"
+      },
+      {
+        "file": "stages.yml",
+        "path": "阶段.<阶段ID>.通关条件",
+        "doc": "阶段完成条件，事件驱动求值，返回真值即推进"
+      },
+      {
+        "file": "stages.yml",
+        "path": "阶段.<阶段ID>.下一阶段[].条件",
+        "doc": "阶段分支条件，按列表顺序取第一个成立的"
+      }
+    ],
+    "keywords": [
+      {
+        "cn": "存活怪物数",
+        "js": "dungeon.getTotalAliveMonsters()"
+      },
+      {
+        "cn": "存活怪物",
+        "js": "dungeon.getTotalAliveMonsters()"
+      },
+      {
+        "cn": "剩余怪物",
+        "js": "dungeon.getTotalAliveMonsters()"
+      },
+      {
+        "cn": "总击杀",
+        "js": "dungeon.getTotalMobKills()"
+      },
+      {
+        "cn": "击杀数",
+        "js": "dungeon.getTotalMobKills()"
+      },
+      {
+        "cn": "在线玩家数",
+        "js": "dungeon.getOnlinePlayerCount()"
+      },
+      {
+        "cn": "在线人数",
+        "js": "dungeon.getOnlinePlayerCount()"
+      },
+      {
+        "cn": "存活玩家数",
+        "js": "dungeon.getAlivePlayerCount()"
+      },
+      {
+        "cn": "存活玩家",
+        "js": "dungeon.getAlivePlayerCount()"
+      },
+      {
+        "cn": "死亡玩家数",
+        "js": "dungeon.getDeadPlayerCount()"
+      },
+      {
+        "cn": "死亡人数",
+        "js": "dungeon.getDeadPlayerCount()"
+      },
+      {
+        "cn": "队伍人数",
+        "js": "dungeon.getOnlinePlayerCount()"
+      },
+      {
+        "cn": "运行时间",
+        "js": "dungeon.getRunningTime()"
+      },
+      {
+        "cn": "副本时间",
+        "js": "dungeon.getRunningTime()"
+      },
+      {
+        "cn": "是",
+        "js": "true"
+      },
+      {
+        "cn": "否",
+        "js": "false"
+      },
+      {
+        "cn": "并且",
+        "js": "&&"
+      },
+      {
+        "cn": "或者",
+        "js": "||"
+      }
+    ]
+  }
+}

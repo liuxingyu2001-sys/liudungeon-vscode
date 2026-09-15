@@ -1,0 +1,146 @@
+{
+  "name": "liudungeon-script",
+  "displayName": "LiuDungeon 脚本与配置支持",
+  "description": "为 LiuDungeon 地牢副本插件提供脚本补全、悬停文档、诊断与片段：action.* / dungeon.* API、scripts.yml 钩子、monsters/zones/stages 等全部配置文件键名",
+  "version": "1.0.0",
+  "publisher": "liu",
+  "license": "MIT",
+  "author": {
+    "name": "liu"
+  },
+  "engines": {
+    "vscode": "^1.80.0",
+    "node": ">=18"
+  },
+  "categories": [
+    "Programming Languages",
+    "Snippets",
+    "Linters"
+  ],
+  "keywords": [
+    "minecraft",
+    "liudungeon",
+    "quedp",
+    "dungeon",
+    "yaml",
+    "javascript",
+    "graaljs"
+  ],
+  "icon": "icon.png",
+  "main": "./out/client/extension.js",
+  "activationEvents": [
+    "onLanguage:yaml",
+    "onLanguage:javascript",
+    "onLanguage:liudungeon",
+    "workspaceContains:**/plugins/liudungeon/**",
+    "workspaceContains:**/dungeons/**/config.yml",
+    "workspaceContains:**/dungeons/**/monsters.yml",
+    "workspaceContains:**/dungeons/**/scripts.yml"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "liudungeon",
+        "aliases": [
+          "LiuDungeon 脚本库",
+          "LiuDungeon Script"
+        ],
+        "extensions": [
+          ".lds"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "javascript",
+        "path": "./snippets/liudungeon-js.code-snippets"
+      },
+      {
+        "language": "yaml",
+        "path": "./snippets/liudungeon-yaml.code-snippets"
+      }
+    ],
+    "configuration": {
+      "title": "LiuDungeon 脚本支持",
+      "properties": {
+        "liudungeon.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "启用语言服务（补全、悬停、诊断）"
+        },
+        "liudungeon.diagnostics.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "启用诊断（未知方法、未知键名、引用不存在等）"
+        },
+        "liudungeon.diagnostics.unknownMethod": {
+          "type": "boolean",
+          "default": true,
+          "description": "把 action.xxx / dungeon.xxx 中不存在的方法标为警告"
+        },
+        "liudungeon.diagnostics.references": {
+          "type": "boolean",
+          "default": true,
+          "description": "校验同副本目录内的跨文件引用（怪物组、区域、奖励、点位、交互点）"
+        },
+        "liudungeon.diagnostics.knownHooks": {
+          "type": "boolean",
+          "default": true,
+          "description": "把 scripts.yml 里未知的钩子名标为警告"
+        },
+        "liudungeon.dungeonsPath": {
+          "type": "string",
+          "default": "",
+          "description": "副本配置目录（留空则自动探测：工作区里的 dungeons/ 或 plugins/liudungeon/dungeons/）"
+        },
+        "liudungeon.trace.server": {
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "description": "记录语言服务通信日志（输出面板 → LiuDungeon）"
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "liudungeon.reloadIndex",
+        "title": "LiuDungeon: 重建副本索引（引用校验用）"
+      },
+      {
+        "command": "liudungeon.openDocs",
+        "title": "LiuDungeon: 打开脚本文档"
+      },
+      {
+        "command": "liudungeon.insertTemplate",
+        "title": "LiuDungeon: 插入脚本模板"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "watch": "node build.mjs --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run build && node test/lsp-harness.mjs",
+    "package": "node build.mjs --production && vsce package --no-dependencies --allow-missing-repository -o liudungeon-script.vsix",
+    "pretest": "npm run typecheck"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1",
+    "vscode-languageserver": "^9.0.1",
+    "vscode-languageserver-textdocument": "^1.0.11",
+    "vscode-uri": "^3.0.8",
+    "yaml": "^2.5.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/vscode": "^1.80.0",
+    "@vscode/vsce": "^2.32.0",
+    "esbuild": "^0.23.0",
+    "typescript": "^5.5.4"
+  }
+}

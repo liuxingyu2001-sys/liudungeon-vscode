@@ -1,0 +1,639 @@
+{
+  "namespace": "dungeon",
+  "methods": [
+    {
+      "name": "getTemplateId",
+      "signature": "getTemplateId()",
+      "params": [],
+      "returns": "String 模板ID",
+      "doc": "副本模板 ID",
+      "category": "基础信息",
+      "aliases": [],
+      "example": "dungeon.getTemplateId()"
+    },
+    {
+      "name": "getTemplateName",
+      "signature": "getTemplateName()",
+      "params": [],
+      "returns": "String 显示名",
+      "doc": "副本显示名，可能含 & 颜色代码",
+      "category": "基础信息",
+      "aliases": [],
+      "example": "action.broadcast('&6' + dungeon.getTemplateName() + ' 已被攻克！')"
+    },
+    {
+      "name": "getInstanceId",
+      "signature": "getInstanceId()",
+      "params": [],
+      "returns": "String 实例短ID",
+      "doc": "实例短 ID，取 UUID 前 8 位用于展示",
+      "category": "基础信息",
+      "aliases": [],
+      "example": "dungeon.getInstanceId()"
+    },
+    {
+      "name": "getRunningTime",
+      "signature": "getRunningTime()",
+      "params": [],
+      "returns": "long 已运行秒数",
+      "doc": "副本已运行秒数，未开始时为 0",
+      "category": "基础信息",
+      "aliases": [],
+      "example": "action.message('@all', '&7已用时 &f' + dungeon.getRunningTime() + ' &7秒')"
+    },
+    {
+      "name": "isTimeout",
+      "signature": "isTimeout()",
+      "params": [],
+      "returns": "boolean",
+      "doc": "是否已超过 config.yml 配置的时限",
+      "category": "基础信息",
+      "aliases": [],
+      "example": "if (dungeon.isTimeout()) { action.fail('超时'); }"
+    },
+    {
+      "name": "getStatus",
+      "signature": "getStatus()",
+      "params": [],
+      "returns": "String 状态名",
+      "doc": "英文状态名 PREPARING/ACTIVE/COMPLETED/FAILED/CANCELLED/ENDING",
+      "category": "基础信息",
+      "aliases": [],
+      "example": "dungeon.getStatus() === 'ACTIVE'"
+    },
+    {
+      "name": "getStatusLabel",
+      "signature": "getStatusLabel()",
+      "params": [],
+      "returns": "String 中文状态名",
+      "doc": "中文状态名，如 准备中/进行中/已完成/已失败/已取消/清理中",
+      "category": "基础信息",
+      "aliases": [],
+      "example": "dungeon.getStatusLabel()"
+    },
+    {
+      "name": "getWorld",
+      "signature": "getWorld()",
+      "params": [],
+      "returns": "Object 世界对象",
+      "doc": "副本世界对象，完整宿主访问下脚本可借此任意操作世界",
+      "category": "基础信息",
+      "aliases": [],
+      "example": "dungeon.getWorld()"
+    },
+    {
+      "name": "getSummary",
+      "signature": "getSummary()",
+      "params": [],
+      "returns": "String 摘要串",
+      "doc": "去色状态摘要，如 示例地牢 [1a2b3c4d] 进行中 (2/3人)",
+      "category": "基础信息",
+      "aliases": [],
+      "example": "log(dungeon.getSummary())"
+    },
+    {
+      "name": "getOnlinePlayerCount",
+      "signature": "getOnlinePlayerCount()",
+      "params": [],
+      "returns": "int 在线数",
+      "doc": "当前在线成员数",
+      "category": "玩家",
+      "aliases": [],
+      "example": "dungeon.getOnlinePlayerCount()"
+    },
+    {
+      "name": "getMemberCount",
+      "signature": "getMemberCount()",
+      "params": [],
+      "returns": "int 成员总数",
+      "doc": "成员总数，含离线成员",
+      "category": "玩家",
+      "aliases": [],
+      "example": "dungeon.getMemberCount()"
+    },
+    {
+      "name": "getAlivePlayerCount",
+      "signature": "getAlivePlayerCount()",
+      "params": [],
+      "returns": "int 存活数",
+      "doc": "未死亡成员数，待复活者也算已死亡",
+      "category": "玩家",
+      "aliases": [],
+      "example": "dungeon.getAlivePlayerCount() >= 2"
+    },
+    {
+      "name": "getDeadPlayerCount",
+      "signature": "getDeadPlayerCount()",
+      "params": [],
+      "returns": "int 死亡数",
+      "doc": "已死亡成员数，含正在等待复活的玩家",
+      "category": "玩家",
+      "aliases": [],
+      "example": "dungeon.getDeadPlayerCount()"
+    },
+    {
+      "name": "isPlayerCurrentlyDead",
+      "signature": "isPlayerCurrentlyDead(player)",
+      "params": [
+        {
+          "name": "player",
+          "type": "玩家名",
+          "doc": "Player 对象或玩家名字符串"
+        }
+      ],
+      "returns": "boolean",
+      "doc": "该玩家是否处于死亡或待复活状态，旁观者也算",
+      "category": "玩家",
+      "aliases": [],
+      "example": "dungeon.isPlayerCurrentlyDead(player)"
+    },
+    {
+      "name": "hasPlayer",
+      "signature": "hasPlayer(player)",
+      "params": [
+        {
+          "name": "player",
+          "type": "玩家名",
+          "doc": "Player 对象或玩家名字符串"
+        }
+      ],
+      "returns": "boolean",
+      "doc": "该玩家是否为本副本成员",
+      "category": "玩家",
+      "aliases": [],
+      "example": "dungeon.hasPlayer(player)"
+    },
+    {
+      "name": "getPlayerNames",
+      "signature": "getPlayerNames()",
+      "params": [],
+      "returns": "ArrayList<String> 成员名",
+      "doc": "全部成员名，离线回落 UUID 前 8 位；Java ArrayList 只支持 .size()/.get(i)",
+      "category": "玩家",
+      "aliases": [],
+      "example": "var names = dungeon.getPlayerNames()"
+    },
+    {
+      "name": "isOnline",
+      "signature": "isOnline(playerName)",
+      "params": [
+        {
+          "name": "playerName",
+          "type": "玩家名",
+          "doc": "玩家名字符串"
+        }
+      ],
+      "returns": "boolean",
+      "doc": "该名字的玩家是否在线",
+      "category": "玩家",
+      "aliases": [],
+      "example": "dungeon.isOnline('Steve')"
+    },
+    {
+      "name": "getMemberList",
+      "signature": "getMemberList()",
+      "params": [],
+      "returns": "String 名单串",
+      "doc": "成员名单展示串，已去色并用逗号分隔",
+      "category": "玩家",
+      "aliases": [],
+      "example": "action.message('@all', dungeon.getMemberList())"
+    },
+    {
+      "name": "isGroupCleared",
+      "signature": "isGroupCleared(group)",
+      "params": [
+        {
+          "name": "group",
+          "type": "怪物组ID",
+          "doc": "怪物组名"
+        }
+      ],
+      "returns": "boolean",
+      "doc": "该组是否启动过且已全灭或已跳过，未启动返回 false",
+      "category": "怪物组",
+      "aliases": [],
+      "example": "dungeon.isGroupCleared('wave_1')"
+    },
+    {
+      "name": "isGroupActive",
+      "signature": "isGroupActive(group)",
+      "params": [
+        {
+          "name": "group",
+          "type": "怪物组ID",
+          "doc": "怪物组名"
+        }
+      ],
+      "returns": "boolean",
+      "doc": "该组是否正在运行中",
+      "category": "怪物组",
+      "aliases": [],
+      "example": "dungeon.isGroupActive('wave_1')"
+    },
+    {
+      "name": "getAliveMonsterCount",
+      "signature": "getAliveMonsterCount(group)",
+      "params": [
+        {
+          "name": "group",
+          "type": "怪物组ID",
+          "doc": "怪物组名，不存在的组返回 0"
+        }
+      ],
+      "returns": "int 存活数",
+      "doc": "该组当前存活怪物数",
+      "category": "怪物组",
+      "aliases": [],
+      "example": "dungeon.getAliveMonsterCount('wave_2') <= 0"
+    },
+    {
+      "name": "getTotalAliveMonsters",
+      "signature": "getTotalAliveMonsters()",
+      "params": [],
+      "returns": "int 存活数",
+      "doc": "全副本存活怪物数，所有组求和",
+      "category": "怪物组",
+      "aliases": [],
+      "example": "action.actionbar('@all', '&7剩余 &c' + dungeon.getTotalAliveMonsters() + ' &7只')"
+    },
+    {
+      "name": "getGroupSpawned",
+      "signature": "getGroupSpawned(group)",
+      "params": [
+        {
+          "name": "group",
+          "type": "怪物组ID",
+          "doc": "怪物组名"
+        }
+      ],
+      "returns": "int 累计生成数",
+      "doc": "该组累计生成怪物数",
+      "category": "怪物组",
+      "aliases": [],
+      "example": "dungeon.getGroupSpawned('wave_1')"
+    },
+    {
+      "name": "getGroupKilled",
+      "signature": "getGroupKilled(group)",
+      "params": [
+        {
+          "name": "group",
+          "type": "怪物组ID",
+          "doc": "怪物组名"
+        }
+      ],
+      "returns": "int 累计击杀数",
+      "doc": "该组累计击杀怪物数",
+      "category": "怪物组",
+      "aliases": [],
+      "example": "dungeon.getGroupKilled('wave_1')"
+    },
+    {
+      "name": "getRepeatCount",
+      "signature": "getRepeatCount(group)",
+      "params": [
+        {
+          "name": "group",
+          "type": "怪物组ID",
+          "doc": "怪物组名"
+        }
+      ],
+      "returns": "int 已重复轮次",
+      "doc": "该组已重复的轮次",
+      "category": "怪物组",
+      "aliases": [],
+      "example": "dungeon.getRepeatCount('wave_1')"
+    },
+    {
+      "name": "getMobKillCount",
+      "signature": "getMobKillCount(mobId)",
+      "params": [
+        {
+          "name": "mobId",
+          "type": "文本",
+          "doc": "MythicMobs ID 或原版实体名"
+        }
+      ],
+      "returns": "int 击杀数",
+      "doc": "某类怪物的击杀数",
+      "category": "怪物组",
+      "aliases": [],
+      "example": "dungeon.getMobKillCount('SkeletonKing')"
+    },
+    {
+      "name": "getTotalMobKills",
+      "signature": "getTotalMobKills()",
+      "params": [],
+      "returns": "int 累计击杀数",
+      "doc": "全副本累计击杀怪物数",
+      "category": "怪物组",
+      "aliases": [],
+      "example": "action.message('@all', '&e第 &f' + dungeon.getTotalMobKills() + ' &e只已清')"
+    },
+    {
+      "name": "hasGroup",
+      "signature": "hasGroup(group)",
+      "params": [
+        {
+          "name": "group",
+          "type": "怪物组ID",
+          "doc": "怪物组名"
+        }
+      ],
+      "returns": "boolean",
+      "doc": "该组名是否存在于副本配置",
+      "category": "怪物组",
+      "aliases": [],
+      "example": "dungeon.hasGroup('wave_1')"
+    },
+    {
+      "name": "getGroupNames",
+      "signature": "getGroupNames()",
+      "params": [],
+      "returns": "List<String> 组名",
+      "doc": "全部怪物组名",
+      "category": "怪物组",
+      "aliases": [],
+      "example": "var groups = dungeon.getGroupNames()"
+    },
+    {
+      "name": "isBossKilled",
+      "signature": "isBossKilled(group)",
+      "params": [
+        {
+          "name": "group",
+          "type": "怪物组ID",
+          "doc": "怪物组名"
+        }
+      ],
+      "returns": "boolean",
+      "doc": "读变量 bossKilled_组名，boss 条目被击杀时由插件写入",
+      "category": "怪物组",
+      "aliases": [],
+      "example": "dungeon.isBossKilled('boss_room')"
+    },
+    {
+      "name": "getZone",
+      "signature": "getZone(player)",
+      "params": [
+        {
+          "name": "player",
+          "type": "玩家名",
+          "doc": "Player 对象或玩家名字符串"
+        }
+      ],
+      "returns": "String 区域key",
+      "doc": "玩家所在区域 key，重叠时取体积最小的，不在区域内返回空串",
+      "category": "区域",
+      "aliases": [],
+      "example": "dungeon.getZone(player) === '战斗区'"
+    },
+    {
+      "name": "getZoneName",
+      "signature": "getZoneName(player)",
+      "params": [
+        {
+          "name": "player",
+          "type": "玩家名",
+          "doc": "Player 对象或玩家名字符串"
+        }
+      ],
+      "returns": "String 区域显示名",
+      "doc": "玩家所在区域的显示名，不在区域内返回空串",
+      "category": "区域",
+      "aliases": [],
+      "example": "action.message('@trigger', '&e你进入了 ' + dungeon.getZoneName(player))"
+    },
+    {
+      "name": "getZones",
+      "signature": "getZones(player)",
+      "params": [
+        {
+          "name": "player",
+          "type": "玩家名",
+          "doc": "Player 对象或玩家名字符串"
+        }
+      ],
+      "returns": "List<String> 区域",
+      "doc": "玩家命中的全部区域 key",
+      "category": "区域",
+      "aliases": [],
+      "example": "var zones = dungeon.getZones(player)"
+    },
+    {
+      "name": "isInZone",
+      "signature": "isInZone(player, zone)",
+      "params": [
+        {
+          "name": "player",
+          "type": "玩家名",
+          "doc": "Player 对象或玩家名字符串"
+        },
+        {
+          "name": "zone",
+          "type": "区域ID",
+          "doc": "区域 key"
+        }
+      ],
+      "returns": "boolean",
+      "doc": "玩家是否位于指定区域内",
+      "category": "区域",
+      "aliases": [],
+      "example": "dungeon.isInZone(player, '战斗区')"
+    },
+    {
+      "name": "getZonePlayerCount",
+      "signature": "getZonePlayerCount(zone)",
+      "params": [
+        {
+          "name": "zone",
+          "type": "区域ID",
+          "doc": "区域 key"
+        }
+      ],
+      "returns": "int 玩家数",
+      "doc": "指定区域内的玩家数",
+      "category": "区域",
+      "aliases": [],
+      "example": "dungeon.getZonePlayerCount('战斗区') >= 2"
+    },
+    {
+      "name": "isZoneEnabled",
+      "signature": "isZoneEnabled(zone)",
+      "params": [
+        {
+          "name": "zone",
+          "type": "区域ID",
+          "doc": "区域 key"
+        }
+      ],
+      "returns": "boolean",
+      "doc": "该区域是否已开启",
+      "category": "区域",
+      "aliases": [],
+      "example": "dungeon.isZoneEnabled('隐藏房区域')"
+    },
+    {
+      "name": "getStage",
+      "signature": "getStage()",
+      "params": [],
+      "returns": "String 阶段key",
+      "doc": "当前阶段 key",
+      "category": "阶段",
+      "aliases": [],
+      "example": "dungeon.getStage() === 'Boss战'"
+    },
+    {
+      "name": "getStageName",
+      "signature": "getStageName()",
+      "params": [],
+      "returns": "String 阶段显示名",
+      "doc": "当前阶段的显示名",
+      "category": "阶段",
+      "aliases": [],
+      "example": "dungeon.getStageName()"
+    },
+    {
+      "name": "getStageIndex",
+      "signature": "getStageIndex()",
+      "params": [],
+      "returns": "int 阶段序号",
+      "doc": "当前阶段的序号",
+      "category": "阶段",
+      "aliases": [],
+      "example": "dungeon.getStageIndex()"
+    },
+    {
+      "name": "getStageCount",
+      "signature": "getStageCount()",
+      "params": [],
+      "returns": "int 阶段总数",
+      "doc": "副本的阶段总数",
+      "category": "阶段",
+      "aliases": [],
+      "example": "dungeon.getStageCount()"
+    },
+    {
+      "name": "isFinalStage",
+      "signature": "isFinalStage()",
+      "params": [],
+      "returns": "boolean",
+      "doc": "当前是否处于最终阶段",
+      "category": "阶段",
+      "aliases": [],
+      "example": "dungeon.isFinalStage()"
+    },
+    {
+      "name": "getStageElapsed",
+      "signature": "getStageElapsed()",
+      "params": [],
+      "returns": "long 已耗时秒",
+      "doc": "当前阶段已耗时秒数",
+      "category": "阶段",
+      "aliases": [],
+      "example": "dungeon.getStageElapsed() > 60"
+    },
+    {
+      "name": "isStageCompleted",
+      "signature": "isStageCompleted()",
+      "params": [],
+      "returns": "boolean",
+      "doc": "阶段流程是否已全部走完",
+      "category": "阶段",
+      "aliases": [],
+      "example": "dungeon.isStageCompleted()"
+    },
+    {
+      "name": "getReviveLeft",
+      "signature": "getReviveLeft(player)",
+      "params": [
+        {
+          "name": "player",
+          "type": "玩家名",
+          "doc": "Player 对象或玩家名字符串"
+        }
+      ],
+      "returns": "int 剩余次数",
+      "doc": "剩余复活次数，-1 为无限、0 为无机会或未配置",
+      "category": "复活",
+      "aliases": [],
+      "example": "dungeon.getReviveLeft(player) > 0"
+    },
+    {
+      "name": "isPendingRevive",
+      "signature": "isPendingRevive(player)",
+      "params": [
+        {
+          "name": "player",
+          "type": "玩家名",
+          "doc": "Player 对象或玩家名字符串"
+        }
+      ],
+      "returns": "boolean",
+      "doc": "该玩家是否在等待复活（DOWNED 状态）",
+      "category": "复活",
+      "aliases": [],
+      "example": "dungeon.isPendingRevive(player)"
+    },
+    {
+      "name": "getPendingReviveCount",
+      "signature": "getPendingReviveCount()",
+      "params": [],
+      "returns": "int 待复活数",
+      "doc": "当前等待复活的人数",
+      "category": "复活",
+      "aliases": [],
+      "example": "dungeon.getPendingReviveCount()"
+    },
+    {
+      "name": "getDeadCount",
+      "signature": "getDeadCount()",
+      "params": [],
+      "returns": "int 阵亡数",
+      "doc": "已确认阵亡的人数",
+      "category": "复活",
+      "aliases": [],
+      "example": "dungeon.getDeadCount()"
+    },
+    {
+      "name": "getVariable",
+      "signature": "getVariable(name)",
+      "params": [
+        {
+          "name": "name",
+          "type": "文本",
+          "doc": "脚本变量名"
+        }
+      ],
+      "returns": "Object 变量值",
+      "doc": "读脚本变量，不存在时返回数字 0",
+      "category": "变量",
+      "aliases": [],
+      "example": "dungeon.getVariable('难度') >= 3"
+    },
+    {
+      "name": "setVariable",
+      "signature": "setVariable(name, value)",
+      "params": [
+        {
+          "name": "name",
+          "type": "文本",
+          "doc": "脚本变量名"
+        },
+        {
+          "name": "value",
+          "type": "文本",
+          "doc": "变量值，传 null 表示删除该变量"
+        }
+      ],
+      "returns": "void",
+      "doc": "写脚本变量，传 null 删除；这是唯一的写方法",
+      "category": "变量",
+      "aliases": [],
+      "example": "dungeon.setVariable('难度', 3)"
+    }
+  ],
+  "selectors": [],
+  "placeholders": []
+}

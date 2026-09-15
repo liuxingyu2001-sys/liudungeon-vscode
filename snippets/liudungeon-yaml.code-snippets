@@ -1,0 +1,248 @@
+{
+  "ld-hook-init": {
+    "prefix": "ld-hook-init",
+    "body": [
+      "init:",
+      "  - \"action.time('night')\""
+    ],
+    "description": "世界加载与世界规则应用之后、start 之前，触发者为队长（触发者：有）"
+  },
+  "ld-hook-start": {
+    "prefix": "ld-hook-start",
+    "body": [
+      "start:",
+      "  - \"action.title('@all', '&6准备开始', '&7消灭所有敌人')\""
+    ],
+    "description": "紧随 init；先跑条件，全部为真才执行脚本，触发者为队长（触发者：有）"
+  },
+  "ld-hook-complete": {
+    "prefix": "ld-hook-complete",
+    "body": [
+      "complete:",
+      "  - \"action.grant_reward('@all', '通关奖励')\""
+    ],
+    "description": "标记通关之后触发，当前版本会被终态守卫丢弃（触发者：无）"
+  },
+  "ld-hook-fail": {
+    "prefix": "ld-hook-fail",
+    "body": [
+      "fail:",
+      "  - \"action.broadcast('&c有队伍挑战失败')\""
+    ],
+    "description": "标记失败之后触发，当前版本同样不会执行（触发者：无）"
+  },
+  "ld-hook-exit": {
+    "prefix": "ld-hook-exit",
+    "body": [
+      "exit:",
+      "  - \"action.message('@all', '&7感谢游玩，下次再来')\""
+    ],
+    "description": "玩家被传送回主世界之前触发，通关与失败路径下不执行（触发者：无）"
+  },
+  "ld-hook-player_death": {
+    "prefix": "ld-hook-player_death",
+    "body": [
+      "player_death:",
+      "  - \"action.revive('@trigger', false, 'inplace')\""
+    ],
+    "description": "玩家倒下并转旁观者之后触发，触发者是倒下的人（触发者：有）"
+  },
+  "ld-hook-all_death": {
+    "prefix": "ld-hook-all_death",
+    "body": [
+      "all_death:",
+      "  - \"action.fail('全队阵亡')\""
+    ],
+    "description": "全员均为死亡状态时只触发一次，需自己调用 fail 结束副本（触发者：无）"
+  },
+  "ld-configyml": {
+    "prefix": "ld-configyml",
+    "body": [
+      "dungeon:",
+      "  name: '&6示例副本'",
+      "  difficulty: 普通",
+      "world:",
+      "  template: 你的地图模板名",
+      "  spawn: '0,64,0,0,0'",
+      "  world_rules:",
+      "    time: night",
+      "    keep_inventory: true",
+      "requirements:",
+      "  min_players: 1",
+      "  max_players: 4",
+      "time:",
+      "  limit: 1800",
+      "  timeout_action: FAIL"
+    ],
+    "description": "副本主配置 —— 最小可用模板"
+  },
+  "ld-monstersyml": {
+    "prefix": "ld-monstersyml",
+    "body": [
+      "groups:",
+      "  wave_1:",
+      "    spawn_timing:",
+      "      type: AUTO_START",
+      "    monsters:",
+      "      - id: Zombie",
+      "        location: '0,64,-10'",
+      "        amount: 3",
+      "        level: 1",
+      "  boss:",
+      "    spawn_timing:",
+      "      type: TRIGGERED",
+      "    trigger_group: wave_1",
+      "    monsters:",
+      "      - id: Husk",
+      "        location: '0,64,-20'",
+      "        amount: 1",
+      "        boss: true"
+    ],
+    "description": "怪物组（波次） —— 最小可用模板"
+  },
+  "ld-stagesyml": {
+    "prefix": "ld-stagesyml",
+    "body": [
+      "入口: 清怪",
+      "清怪:",
+      "  名称: '&e清理前厅'",
+      "  通关条件: \"dungeon.isGroupCleared('wave_1')\"",
+      "  超时: 300",
+      "  开始脚本: \"action.title('@all', '&e第一阶段', '&7清理所有敌人')\"",
+      "  下一阶段: Boss战",
+      "Boss战:",
+      "  通关条件: \"dungeon.isGroupCleared('boss')\""
+    ],
+    "description": "阶段流程机 —— 最小可用模板"
+  },
+  "ld-zonesyml": {
+    "prefix": "ld-zonesyml",
+    "body": [
+      "战斗区:",
+      "  名称: '&e前厅战斗区'",
+      "  范围: '-20,60,-30 ~ 20,80,10'",
+      "  默认开启: true",
+      "  进入脚本: \"action.message('@trigger', '&e你进入了前厅战斗区')\"",
+      "  点位:",
+      "    中心: '0,64,-10'",
+      "    落点: '0,64,0,0,0'"
+    ],
+    "description": "区域与命名点位 —— 最小可用模板"
+  },
+  "ld-interactsyml": {
+    "prefix": "ld-interactsyml",
+    "body": [
+      "interacts:",
+      "  机关按钮:",
+      "    type: RIGHT_CLICK_BLOCK",
+      "    once: false",
+      "    parameters:",
+      "      location: '3,64,3'",
+      "    script: \"action.setblock('0,64,5,AIR')\"",
+      "  陷阱区域:",
+      "    type: ENTER_REGION",
+      "    once: false",
+      "    parameters:",
+      "      min: '-15,63,-15'",
+      "      max: '-10,68,-10'"
+    ],
+    "description": "交互点 —— 最小可用模板"
+  },
+  "ld-tasksyml": {
+    "prefix": "ld-tasksyml",
+    "body": [
+      "tasks:",
+      "  countdown:",
+      "    type: 定时",
+      "    times:",
+      "      300:",
+      "        - \"action.message('@all', '&e还剩 5 分钟！')\"",
+      "  buff_timer:",
+      "    type: loop",
+      "    interval: 60",
+      "    script:",
+      "      - \"action.apply_potion('@all', 'SPEED', '10s', 0)\"",
+      "  wave_done:",
+      "    type: event",
+      "    trigger: wave_complete",
+      "    trigger_target: wave_1",
+      "    script:",
+      "      - \"action.message('@all', '&a第一波已完成')\""
+    ],
+    "description": "定时/循环/事件任务 —— 最小可用模板"
+  },
+  "ld-rewardsyml": {
+    "prefix": "ld-rewardsyml",
+    "body": [
+      "rewards:",
+      "  通关奖励:",
+      "    items:",
+      "      - type: item",
+      "        id: DIAMOND",
+      "        amount: 5",
+      "    money: 1000",
+      "    exp: 500",
+      "    commands:",
+      "      - \"give %player% golden_apple 3\"",
+      "  随机宝箱:",
+      "    type: random",
+      "    保底:",
+      "      次数: 30",
+      "      必出: 传说",
+      "    options:",
+      "      传说: { weight: 5, items: [{ type: mythic_item, id: epic_weapon, amount: 1 }] }"
+    ],
+    "description": "奖励 —— 最小可用模板"
+  },
+  "ld-scriptsyml": {
+    "prefix": "ld-scriptsyml",
+    "body": [
+      "init:",
+      "  - \"action.time('night')\"",
+      "start:",
+      "  条件:",
+      "    - 在线玩家数 >= 1",
+      "  脚本:",
+      "    - \"action.title('@all', '&6&l示例副本', '&7消灭所有敌人')\"",
+      "    - \"action.spawn_group('wave_1')\"",
+      "complete:",
+      "  - \"action.grant_reward('@all', '通关奖励')\"",
+      "fail:",
+      "  - \"action.title('@all', '&c挑战失败', '&7再接再厉')\""
+    ],
+    "description": "生命周期脚本钩子 —— 最小可用模板"
+  },
+  "ld-functionsjs": {
+    "prefix": "ld-functionsjs",
+    "body": [
+      "// 副本目录下的每个 .js 都会被读入，所有脚本都能直接调用这里的函数",
+      "// 内置对象：action / dungeon / player / trigger",
+      "// 内置函数：getVar(name) / setVar(name, value) / log(msg) / parseTime(str)",
+      "",
+      "function announceWave(no, name, tip) {",
+      "    action.title('@all', '&6第 ' + no + ' 波', '&7' + name);",
+      "    action.message('@all', '&e' + tip);",
+      "}",
+      "",
+      "function aliveIn(group) {",
+      "    return dungeon.getAliveMonsterCount(group);",
+      "}"
+    ],
+    "description": "JavaScript 函数库 —— 最小可用模板"
+  },
+  "ld-message": {
+    "prefix": "ld-message",
+    "body": [
+      "- \"action.message('@all', '&e${1:文本}')\""
+    ],
+    "description": "给全队发消息的一行脚本"
+  },
+  "ld-script-block": {
+    "prefix": "ld-script",
+    "body": [
+      "${1:start}:",
+      "  - \"action.message('@all', '&e${2:开始}')\""
+    ],
+    "description": "钩子 + 一行脚本"
+  }
+}

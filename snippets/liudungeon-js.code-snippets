@@ -1,0 +1,479 @@
+{
+  "ld-getVar": {
+    "prefix": "ld-getVar",
+    "body": [
+      "var n = getVar('已开箱数')"
+    ],
+    "description": "读脚本变量；变量作用域是本次副本实例，出本即销毁（返回：变量值（不存在时返回数字 0））"
+  },
+  "ld-setVar": {
+    "prefix": "ld-setVar",
+    "body": [
+      "setVar('已开箱数', getVar('已开箱数') + 1)"
+    ],
+    "description": "写脚本变量；value 为 null 等价于删除该变量（返回：void）"
+  },
+  "ld-log": {
+    "prefix": "ld-log",
+    "body": [
+      "log('${1:调试信息：}' + dungeon.getStatusLabel())"
+    ],
+    "description": "打控制台日志，排查脚本有没有被执行"
+  },
+  "ld-parseTime": {
+    "prefix": "ld-parseTime",
+    "body": [
+      "action.wait('3s')"
+    ],
+    "description": "把 3s / 5m / 2h / 100t / 500ms 这类时间字符串换成 tick（返回：long（tick））"
+  },
+  "ld-playerName": {
+    "prefix": "ld-playerName",
+    "body": [
+      "action.message('@all', playerName() + ' 拿到了钥匙')"
+    ],
+    "description": "安全地取触发者名字，等价于 typeof player !== \"undefined\" ? player.getName() : \"\"（返回：触发者名字；无触发者返回空串）"
+  },
+  "ld-msg": {
+    "prefix": "ld-msg",
+    "body": [
+      "action.message('@all', '&e${1:文本}')"
+    ],
+    "description": "给全队发消息（支持 & 颜色与 {player.name} 占位符）"
+  },
+  "ld-title": {
+    "prefix": "ld-title",
+    "body": [
+      "action.title('@all', '&6&lBOSS 降临', '&7小心脚下')"
+    ],
+    "description": "title(selector, title, subtitle) — 给选择器命中的玩家显示标题和副标题"
+  },
+  "ld-actionbar": {
+    "prefix": "ld-actionbar",
+    "body": [
+      "action.actionbar('@all', '&7剩余 &c3 &7只')"
+    ],
+    "description": "actionbar(selector, text) — 在物品栏上方那行显示动作栏文本"
+  },
+  "ld-broadcast": {
+    "prefix": "ld-broadcast",
+    "body": [
+      "action.broadcast('&6&l★ 全服公告：有队伍通关了 ★')"
+    ],
+    "description": "broadcast(text) — 全服广播给在线玩家和控制台，带 config.yml 配置的前缀"
+  },
+  "ld-spawn": {
+    "prefix": "ld-spawn",
+    "body": [
+      "action.spawn_group('${1:wave_1}')"
+    ],
+    "description": "立即生成一个怪物组"
+  },
+  "ld-wait": {
+    "prefix": "ld-wait",
+    "body": [
+      "action.wait('3秒')"
+    ],
+    "description": "wait(time) — 等待指定时间，实现就是阻塞当前脚本线程的 sleep"
+  },
+  "ld-waitclear": {
+    "prefix": "ld-waitclear",
+    "body": [
+      "action.wait_clear('${1:wave_1}')"
+    ],
+    "description": "等到某个怪物组被清空（最多等 10 分钟）"
+  },
+  "ld-complete": {
+    "prefix": "ld-complete",
+    "body": [
+      "action.complete_dungeon()"
+    ],
+    "description": "标记通关（会走结算与自动出本流程）"
+  },
+  "ld-fail": {
+    "prefix": "ld-fail",
+    "body": [
+      "action.fail('前厅超时')"
+    ],
+    "description": "fail(reason) — 以指定原因标记副本失败"
+  },
+  "ld-exit": {
+    "prefix": "ld-exit",
+    "body": [
+      "action.exit_dungeon()"
+    ],
+    "description": "把所有玩家送回主世界（不结算）"
+  },
+  "ld-reward": {
+    "prefix": "ld-reward",
+    "body": [
+      "action.grant_reward('@all', '${1:通关奖励}')"
+    ],
+    "description": "发奖励：奖励名必须能在 rewards.yml 里找到，否则静默无效"
+  },
+  "ld-var": {
+    "prefix": "ld-var",
+    "body": [
+      "setVar('${1:变量名}', ${2:1})"
+    ],
+    "description": "写脚本变量（作用域是本次副本实例）"
+  },
+  "ld-getvar": {
+    "prefix": "ld-getvar",
+    "body": [
+      "getVar('${1:变量名}')"
+    ],
+    "description": "读脚本变量；不存在时返回数字 0（不是 null）"
+  },
+  "ld-title_safe": {
+    "prefix": "ld-title_safe",
+    "body": [
+      "if (typeof player !== 'undefined') {",
+      "    action.message('@trigger', '&7${1:只有触发者能看到}')",
+      "}"
+    ],
+    "description": "只在有触发者时执行的写法（complete/exit/条件里 player 不存在）"
+  },
+  "ld-zone_in": {
+    "prefix": "ld-zone_in",
+    "body": [
+      "action.enable_zone('${1:前厅}')"
+    ],
+    "description": "开启区域（开启后进出脚本才会触发）"
+  },
+  "ld-interact": {
+    "prefix": "ld-interact",
+    "body": [
+      "action.trigger_interact('@trigger', '${1:开门}')"
+    ],
+    "description": "按名字触发一个交互点"
+  },
+  "ld-tp": {
+    "prefix": "ld-tp",
+    "body": [
+      "action.teleport('@all', '${1:前厅.落点}')"
+    ],
+    "description": "传送到命名点位（区域.点位）或 x,y,z"
+  },
+  "ld-sound": {
+    "prefix": "ld-sound",
+    "body": [
+      "action.sound('@all', 'ENTITY_ENDER_DRAGON_GROWL', 1.0, 0.5)"
+    ],
+    "description": "sound(selector, soundName, volume, pitch) — 以指定音量音高播放音效"
+  },
+  "ld-time": {
+    "prefix": "ld-time",
+    "body": [
+      "action.world_time('noon')"
+    ],
+    "description": "world_time(timeRef) — 设置副本地图世界时间，纯数字按秒解释而非 tick（world_time 的别名）"
+  },
+  "ld-potion": {
+    "prefix": "ld-potion",
+    "body": [
+      "action.apply_potion('@all', '${1:SPEED}', '${2:30s}', ${3:1})"
+    ],
+    "description": "给玩家上药水效果（时长写法见 3s / 5m / 2h）"
+  },
+  "ld-loop_names": {
+    "prefix": "ld-loop_names",
+    "body": [
+      "var names = dungeon.getPlayerNames()",
+      "var line = ''",
+      "for (var i = 0; i < names.size(); i++) line += (i ? ', ' : '') + names.get(i)",
+      "action.message('@all', '&7队员: &f' + line)"
+    ],
+    "description": "遍历 Java 列表（只能 size()/get(i)，没有 forEach）"
+  },
+  "ld-function": {
+    "prefix": "ld-function",
+    "body": [
+      "function ${1:函数名}(${2:参数}) {",
+      "    ${3:// 实现}",
+      "    return ${4:true}",
+      "}"
+    ],
+    "description": "普通函数；functions.js 里的函数可被同副本脚本按名字调用"
+  },
+  "ld-onscript": {
+    "prefix": "ld-onscript",
+    "body": [
+      "/**",
+      " * ${1:这个库函数做什么}",
+      " */",
+      "function ${2:检查进度}(d) {",
+      "    return d.getTotalAliveMonsters() <= 0",
+      "}"
+    ],
+    "description": "带注释的函数骨架（函数名会被脚本引擎在 require 时加载）"
+  },
+  "ld-ifplayer": {
+    "prefix": "ld-ifplayer",
+    "body": [
+      "if (typeof player !== 'undefined') {",
+      "    ${1:action.message('@trigger', '&7只有触发者能看到')}",
+      "}"
+    ],
+    "description": "player 的存在性判断"
+  },
+  "ld-message": {
+    "prefix": "ld-message",
+    "body": [
+      "action.message('@all', '&e准备开始')"
+    ],
+    "description": "message(selector, text) — 给选择器命中的玩家发消息（不带插件前缀）"
+  },
+  "ld-complete_dungeon": {
+    "prefix": "ld-complete_dungeon",
+    "body": [
+      "action.complete()"
+    ],
+    "description": "complete() — 标记副本通关（与 complete_dungeon 完全等价）（complete 的别名）"
+  },
+  "ld-exit_dungeon": {
+    "prefix": "ld-exit_dungeon",
+    "body": [
+      "action.exit_dungeon()"
+    ],
+    "description": "exit_dungeon() — 立即把所有玩家传送回主世界，不结算"
+  },
+  "ld-spawn_group": {
+    "prefix": "ld-spawn_group",
+    "body": [
+      "action.spawn_group('elite', 2.0)"
+    ],
+    "description": "spawn_group(group, multiplier) — 带数量倍率生成怪物组，数量至少为 1"
+  },
+  "ld-stop_repeat": {
+    "prefix": "ld-stop_repeat",
+    "body": [
+      "action.stop_repeat('wave_1')"
+    ],
+    "description": "stop_repeat(group) — 停止该组的重复生成，保留现有怪物并把轮次推到上限"
+  },
+  "ld-cancel_group": {
+    "prefix": "ld-cancel_group",
+    "body": [
+      "action.cancel_group('wave_1')"
+    ],
+    "description": "cancel_group(group) — 清掉该组存活怪物并标记为已完成（之后该组无法再启动）"
+  },
+  "ld-wait_clear": {
+    "prefix": "ld-wait_clear",
+    "body": [
+      "action.wait_clear('wave_1')"
+    ],
+    "description": "wait_clear(group) — 轮询等待某组被清空，间隔 250 ms 最多等 10 分钟"
+  },
+  "ld-grant_reward": {
+    "prefix": "ld-grant_reward",
+    "body": [
+      "action.grant_reward('@all', '通关奖励')"
+    ],
+    "description": "grant_reward(selector, rewardName) — 给选择器命中的玩家各发一份奖励"
+  },
+  "ld-teleport": {
+    "prefix": "ld-teleport",
+    "body": [
+      "action.teleport('@all', 'Boss房.落点')"
+    ],
+    "description": "teleport(selector, locationRef) — 传送玩家，位置解析失败只打 warning"
+  },
+  "ld-teleport_point": {
+    "prefix": "ld-teleport_point",
+    "body": [
+      "action.teleport_point('@all', '前厅.落点')"
+    ],
+    "description": "teleport_point(selector, pointRef) — 传送到命名点位，并自动 resync 玩家区域状态"
+  },
+  "ld-teleport_zone": {
+    "prefix": "ld-teleport_zone",
+    "body": [
+      "action.teleport_zone('@all', '前厅')"
+    ],
+    "description": "teleport_zone(selector, zoneId) — 传送到该区域落点，回落 spawn，再回落区域中心并 resync 区域状态"
+  },
+  "ld-enable_zone": {
+    "prefix": "ld-enable_zone",
+    "body": [
+      "action.enable_zone('隐藏房区域')"
+    ],
+    "description": "enable_zone(zoneId) — 开启区域，进出脚本开始生效"
+  },
+  "ld-disable_zone": {
+    "prefix": "ld-disable_zone",
+    "body": [
+      "action.disable_zone('隐藏房区域')"
+    ],
+    "description": "disable_zone(zoneId) — 关闭区域，进出脚本不再触发"
+  },
+  "ld-trigger_interact": {
+    "prefix": "ld-trigger_interact",
+    "body": [
+      "action.trigger_interact('@all', '能量核心')"
+    ],
+    "description": "trigger_interact(selector, interactId) — 让选择器命中的玩家各触发一次该交互点"
+  },
+  "ld-revive": {
+    "prefix": "ld-revive",
+    "body": [
+      "action.revive('@trigger', false, 'inplace')"
+    ],
+    "description": "revive(selector, consume, location) — 按指定是否扣次数与落点复活玩家"
+  },
+  "ld-add_revive": {
+    "prefix": "ld-add_revive",
+    "body": [
+      "action.add_revive('@all', 1)"
+    ],
+    "description": "add_revive(selector, amount) — 给选择器命中的玩家加复活次数，不发提示"
+  },
+  "ld-give_item": {
+    "prefix": "ld-give_item",
+    "body": [
+      "action.give_item('@all', 'DIAMOND', 3)"
+    ],
+    "description": "give_item(selector, material, amount) — 给物品，背包满了会掉在地上而不是静默丢弃"
+  },
+  "ld-particle": {
+    "prefix": "ld-particle",
+    "body": [
+      "action.particle('@all', 'FLAME', 'Boss房.中心', 20)"
+    ],
+    "description": "particle(selector, particleName, locationRef, count) — 在 locationRef 处放粒子，位置只由 locationRef 决定"
+  },
+  "ld-weather": {
+    "prefix": "ld-weather",
+    "body": [
+      "action.weather('thunder')"
+    ],
+    "description": "weather(weather) — 设置副本世界的天气"
+  },
+  "ld-gamerule": {
+    "prefix": "ld-gamerule",
+    "body": [
+      "action.gamerule('keep_inventory', 'true')"
+    ],
+    "description": "gamerule(rule, value) — 设置 GameRule，只对副本世界生效，不生效时打 warning"
+  },
+  "ld-gamemode": {
+    "prefix": "ld-gamemode",
+    "body": [
+      "action.gamemode('@all', 'adventure')"
+    ],
+    "description": "gamemode(selector, mode) — 设置玩家游戏模式，模式名无效时只打 warning"
+  },
+  "ld-apply_potion": {
+    "prefix": "ld-apply_potion",
+    "body": [
+      "action.apply_potion('@all', 'SPEED', '10s', 0)"
+    ],
+    "description": "apply_potion(selector, effectName, duration, amplifier) — 给玩家加药水效果"
+  },
+  "ld-heal": {
+    "prefix": "ld-heal",
+    "body": [
+      "action.heal('@all')"
+    ],
+    "description": "heal(selector) — 按 MAX_HEALTH 属性把目标回满血"
+  },
+  "ld-command": {
+    "prefix": "ld-command",
+    "body": [
+      "action.command('@all', 'dbuff choose {player.name}')"
+    ],
+    "description": "command(selector, command) — 以控制台身份执行命令，对每个目标替换 {player.name} 各执行一次"
+  },
+  "ld-player_command": {
+    "prefix": "ld-player_command",
+    "body": [
+      "action.player_command('@trigger', 'spawn')"
+    ],
+    "description": "player_command(selector, command) — 以玩家身份执行命令，走 performCommand 因而受权限限制"
+  },
+  "ld-goto_stage": {
+    "prefix": "ld-goto_stage",
+    "body": [
+      "action.goto_stage('隐藏房')"
+    ],
+    "description": "goto_stage(stageId) — 跳到指定阶段且不执行当前阶段的通关脚本"
+  },
+  "ld-restart_stage": {
+    "prefix": "ld-restart_stage",
+    "body": [
+      "action.restart_stage()"
+    ],
+    "description": "restart_stage() — 重进当前阶段，会再跑一次该阶段的开始脚本"
+  },
+  "ld-complete_stage": {
+    "prefix": "ld-complete_stage",
+    "body": [
+      "action.complete_stage()"
+    ],
+    "description": "complete_stage() — 跳过通关条件直接完成当前阶段，并按分支推进"
+  },
+  "ld-isGroupCleared": {
+    "prefix": "ld-isGroupCleared",
+    "body": [
+      "dungeon.isGroupCleared('wave_1')"
+    ],
+    "description": "isGroupCleared(group) — 该组是否启动过且已全灭或已跳过，未启动返回 false"
+  },
+  "ld-getAliveMonsterCount": {
+    "prefix": "ld-getAliveMonsterCount",
+    "body": [
+      "dungeon.getAliveMonsterCount('wave_2') <= 0"
+    ],
+    "description": "getAliveMonsterCount(group) — 该组当前存活怪物数"
+  },
+  "ld-getTotalAliveMonsters": {
+    "prefix": "ld-getTotalAliveMonsters",
+    "body": [
+      "action.actionbar('@all', '&7剩余 &c' + dungeon.getTotalAliveMonsters() + ' &7只')"
+    ],
+    "description": "getTotalAliveMonsters() — 全副本存活怪物数，所有组求和"
+  },
+  "ld-getTotalMobKills": {
+    "prefix": "ld-getTotalMobKills",
+    "body": [
+      "action.message('@all', '&e第 &f' + dungeon.getTotalMobKills() + ' &e只已清')"
+    ],
+    "description": "getTotalMobKills() — 全副本累计击杀怪物数"
+  },
+  "ld-getZonePlayerCount": {
+    "prefix": "ld-getZonePlayerCount",
+    "body": [
+      "dungeon.getZonePlayerCount('战斗区') >= 2"
+    ],
+    "description": "getZonePlayerCount(zone) — 指定区域内的玩家数"
+  },
+  "ld-getOnlinePlayerCount": {
+    "prefix": "ld-getOnlinePlayerCount",
+    "body": [
+      "dungeon.getOnlinePlayerCount()"
+    ],
+    "description": "getOnlinePlayerCount() — 当前在线成员数"
+  },
+  "ld-getRunningTime": {
+    "prefix": "ld-getRunningTime",
+    "body": [
+      "action.message('@all', '&7已用时 &f' + dungeon.getRunningTime() + ' &7秒')"
+    ],
+    "description": "getRunningTime() — 副本已运行秒数，未开始时为 0"
+  },
+  "ld-getStage": {
+    "prefix": "ld-getStage",
+    "body": [
+      "dungeon.getStage() === 'Boss战'"
+    ],
+    "description": "getStage() — 当前阶段 key"
+  },
+  "ld-getReviveLeft": {
+    "prefix": "ld-getReviveLeft",
+    "body": [
+      "dungeon.getReviveLeft(player) > 0"
+    ],
+    "description": "getReviveLeft(player) — 剩余复活次数，-1 为无限、0 为无机会或未配置"
+  }
+}

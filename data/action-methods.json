@@ -1,0 +1,1473 @@
+{
+  "namespace": "action",
+  "methods": [
+    {
+      "name": "message",
+      "signature": "message(selector, text)",
+      "params": [
+        {
+          "name": "selector",
+          "type": "选择器",
+          "doc": "@all/@trigger/@party/玩家名"
+        },
+        {
+          "name": "text",
+          "type": "文本",
+          "doc": "支持 & 颜色与 {占位符}"
+        }
+      ],
+      "returns": "void",
+      "doc": "给选择器命中的玩家发消息（不带插件前缀）",
+      "category": "消息",
+      "aliases": [],
+      "example": "action.message('@all', '&e准备开始')"
+    },
+    {
+      "name": "broadcast",
+      "signature": "broadcast(text)",
+      "params": [
+        {
+          "name": "text",
+          "type": "文本",
+          "doc": "支持 & 颜色与 {占位符}"
+        }
+      ],
+      "returns": "void",
+      "doc": "全服广播给在线玩家和控制台，带 config.yml 配置的前缀",
+      "category": "消息",
+      "aliases": [],
+      "example": "action.broadcast('&6&l★ 全服公告：有队伍通关了 ★')"
+    },
+    {
+      "name": "title",
+      "signature": "title(selector, title, subtitle)",
+      "params": [
+        {
+          "name": "selector",
+          "type": "选择器",
+          "doc": "目标玩家选择器"
+        },
+        {
+          "name": "title",
+          "type": "文本",
+          "doc": "主标题，支持 & 颜色与 {占位符}"
+        },
+        {
+          "name": "subtitle",
+          "type": "文本",
+          "doc": "副标题"
+        }
+      ],
+      "returns": "void",
+      "doc": "给选择器命中的玩家显示标题和副标题",
+      "category": "消息",
+      "aliases": [],
+      "example": "action.title('@all', '&6&lBOSS 降临', '&7小心脚下')"
+    },
+    {
+      "name": "actionbar",
+      "signature": "actionbar(selector, text)",
+      "params": [
+        {
+          "name": "selector",
+          "type": "选择器",
+          "doc": "目标玩家选择器"
+        },
+        {
+          "name": "text",
+          "type": "文本",
+          "doc": "动作栏文本，支持 & 颜色与 {占位符}"
+        }
+      ],
+      "returns": "void",
+      "doc": "在物品栏上方那行显示动作栏文本",
+      "category": "消息",
+      "aliases": [],
+      "example": "action.actionbar('@all', '&7剩余 &c3 &7只')"
+    },
+    {
+      "name": "complete",
+      "signature": "complete()",
+      "params": [],
+      "returns": "void",
+      "doc": "标记副本通关（与 complete_dungeon 完全等价）",
+      "category": "副本流程控制",
+      "aliases": [
+        "complete_dungeon"
+      ],
+      "example": "action.complete()"
+    },
+    {
+      "name": "complete_dungeon",
+      "signature": "complete_dungeon()",
+      "params": [],
+      "returns": "void",
+      "doc": "标记通关的 QueDP 原生名；由 complete 钩子结算的写法当前不生效",
+      "category": "副本流程控制",
+      "aliases": [
+        "complete"
+      ],
+      "example": "action.complete_dungeon()"
+    },
+    {
+      "name": "fail",
+      "signature": "fail()",
+      "params": [],
+      "returns": "void",
+      "doc": "标记失败，等价于 fail('未指定原因')",
+      "category": "副本流程控制",
+      "aliases": [
+        "fail_dungeon"
+      ],
+      "example": "action.fail()"
+    },
+    {
+      "name": "fail",
+      "signature": "fail(reason)",
+      "params": [
+        {
+          "name": "reason",
+          "type": "文本",
+          "doc": "失败原因，会展示给玩家与写进日志"
+        }
+      ],
+      "returns": "void",
+      "doc": "以指定原因标记副本失败",
+      "category": "副本流程控制",
+      "aliases": [
+        "fail_dungeon"
+      ],
+      "example": "action.fail('前厅超时')"
+    },
+    {
+      "name": "fail_dungeon",
+      "signature": "fail_dungeon(reason)",
+      "params": [
+        {
+          "name": "reason",
+          "type": "文本",
+          "doc": "失败原因"
+        }
+      ],
+      "returns": "void",
+      "doc": "标记失败的 QueDP 原生名，是 fail 的别名",
+      "category": "副本流程控制",
+      "aliases": [
+        "fail"
+      ],
+      "example": "action.fail_dungeon('前厅超时')"
+    },
+    {
+      "name": "exit_dungeon",
+      "signature": "exit_dungeon()",
+      "params": [],
+      "returns": "void",
+      "doc": "立即把所有玩家传送回主世界，不结算",
+      "category": "副本流程控制",
+      "aliases": [
+        "leave_dungeon"
+      ],
+      "example": "action.exit_dungeon()"
+    },
+    {
+      "name": "leave_dungeon",
+      "signature": "leave_dungeon()",
+      "params": [],
+      "returns": "void",
+      "doc": "把玩家传出副本的 QueDP 原生名，是 exit_dungeon 的别名",
+      "category": "副本流程控制",
+      "aliases": [
+        "exit_dungeon"
+      ],
+      "example": "action.leave_dungeon()"
+    },
+    {
+      "name": "spawn_group",
+      "signature": "spawn_group(group)",
+      "params": [
+        {
+          "name": "group",
+          "type": "怪物组ID",
+          "doc": "怪物组名，组不存在只打 warning"
+        }
+      ],
+      "returns": "void",
+      "doc": "生成一个怪物组",
+      "category": "怪物组",
+      "aliases": [
+        "monster_group"
+      ],
+      "example": "action.spawn_group('wave_2')"
+    },
+    {
+      "name": "spawn_group",
+      "signature": "spawn_group(group, multiplier)",
+      "params": [
+        {
+          "name": "group",
+          "type": "怪物组ID",
+          "doc": "怪物组名"
+        },
+        {
+          "name": "multiplier",
+          "type": "数字",
+          "doc": "数量倍率，作用于每个条目的数量"
+        }
+      ],
+      "returns": "void",
+      "doc": "带数量倍率生成怪物组，数量至少为 1",
+      "category": "怪物组",
+      "aliases": [
+        "monster_group"
+      ],
+      "example": "action.spawn_group('elite', 2.0)"
+    },
+    {
+      "name": "monster_group",
+      "signature": "monster_group(group)",
+      "params": [
+        {
+          "name": "group",
+          "type": "怪物组ID",
+          "doc": "怪物组名"
+        }
+      ],
+      "returns": "void",
+      "doc": "生成怪物组的 QueDP 原生名，是 spawn_group 的别名",
+      "category": "怪物组",
+      "aliases": [
+        "spawn_group"
+      ],
+      "example": "action.monster_group('wave_1')"
+    },
+    {
+      "name": "random_spawn_group",
+      "signature": "random_spawn_group(...groups)",
+      "params": [
+        {
+          "name": "groups",
+          "type": "怪物组ID",
+          "doc": "可变参数，若干候选组名"
+        }
+      ],
+      "returns": "void",
+      "doc": "从若干组里随机生成一个",
+      "category": "怪物组",
+      "aliases": [
+        "random_monster_group"
+      ],
+      "example": "action.random_spawn_group('宝箱房A', '宝箱房B')"
+    },
+    {
+      "name": "random_monster_group",
+      "signature": "random_monster_group(...groups)",
+      "params": [
+        {
+          "name": "groups",
+          "type": "怪物组ID",
+          "doc": "可变参数，若干候选组名"
+        }
+      ],
+      "returns": "void",
+      "doc": "随机生成一组的 QueDP 另一个名字，与 random_spawn_group 等价",
+      "category": "怪物组",
+      "aliases": [
+        "random_spawn_group"
+      ],
+      "example": "action.random_monster_group('宝箱房A', '宝箱房B')"
+    },
+    {
+      "name": "stop_repeat",
+      "signature": "stop_repeat(group)",
+      "params": [
+        {
+          "name": "group",
+          "type": "怪物组ID",
+          "doc": "怪物组名"
+        }
+      ],
+      "returns": "void",
+      "doc": "停止该组的重复生成，保留现有怪物并把轮次推到上限",
+      "category": "怪物组",
+      "aliases": [],
+      "example": "action.stop_repeat('wave_1')"
+    },
+    {
+      "name": "cancel_group",
+      "signature": "cancel_group(group)",
+      "params": [
+        {
+          "name": "group",
+          "type": "怪物组ID",
+          "doc": "怪物组名"
+        }
+      ],
+      "returns": "void",
+      "doc": "清掉该组存活怪物并标记为已完成（之后该组无法再启动）",
+      "category": "怪物组",
+      "aliases": [
+        "clear_group"
+      ],
+      "example": "action.cancel_group('wave_1')"
+    },
+    {
+      "name": "clear_group",
+      "signature": "clear_group(group)",
+      "params": [
+        {
+          "name": "group",
+          "type": "怪物组ID",
+          "doc": "怪物组名"
+        }
+      ],
+      "returns": "void",
+      "doc": "清掉该组存活怪物的 QueDP 原生名，是 cancel_group 的别名",
+      "category": "怪物组",
+      "aliases": [
+        "cancel_group"
+      ],
+      "example": "action.clear_group('wave_1')"
+    },
+    {
+      "name": "skip_group",
+      "signature": "skip_group(group)",
+      "params": [
+        {
+          "name": "group",
+          "type": "怪物组ID",
+          "doc": "怪物组名"
+        }
+      ],
+      "returns": "void",
+      "doc": "标记完成但不生成怪物，仍会跑该组的 on_end",
+      "category": "怪物组",
+      "aliases": [],
+      "example": "action.skip_group('wave_1')"
+    },
+    {
+      "name": "trigger_interact",
+      "signature": "trigger_interact(interactId)",
+      "params": [
+        {
+          "name": "interactId",
+          "type": "文本",
+          "doc": "交互点名字，选择器默认 @trigger"
+        }
+      ],
+      "returns": "void",
+      "doc": "等价于触发者亲自触发了该交互点",
+      "category": "交互点 / 区域",
+      "aliases": [
+        "trigger_interact(selector, interactId)"
+      ],
+      "example": "action.trigger_interact('能量核心')"
+    },
+    {
+      "name": "trigger_interact",
+      "signature": "trigger_interact(selector, interactId)",
+      "params": [
+        {
+          "name": "selector",
+          "type": "选择器",
+          "doc": "为空时默认 @trigger"
+        },
+        {
+          "name": "interactId",
+          "type": "文本",
+          "doc": "交互点名字"
+        }
+      ],
+      "returns": "void",
+      "doc": "让选择器命中的玩家各触发一次该交互点",
+      "category": "交互点 / 区域",
+      "aliases": [
+        "trigger_interact(interactId)"
+      ],
+      "example": "action.trigger_interact('@all', '能量核心')"
+    },
+    {
+      "name": "enable_zone",
+      "signature": "enable_zone(zoneId)",
+      "params": [
+        {
+          "name": "zoneId",
+          "type": "区域ID",
+          "doc": "区域 key，区域不存在时打 warning"
+        }
+      ],
+      "returns": "void",
+      "doc": "开启区域，进出脚本开始生效",
+      "category": "交互点 / 区域",
+      "aliases": [],
+      "example": "action.enable_zone('隐藏房区域')"
+    },
+    {
+      "name": "disable_zone",
+      "signature": "disable_zone(zoneId)",
+      "params": [
+        {
+          "name": "zoneId",
+          "type": "区域ID",
+          "doc": "区域 key"
+        }
+      ],
+      "returns": "void",
+      "doc": "关闭区域，进出脚本不再触发",
+      "category": "交互点 / 区域",
+      "aliases": [],
+      "example": "action.disable_zone('隐藏房区域')"
+    },
+    {
+      "name": "teleport_zone",
+      "signature": "teleport_zone(selector, zoneId)",
+      "params": [
+        {
+          "name": "selector",
+          "type": "选择器",
+          "doc": "目标玩家选择器"
+        },
+        {
+          "name": "zoneId",
+          "type": "区域ID",
+          "doc": "区域 key"
+        }
+      ],
+      "returns": "void",
+      "doc": "传送到该区域落点，回落 spawn，再回落区域中心并 resync 区域状态",
+      "category": "交互点 / 区域",
+      "aliases": [],
+      "example": "action.teleport_zone('@all', '前厅')"
+    },
+    {
+      "name": "teleport_point",
+      "signature": "teleport_point(selector, pointRef)",
+      "params": [
+        {
+          "name": "selector",
+          "type": "选择器",
+          "doc": "目标玩家选择器"
+        },
+        {
+          "name": "pointRef",
+          "type": "点位引用",
+          "doc": "区域.点位，也支持 x,y,z"
+        }
+      ],
+      "returns": "void",
+      "doc": "传送到命名点位，并自动 resync 玩家区域状态",
+      "category": "交互点 / 区域",
+      "aliases": [],
+      "example": "action.teleport_point('@all', '前厅.落点')"
+    },
+    {
+      "name": "revive",
+      "signature": "revive(selector)",
+      "params": [
+        {
+          "name": "selector",
+          "type": "选择器",
+          "doc": "需要复活的玩家"
+        }
+      ],
+      "returns": "void",
+      "doc": "复活目标并扣一次复活次数，落点按 config.yml 的 revive 段",
+      "category": "复活",
+      "aliases": [],
+      "example": "action.revive('@trigger')"
+    },
+    {
+      "name": "revive",
+      "signature": "revive(selector, consume, location)",
+      "params": [
+        {
+          "name": "selector",
+          "type": "选择器",
+          "doc": "需要复活的玩家"
+        },
+        {
+          "name": "consume",
+          "type": "布尔",
+          "doc": "是否扣复活次数"
+        },
+        {
+          "name": "location",
+          "type": "点位引用",
+          "doc": "spawn/出生点、inplace/原地、区域.点位，null 用配置默认"
+        }
+      ],
+      "returns": "void",
+      "doc": "按指定是否扣次数与落点复活玩家",
+      "category": "复活",
+      "aliases": [],
+      "example": "action.revive('@trigger', false, 'inplace')"
+    },
+    {
+      "name": "add_revive",
+      "signature": "add_revive(amount)",
+      "params": [
+        {
+          "name": "amount",
+          "type": "数字",
+          "doc": "增加的复活次数"
+        }
+      ],
+      "returns": "void",
+      "doc": "给触发者加复活次数，并给触发者发一句提示",
+      "category": "复活",
+      "aliases": [],
+      "example": "action.add_revive(1)"
+    },
+    {
+      "name": "add_revive",
+      "signature": "add_revive(selector, amount)",
+      "params": [
+        {
+          "name": "selector",
+          "type": "选择器",
+          "doc": "目标玩家选择器"
+        },
+        {
+          "name": "amount",
+          "type": "数字",
+          "doc": "增加的复活次数"
+        }
+      ],
+      "returns": "void",
+      "doc": "给选择器命中的玩家加复活次数，不发提示",
+      "category": "复活",
+      "aliases": [],
+      "example": "action.add_revive('@all', 1)"
+    },
+    {
+      "name": "set_revive",
+      "signature": "set_revive(value)",
+      "params": [
+        {
+          "name": "value",
+          "type": "数字",
+          "doc": "复活次数，-1 表示无限"
+        }
+      ],
+      "returns": "void",
+      "doc": "把触发者的复活次数设为指定值",
+      "category": "复活",
+      "aliases": [],
+      "example": "action.set_revive(3)"
+    },
+    {
+      "name": "complete_stage",
+      "signature": "complete_stage()",
+      "params": [],
+      "returns": "void",
+      "doc": "跳过通关条件直接完成当前阶段，并按分支推进",
+      "category": "阶段 / 奖励",
+      "aliases": [],
+      "example": "action.complete_stage()"
+    },
+    {
+      "name": "goto_stage",
+      "signature": "goto_stage(stageId)",
+      "params": [
+        {
+          "name": "stageId",
+          "type": "文本",
+          "doc": "目标阶段 key，不存在时打 warning 并停在原地"
+        }
+      ],
+      "returns": "void",
+      "doc": "跳到指定阶段且不执行当前阶段的通关脚本",
+      "category": "阶段 / 奖励",
+      "aliases": [],
+      "example": "action.goto_stage('隐藏房')"
+    },
+    {
+      "name": "restart_stage",
+      "signature": "restart_stage()",
+      "params": [],
+      "returns": "void",
+      "doc": "重进当前阶段，会再跑一次该阶段的开始脚本",
+      "category": "阶段 / 奖励",
+      "aliases": [],
+      "example": "action.restart_stage()"
+    },
+    {
+      "name": "grant_reward",
+      "signature": "grant_reward(selector, rewardName)",
+      "params": [
+        {
+          "name": "selector",
+          "type": "选择器",
+          "doc": "目标玩家选择器"
+        },
+        {
+          "name": "rewardName",
+          "type": "文本",
+          "doc": "rewards.yml 里的奖励名"
+        }
+      ],
+      "returns": "void",
+      "doc": "给选择器命中的玩家各发一份奖励",
+      "category": "阶段 / 奖励",
+      "aliases": [
+        "reward"
+      ],
+      "example": "action.grant_reward('@all', '通关奖励')"
+    },
+    {
+      "name": "grant_reward",
+      "signature": "grant_reward(rewardName)",
+      "params": [
+        {
+          "name": "rewardName",
+          "type": "文本",
+          "doc": "奖励名，等价于发给 @all"
+        }
+      ],
+      "returns": "void",
+      "doc": "给全部副本成员各发一份奖励",
+      "category": "阶段 / 奖励",
+      "aliases": [
+        "reward"
+      ],
+      "example": "action.grant_reward('通关奖励')"
+    },
+    {
+      "name": "reward",
+      "signature": "reward(selector, rewardName)",
+      "params": [
+        {
+          "name": "selector",
+          "type": "选择器",
+          "doc": "目标玩家选择器"
+        },
+        {
+          "name": "rewardName",
+          "type": "文本",
+          "doc": "奖励名"
+        }
+      ],
+      "returns": "void",
+      "doc": "发奖励的 QueDP 原生名，是 grant_reward 的别名",
+      "category": "阶段 / 奖励",
+      "aliases": [
+        "grant_reward"
+      ],
+      "example": "action.reward('@all', '通关奖励')"
+    },
+    {
+      "name": "reward",
+      "signature": "reward(rewardName)",
+      "params": [
+        {
+          "name": "rewardName",
+          "type": "文本",
+          "doc": "奖励名"
+        }
+      ],
+      "returns": "void",
+      "doc": "单参重载的发奖励别名，等价于 grant_reward(name)",
+      "category": "阶段 / 奖励",
+      "aliases": [
+        "grant_reward"
+      ],
+      "example": "action.reward('通关奖励')"
+    },
+    {
+      "name": "teleport",
+      "signature": "teleport(selector, locationRef)",
+      "params": [
+        {
+          "name": "selector",
+          "type": "选择器",
+          "doc": "目标玩家选择器"
+        },
+        {
+          "name": "locationRef",
+          "type": "点位引用",
+          "doc": "区域.点位 或 x,y,z[,yaw,pitch]"
+        }
+      ],
+      "returns": "void",
+      "doc": "传送玩家，位置解析失败只打 warning",
+      "category": "玩家",
+      "aliases": [],
+      "example": "action.teleport('@all', 'Boss房.落点')"
+    },
+    {
+      "name": "give_item",
+      "signature": "give_item(selector, material, amount)",
+      "params": [
+        {
+          "name": "selector",
+          "type": "选择器",
+          "doc": "目标玩家选择器"
+        },
+        {
+          "name": "material",
+          "type": "材质",
+          "doc": "Bukkit Material 名，如 DIAMOND"
+        },
+        {
+          "name": "amount",
+          "type": "数字",
+          "doc": "数量，至少为 1"
+        }
+      ],
+      "returns": "void",
+      "doc": "给物品，背包满了会掉在地上而不是静默丢弃",
+      "category": "玩家",
+      "aliases": [],
+      "example": "action.give_item('@all', 'DIAMOND', 3)"
+    },
+    {
+      "name": "heal",
+      "signature": "heal(selector)",
+      "params": [
+        {
+          "name": "selector",
+          "type": "选择器",
+          "doc": "目标玩家选择器"
+        }
+      ],
+      "returns": "void",
+      "doc": "按 MAX_HEALTH 属性把目标回满血",
+      "category": "玩家",
+      "aliases": [],
+      "example": "action.heal('@all')"
+    },
+    {
+      "name": "set_health",
+      "signature": "set_health(selector, health)",
+      "params": [
+        {
+          "name": "selector",
+          "type": "选择器",
+          "doc": "目标玩家选择器"
+        },
+        {
+          "name": "health",
+          "type": "数字",
+          "doc": "目标血量，自动夹在 0.5 与最大生命之间"
+        }
+      ],
+      "returns": "void",
+      "doc": "设置玩家血量并自动夹到合法范围",
+      "category": "玩家",
+      "aliases": [],
+      "example": "action.set_health('@all', 10)"
+    },
+    {
+      "name": "damage",
+      "signature": "damage(selector, amount)",
+      "params": [
+        {
+          "name": "selector",
+          "type": "选择器",
+          "doc": "目标玩家选择器"
+        },
+        {
+          "name": "amount",
+          "type": "数字",
+          "doc": "伤害值"
+        }
+      ],
+      "returns": "void",
+      "doc": "对选择器命中的玩家造成伤害",
+      "category": "玩家",
+      "aliases": [],
+      "example": "action.damage('@all', 4.0)"
+    },
+    {
+      "name": "gamemode",
+      "signature": "gamemode(selector, mode)",
+      "params": [
+        {
+          "name": "selector",
+          "type": "选择器",
+          "doc": "目标玩家选择器"
+        },
+        {
+          "name": "mode",
+          "type": "GameMode",
+          "doc": "survival/creative/adventure/spectator，大小写不敏感"
+        }
+      ],
+      "returns": "void",
+      "doc": "设置玩家游戏模式，模式名无效时只打 warning",
+      "category": "玩家",
+      "aliases": [],
+      "example": "action.gamemode('@all', 'adventure')"
+    },
+    {
+      "name": "apply_potion",
+      "signature": "apply_potion(selector, effectName, duration, amplifier)",
+      "params": [
+        {
+          "name": "selector",
+          "type": "选择器",
+          "doc": "目标玩家选择器"
+        },
+        {
+          "name": "effectName",
+          "type": "文本",
+          "doc": "PotionEffectType 名或 minecraft: 键"
+        },
+        {
+          "name": "duration",
+          "type": "秒数或时间字符串",
+          "doc": "持续时间，用时间字符串如 10s"
+        },
+        {
+          "name": "amplifier",
+          "type": "数字",
+          "doc": "等级，0 即 I 级"
+        }
+      ],
+      "returns": "void",
+      "doc": "给玩家加药水效果",
+      "category": "玩家",
+      "aliases": [
+        "potion"
+      ],
+      "example": "action.apply_potion('@all', 'SPEED', '10s', 0)"
+    },
+    {
+      "name": "potion",
+      "signature": "potion(selector, effectName, duration, amplifier)",
+      "params": [
+        {
+          "name": "selector",
+          "type": "选择器",
+          "doc": "目标玩家选择器"
+        },
+        {
+          "name": "effectName",
+          "type": "文本",
+          "doc": "药水效果名"
+        },
+        {
+          "name": "duration",
+          "type": "秒数或时间字符串",
+          "doc": "持续时间"
+        },
+        {
+          "name": "amplifier",
+          "type": "数字",
+          "doc": "等级，0 即 I 级"
+        }
+      ],
+      "returns": "void",
+      "doc": "加药水的短别名，与 apply_potion 完全等价",
+      "category": "玩家",
+      "aliases": [
+        "apply_potion"
+      ],
+      "example": "action.potion('@all', 'SPEED', '10s', 0)"
+    },
+    {
+      "name": "clear_potion",
+      "signature": "clear_potion(selector)",
+      "params": [
+        {
+          "name": "selector",
+          "type": "选择器",
+          "doc": "目标玩家选择器"
+        }
+      ],
+      "returns": "void",
+      "doc": "清空目标玩家的全部药水效果",
+      "category": "玩家",
+      "aliases": [],
+      "example": "action.clear_potion('@all')"
+    },
+    {
+      "name": "give_exp",
+      "signature": "give_exp(selector, amount)",
+      "params": [
+        {
+          "name": "selector",
+          "type": "选择器",
+          "doc": "目标玩家选择器"
+        },
+        {
+          "name": "amount",
+          "type": "数字",
+          "doc": "经验值"
+        }
+      ],
+      "returns": "void",
+      "doc": "给玩家经验",
+      "category": "玩家",
+      "aliases": [],
+      "example": "action.give_exp('@all', 100)"
+    },
+    {
+      "name": "set_walk_speed",
+      "signature": "set_walk_speed(selector, speed)",
+      "params": [
+        {
+          "name": "selector",
+          "type": "选择器",
+          "doc": "目标玩家选择器"
+        },
+        {
+          "name": "speed",
+          "type": "数字",
+          "doc": "行走速度，夹在 -1 与 1 之间"
+        }
+      ],
+      "returns": "void",
+      "doc": "设置行走速度，出本会由快照还原",
+      "category": "玩家",
+      "aliases": [],
+      "example": "action.set_walk_speed('@all', 0.14)"
+    },
+    {
+      "name": "freeze",
+      "signature": "freeze(selector)",
+      "params": [
+        {
+          "name": "selector",
+          "type": "选择器",
+          "doc": "目标玩家选择器"
+        }
+      ],
+      "returns": "void",
+      "doc": "冻结玩家，把行走与飞行速度归零",
+      "category": "玩家",
+      "aliases": [],
+      "example": "action.freeze('@all')"
+    },
+    {
+      "name": "unfreeze",
+      "signature": "unfreeze(selector)",
+      "params": [
+        {
+          "name": "selector",
+          "type": "选择器",
+          "doc": "目标玩家选择器"
+        }
+      ],
+      "returns": "void",
+      "doc": "解冻玩家，把行走与飞行速度恢复为 0.2 与 0.1",
+      "category": "玩家",
+      "aliases": [],
+      "example": "action.unfreeze('@all')"
+    },
+    {
+      "name": "sound",
+      "signature": "sound(selector, soundName)",
+      "params": [
+        {
+          "name": "selector",
+          "type": "选择器",
+          "doc": "目标玩家选择器"
+        },
+        {
+          "name": "soundName",
+          "type": "音效名",
+          "doc": "Bukkit Sound 枚举名，如 ENTITY_WITHER_SPAWN"
+        }
+      ],
+      "returns": "void",
+      "doc": "播放音效，音量音高默认 1.0",
+      "category": "特效",
+      "aliases": [],
+      "example": "action.sound('@all', 'ENTITY_ENDER_DRAGON_GROWL')"
+    },
+    {
+      "name": "sound",
+      "signature": "sound(selector, soundName, volume, pitch)",
+      "params": [
+        {
+          "name": "selector",
+          "type": "选择器",
+          "doc": "目标玩家选择器"
+        },
+        {
+          "name": "soundName",
+          "type": "音效名",
+          "doc": "Bukkit Sound 枚举名"
+        },
+        {
+          "name": "volume",
+          "type": "数字",
+          "doc": "音量"
+        },
+        {
+          "name": "pitch",
+          "type": "数字",
+          "doc": "音高"
+        }
+      ],
+      "returns": "void",
+      "doc": "以指定音量音高播放音效",
+      "category": "特效",
+      "aliases": [],
+      "example": "action.sound('@all', 'ENTITY_ENDER_DRAGON_GROWL', 1.0, 0.5)"
+    },
+    {
+      "name": "particle",
+      "signature": "particle(selector, particleName, locationRef, count)",
+      "params": [
+        {
+          "name": "selector",
+          "type": "选择器",
+          "doc": "仅用于兜底定位，不是玩家过滤器"
+        },
+        {
+          "name": "particleName",
+          "type": "粒子名",
+          "doc": "Bukkit Particle 枚举名"
+        },
+        {
+          "name": "locationRef",
+          "type": "点位引用",
+          "doc": "区域.点位 或 x,y,z"
+        },
+        {
+          "name": "count",
+          "type": "数字",
+          "doc": "粒子数量，至少为 1"
+        }
+      ],
+      "returns": "void",
+      "doc": "在 locationRef 处放粒子，位置只由 locationRef 决定",
+      "category": "特效",
+      "aliases": [],
+      "example": "action.particle('@all', 'FLAME', 'Boss房.中心', 20)"
+    },
+    {
+      "name": "lightning",
+      "signature": "lightning(locationRef, damaging)",
+      "params": [
+        {
+          "name": "locationRef",
+          "type": "点位引用",
+          "doc": "区域.点位 或 x,y,z"
+        },
+        {
+          "name": "damaging",
+          "type": "布尔",
+          "doc": "false 只出视觉效果"
+        }
+      ],
+      "returns": "void",
+      "doc": "在指定位置劈闪电，可选是否造成伤害",
+      "category": "特效",
+      "aliases": [],
+      "example": "action.lightning('Boss房.中心', false)"
+    },
+    {
+      "name": "explosion",
+      "signature": "explosion(locationRef, power)",
+      "params": [
+        {
+          "name": "locationRef",
+          "type": "点位引用",
+          "doc": "区域.点位 或 x,y,z"
+        },
+        {
+          "name": "power",
+          "type": "数字",
+          "doc": "爆炸威力"
+        }
+      ],
+      "returns": "void",
+      "doc": "在指定位置爆炸，不破坏方块也不伤人",
+      "category": "特效",
+      "aliases": [],
+      "example": "action.explosion('Boss房.中心', 3.0)"
+    },
+    {
+      "name": "effect",
+      "signature": "effect(effectName, locationRef, count, spread)",
+      "params": [
+        {
+          "name": "effectName",
+          "type": "粒子名",
+          "doc": "粒子名，内部转给 particle"
+        },
+        {
+          "name": "locationRef",
+          "type": "点位引用",
+          "doc": "区域.点位 或 x,y,z"
+        },
+        {
+          "name": "count",
+          "type": "数字",
+          "doc": "粒子数量"
+        },
+        {
+          "name": "spread",
+          "type": "数字",
+          "doc": "被实现忽略，写了也无效"
+        }
+      ],
+      "returns": "void",
+      "doc": "火焰粒子特效，内部转 particle 且 spread 参数被忽略",
+      "category": "特效",
+      "aliases": [],
+      "example": "action.effect('FLAME', 'Boss房.中心', 30, 0.5)"
+    },
+    {
+      "name": "world_time",
+      "signature": "world_time(timeRef)",
+      "params": [
+        {
+          "name": "timeRef",
+          "type": "秒数或时间字符串",
+          "doc": "day/noon/night/midnight、中文或秒数"
+        }
+      ],
+      "returns": "void",
+      "doc": "设置副本地图世界时间，纯数字按秒解释而非 tick",
+      "category": "世界 / 工具 / 流程",
+      "aliases": [
+        "time"
+      ],
+      "example": "action.world_time('noon')"
+    },
+    {
+      "name": "time",
+      "signature": "time(timeRef)",
+      "params": [
+        {
+          "name": "timeRef",
+          "type": "秒数或时间字符串",
+          "doc": "时间关键字或秒数"
+        }
+      ],
+      "returns": "void",
+      "doc": "设置世界时间的短别名，与 world_time 完全等价",
+      "category": "世界 / 工具 / 流程",
+      "aliases": [
+        "world_time"
+      ],
+      "example": "action.time('midnight')"
+    },
+    {
+      "name": "weather",
+      "signature": "weather(weather)",
+      "params": [
+        {
+          "name": "weather",
+          "type": "文本",
+          "doc": "clear/rain/thunder，也接受 晴/雨/雷 等中文"
+        }
+      ],
+      "returns": "void",
+      "doc": "设置副本世界的天气",
+      "category": "世界 / 工具 / 流程",
+      "aliases": [],
+      "example": "action.weather('thunder')"
+    },
+    {
+      "name": "gamerule",
+      "signature": "gamerule(rule, value)",
+      "params": [
+        {
+          "name": "rule",
+          "type": "文本",
+          "doc": "GameRule 名，如 keep_inventory"
+        },
+        {
+          "name": "value",
+          "type": "文本",
+          "doc": "规则值"
+        }
+      ],
+      "returns": "void",
+      "doc": "设置 GameRule，只对副本世界生效，不生效时打 warning",
+      "category": "世界 / 工具 / 流程",
+      "aliases": [],
+      "example": "action.gamerule('keep_inventory', 'true')"
+    },
+    {
+      "name": "setblock",
+      "signature": "setblock(locationRef, material)",
+      "params": [
+        {
+          "name": "locationRef",
+          "type": "点位引用",
+          "doc": "区域.点位 或 x,y,z"
+        },
+        {
+          "name": "material",
+          "type": "材质",
+          "doc": "Bukkit Material 名，AIR 可清除方块"
+        }
+      ],
+      "returns": "void",
+      "doc": "设置单个方块，applyPhysics 为 false",
+      "category": "世界 / 工具 / 流程",
+      "aliases": [],
+      "example": "action.setblock('20,64,0', 'AIR')"
+    },
+    {
+      "name": "command",
+      "signature": "command(selector, command)",
+      "params": [
+        {
+          "name": "selector",
+          "type": "选择器",
+          "doc": "为空则只执行一次且不做占位符替换"
+        },
+        {
+          "name": "command",
+          "type": "文本",
+          "doc": "命令，开头的斜杠会被去掉"
+        }
+      ],
+      "returns": "void",
+      "doc": "以控制台身份执行命令，对每个目标替换 {player.name} 各执行一次",
+      "category": "世界 / 工具 / 流程",
+      "aliases": [],
+      "example": "action.command('@all', 'dbuff choose {player.name}')"
+    },
+    {
+      "name": "player_command",
+      "signature": "player_command(selector, command)",
+      "params": [
+        {
+          "name": "selector",
+          "type": "选择器",
+          "doc": "目标玩家选择器"
+        },
+        {
+          "name": "command",
+          "type": "文本",
+          "doc": "命令，只替换 {player.name}"
+        }
+      ],
+      "returns": "void",
+      "doc": "以玩家身份执行命令，走 performCommand 因而受权限限制",
+      "category": "世界 / 工具 / 流程",
+      "aliases": [],
+      "example": "action.player_command('@trigger', 'spawn')"
+    },
+    {
+      "name": "set",
+      "signature": "set(name, value)",
+      "params": [
+        {
+          "name": "name",
+          "type": "文本",
+          "doc": "脚本变量名"
+        },
+        {
+          "name": "value",
+          "type": "文本",
+          "doc": "变量值，可为任意类型"
+        }
+      ],
+      "returns": "void",
+      "doc": "写脚本变量，是 setVar 的对象化别名",
+      "category": "世界 / 工具 / 流程",
+      "aliases": [],
+      "example": "action.set('难度', 3)"
+    },
+    {
+      "name": "wait",
+      "signature": "wait(time)",
+      "params": [
+        {
+          "name": "time",
+          "type": "秒数或时间字符串",
+          "doc": "等待时长，用时间字符串如 3s，上限 10 分钟"
+        }
+      ],
+      "returns": "void",
+      "doc": "等待指定时间，实现就是阻塞当前脚本线程的 sleep",
+      "category": "世界 / 工具 / 流程",
+      "aliases": [],
+      "example": "action.wait('3秒')"
+    },
+    {
+      "name": "wait_clear",
+      "signature": "wait_clear(group)",
+      "params": [
+        {
+          "name": "group",
+          "type": "怪物组ID",
+          "doc": "要等待被清空的怪物组名"
+        }
+      ],
+      "returns": "void",
+      "doc": "轮询等待某组被清空，间隔 250 ms 最多等 10 分钟",
+      "category": "世界 / 工具 / 流程",
+      "aliases": [],
+      "example": "action.wait_clear('wave_1')"
+    },
+    {
+      "name": "stop",
+      "signature": "stop()",
+      "params": [],
+      "returns": "void",
+      "doc": "立即中断当前脚本，通过抛控制流异常跳出",
+      "category": "世界 / 工具 / 流程",
+      "aliases": [],
+      "example": "action.stop()"
+    },
+    {
+      "name": "resolveSelector",
+      "signature": "resolveSelector(selector)",
+      "params": [
+        {
+          "name": "selector",
+          "type": "选择器",
+          "doc": "玩家选择器，null 按 @all 处理"
+        }
+      ],
+      "returns": "Set<Player>",
+      "doc": "把选择器解析成玩家集合，参数无效时回落触发者",
+      "category": "世界 / 工具 / 流程",
+      "aliases": [],
+      "example": "var players = action.resolveSelector('@all')"
+    },
+    {
+      "name": "applyPlaceholders",
+      "signature": "applyPlaceholders(text)",
+      "params": [
+        {
+          "name": "text",
+          "type": "文本",
+          "doc": "含 {占位符} 的文本"
+        }
+      ],
+      "returns": "String",
+      "doc": "替换文本占位符并返回结果字符串",
+      "category": "世界 / 工具 / 流程",
+      "aliases": [],
+      "example": "var s = action.applyPlaceholders('&e{player.name} 触发了机关')"
+    }
+  ],
+  "selectors": [
+    {
+      "value": "@all",
+      "doc": "所有在线副本成员"
+    },
+    {
+      "value": "@a",
+      "doc": "@all 的别名，所有在线副本成员"
+    },
+    {
+      "value": "@所有玩家",
+      "doc": "@all 的中文别名，所有在线副本成员"
+    },
+    {
+      "value": "@trigger",
+      "doc": "触发者本人，无触发者时为空集"
+    },
+    {
+      "value": "@p",
+      "doc": "@trigger 的别名，触发者本人"
+    },
+    {
+      "value": "@触发者",
+      "doc": "@trigger 的中文别名，触发者本人"
+    },
+    {
+      "value": "@others",
+      "doc": "除触发者外的在线成员"
+    },
+    {
+      "value": "@其他玩家",
+      "doc": "@others 的中文别名，除触发者外的在线成员"
+    },
+    {
+      "value": "@nearest",
+      "doc": "离触发者最近的其他成员，需要触发者否则空集"
+    },
+    {
+      "value": "@最近",
+      "doc": "@nearest 的中文别名，离触发者最近的其他成员"
+    },
+    {
+      "value": "@random",
+      "doc": "随机一名在线成员"
+    },
+    {
+      "value": "@r",
+      "doc": "@random 的别名，随机一名在线成员"
+    },
+    {
+      "value": "@随机",
+      "doc": "@random 的中文别名，随机一名在线成员"
+    },
+    {
+      "value": "<玩家名>",
+      "doc": "指定在线玩家（Bukkit.getPlayerExact），解析不到时回落触发者"
+    }
+  ],
+  "placeholders": [
+    {
+      "value": "{player.name}",
+      "doc": "触发者名字，需要存在触发者"
+    },
+    {
+      "value": "{trigger.name}",
+      "doc": "触发者名字，与 {player.name} 等值"
+    },
+    {
+      "value": "{player.level}",
+      "doc": "触发者等级"
+    },
+    {
+      "value": "{player.health}",
+      "doc": "触发者血量（四舍五入）"
+    },
+    {
+      "value": "{dungeon.time}",
+      "doc": "副本已运行秒数"
+    },
+    {
+      "value": "{dungeon.players}",
+      "doc": "在线成员数"
+    },
+    {
+      "value": "{dungeon.name}",
+      "doc": "副本显示名"
+    },
+    {
+      "value": "{total_kills}",
+      "doc": "全副本累计击杀数"
+    },
+    {
+      "value": "{var:名字}",
+      "doc": "脚本变量值，变量不存在时替换为空串"
+    },
+    {
+      "value": "{random:1-100}",
+      "doc": "在该区间随机取一个整数，每次调用独立掷骰"
+    },
+    {
+      "value": "{random:甲,乙,丙}",
+      "doc": "从逗号分隔的选项里随机取一项"
+    },
+    {
+      "value": "{zone}",
+      "doc": "区域 key，仅区域脚本注入"
+    },
+    {
+      "value": "{区域}",
+      "doc": "{zone} 的中文写法，仅区域脚本注入"
+    },
+    {
+      "value": "{zone.name}",
+      "doc": "区域显示名，未配置时回落 key，仅区域脚本注入"
+    },
+    {
+      "value": "{区域名称}",
+      "doc": "{zone.name} 的中文写法，仅区域脚本注入"
+    },
+    {
+      "value": "{from_zone}",
+      "doc": "离开脚本里刚才所在的区域，进入脚本里为空串"
+    },
+    {
+      "value": "{来源区域}",
+      "doc": "{from_zone} 的中文写法，仅离开脚本有效"
+    }
+  ]
+}
