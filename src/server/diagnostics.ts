@@ -78,7 +78,12 @@ export function computeDiagnostics(input: DiagnosticsInput): Diagnostic[] {
   // ---------- 9：dungeon 段里的 spawn（写错位置，运行时读的是 world.spawn）----------
   out.push(...checkSpawnKey(name, input.text));
 
-  // ---------- 10：rewards.yml 的随机奖励结构 ----------
+  // ---------- 10：config.yml 的复活配置自相矛盾 ----------
+  if (name === 'config.yml') {
+    out.push(...checkReviveConfig(input.text));
+  }
+
+  // ---------- 11：rewards.yml 的随机奖励结构 ----------
   if (name === 'rewards.yml') {
     out.push(...checkRewards(input.text));
   }
@@ -635,6 +640,83 @@ function lineOffset(node: unknown): number {
 function lineStartOffset(text: string, offset: number): number {
   const nl = text.lastIndexOf('\n', Math.max(0, offset - 1));
   return nl + 1;
+}
+
+// ==================================================================
+//  config.yml：复活配置的自相矛盾检查
+// ==================================================================
+
+/** 真正算「配了复活方式」的键（源码 Keys.* 的别名合集）。 */
+const REVIVE_METHOD_KEYS: Array<{ keys: string[]; label: string }> = [
+  { keys: ['延迟', 'delay'], label: '自动复活' },
+  { keys: ['id', 'item', '物品'], label: '道具复活' },
+  { keys: ['读条', 'cast_time', 'cast-time'], label: '队友救起' },
+];
+
+/**
+ * 复活系统「配了方式却写 count: 0」时，玩家倒下后没有任何办法起来。
+ *
+ * <p>表现极具误导性：玩家被切成旁观者、原地不动、看不到复活提示，
+ * 而日志里只有一条「已阵亡」—— 看起来就像「复活系统跟摆设一样」。
+ */
+function checkReviveConfig(text: string): Diagnostic[] {
+  const out: Diagnostic[] = [];
+  let doc;
+  try {
+    doc = parseDocument(text, { keepSourceTokens: false });
+  } catch {
+    return out;
+  }
+  const root = doc.contents;
+  if (!(root instanceof YAMLMap)) return [];
+  const revive = entryValue(root, ['revive', '复活']);
+  if (!(revive instanceof YAMLMap)) return [];
+
+  const countNode = findKey(revive, ['count', '次数']);
+  const countRaw = countNode ? scalarText((countNode.value as Scalar | null) ?? null) : null;
+  const count = countRaw == null ? 0 : Number(countRaw);
+
+  const methods: string[] = [];
+  for (const section of ['auto', '自动', 'item', '道具', 'ally', '队友']) {
+    const sec = entryValue(revive, [section]);
+    if (!(sec instanceof YAMLMap)) continue;
+    for (const method of REVIVE_METHOD_KEYS) {
+      if (findKey(sec, method.keys)) {
+        methods.push(method.label);
+        break;
+      }
+    }
+  }
+  const unique = [...new Set(methods)];
+
+  if (unique.length && count === 0) {
+    out.push(
+      diagAt(
+        text,
+        countNode?.key ?? revive.items[0]?.key ?? root.items[0]?.key,
+        SEVERITY_ERROR,
+        `revive 里配了「${unique.join(' / ')}」，但次数是 0（= 禁止复活）：` +
+          '玩家倒下后会被切成旁观者，却没有任何方式能起来，全灭判定还会立刻触发。' +
+          '想要复活请把 count 设为正数，或 -1（无限次）。',
+        'revive-count',
+      ),
+    );
+  }
+
+  if (unique.length && countRaw == null && count !== -1) {
+    // 这条只是提醒：不写 count 等于 0，和上面的错误是同一个后果
+    out.push(
+      diagAt(
+        text,
+        revive.items[0]?.key ?? root.items[0]?.key,
+        SEVERITY_INFO,
+        'revive 段没有写 count，默认是 0（禁止复活）—— 上面的复活方式都不会生效。',
+        'revive-count',
+      ),
+    );
+  }
+
+  return out;
 }
 
 // ==================================================================

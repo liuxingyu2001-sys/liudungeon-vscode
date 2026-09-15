@@ -470,6 +470,31 @@ function labels(items) {
   closeDoc(uri);
 }
 
+// ---------- 用例 16e：复活配置自相矛盾 ----------
+{
+  const broken = 'revive:\n  count: 0\n  auto:\n    delay: 5\n    at: spawn\n';
+  const uri = openDoc('config.yml', broken);
+  const diags = await client.waitFor(() => {
+    const d = client.diagnosticsFor(uri);
+    return d.some((x) => x.code === 'revive-count' && x.severity === 1) ? d : undefined;
+  });
+  const hit = diags?.find((x) => x.code === 'revive-count' && x.severity === 1);
+  check('revive 配了自动复活但 count: 0 被标为错误', Boolean(hit), JSON.stringify(diags ?? []).slice(0, 300));
+  check('提示里说清了后果（旁观者起不来）', /旁观者/.test(hit?.message ?? ''), hit?.message ?? '');
+  check('提示里给了修法（正数或 -1）', /-1/.test(hit?.message ?? ''), hit?.message ?? '');
+  closeDoc(uri);
+
+  const ok = 'revive:\n  count: 3\n  auto:\n    delay: 5\n    at: spawn\n';
+  const uri2 = openDoc('config.yml', ok);
+  await new Promise((r) => setTimeout(r, 250));
+  check(
+    'count: 3 的正常配置不报 revive-count 错误',
+    !client.diagnosticsFor(uri2).some((x) => x.code === 'revive-count' && x.severity === 1),
+    JSON.stringify(client.diagnosticsFor(uri2)).slice(0, 300),
+  );
+  closeDoc(uri2);
+}
+
 // ---------- 用例 16c：rewards.yml 的随机奖励结构诊断 ----------
 {
   // 少了 options 这一层：奖励会静默不发放

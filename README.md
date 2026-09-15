@@ -91,6 +91,7 @@ function 检查(d) {
 | `钩子名不是 scripts.yml 的钩子` | 拼错的钩子不会执行，也不报错 |
 | `怪物组 / 区域 / 奖励「x」不存在` | 同副本目录里找不到定义 |
 | `spawn 写在 dungeon 段里不会生效` | 运行时读的是 `world.spawn` |
+| `revive 配了复活方式但 count: 0` | `count` 默认 0 = 禁止复活，`auto`/`item`/`ally` 全都不会生效 —— 玩家倒下后卡在旁观者视角，看起来就像「复活系统跟摆设一样」 |
 | `player 在这个钩子里不存在` | `complete` / `fail` / `exit` / `all_death` 等钩子没有触发者，直接引用会抛 `ReferenceError` |
 | `钩子永远不会执行` | 用于登记「源码级确认写了不跑」的钩子；当前为空 —— `complete` / `fail` 的顺序问题插件已修复（先跑脚本再切终态） |
 | `type: random 的奖励没有 options 段` | 选项直接写在奖励名下面会整段被忽略：解析器只从 `options`（或 `选项`）里取选项，选项数为 0 → 抽奖返回空 → **奖励不发放且不报错**。提示里会把疑似写错的键名点出来 |
@@ -139,7 +140,7 @@ snippets/            构建时生成的 VS Code 片段
 
 ```bash
 npm run typecheck   # TS 类型检查
-npm test            # 构建 + 端到端自检（62 项断言，约 3 秒）
+npm test            # 构建 + 端到端自检（66 项断言，约 3 秒）
 npm run package     # 打成 vsix
 ```
 
