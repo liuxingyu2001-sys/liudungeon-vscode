@@ -905,6 +905,38 @@ function labelDump(items) {
   closeDoc(okUri);
 }
 
+// ---------- 用例 17f：补全插进编辑器的那段代码必须是能直接跑的 ----------
+// 真实现场：补全 `action.title(` 得到的是 action.title(@all, &e文本, &e文本)，
+// 全是裸词 —— 脚本是 JS，裸的 @all / &e文本 直接语法错误，
+// 而服务端只回一句 "Expected an operand but found error"，看不出是补全的锅。
+{
+  const uri = openDoc('monsters.yml',
+    'groups:\n  wave_1:\n    on_start: |-\n      action.\n');
+  const items = await completions(uri, 3, 13);
+  const textOf = (i) => i.textEdit?.newText ?? i.insertText ?? '';
+  const title = items.find((i) => i.label === 'title') ?? items.find((i) => i.label.endsWith('title'));
+  check('action. 之后能补出 title', Boolean(title), labelDump(labels(items)));
+  check("title 的补全带引号（'@all' / '&e文本'）",
+    textOf(title).includes("'@all'") && textOf(title).includes("'&e"),
+    textOf(title));
+  check('补全里没有裸词参数',
+    !/[(,]\s*(@|&)/.test(textOf(title)), textOf(title));
+
+  const give = items.find((i) => i.label === 'give_item');
+  check('数字参数不加引号（give_item 的第 3 个参数）',
+    Boolean(give) && /,\s*\$\{\d+:\d+\}\s*\)$/.test(textOf(give)), textOf(give));
+  closeDoc(uri);
+
+  // dungeon.* 的 player 参数是脚本变量，不能加引号
+  const duri = openDoc('monsters.yml',
+    'groups:\n  wave_1:\n    on_start: |-\n      dungeon.\n');
+  const ditems = await completions(duri, 3, 14);
+  const hp = ditems.find((i) => i.label === 'hasPlayer');
+  check('dungeon.hasPlayer(player) 的 player 不加引号',
+    Boolean(hp) && textOf(hp).includes('${1:player}'), textOf(hp));
+  closeDoc(duri);
+}
+
 // ---------- 用例 18：数据完整性（补全数据与插件源码对齐） ----------
 {
   const action = JSON.parse(readFileSync('data/action-methods.json', 'utf8'));

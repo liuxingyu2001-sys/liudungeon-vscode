@@ -528,7 +528,7 @@ function methodItem(
   typed: boolean,
 ): CompletionItem {
   const params = method.params
-    .map((p, i) => `\${${i + 1}:${sampleFor(p.name, p.type)}}`)
+    .map((p, i) => `\${${i + 1}:${sampleArg(p.name, p.type)}}`)
     .join(', ');
   const insert = typed ? name : `${name}(${params})`;
   const doc = [
@@ -554,7 +554,23 @@ function methodItem(
   };
 }
 
-/** 给参数生成一个能直接跑的示例值。 */
+/**
+ * 参数示例值 —— **字符串类型的示例要带引号**。
+ *
+ * <p>这里踩过一次：补全插进去的是 `action.title(@all, &e文本, &e文本)`（全是裸词），
+ * 而插件脚本是 JS，裸的 `@all` / `&e文本` 直接就是语法错误
+ * （服务端只会抛一句 `Expected an operand but found error`，看不出是补全的锅）。
+ * 数据里每个方法的 `example` 都是带引号的写法（`action.title('@all', '&6&lBOSS 降临', '&7小心脚下')`），
+ * 补全应当与示例一致：**只有数字与布尔不加引号**，`player` 是脚本里的玩家变量同样不加。
+ */
+function sampleArg(paramName: string, type: string): string {
+  const sample = sampleFor(paramName, type);
+  if (type === '数字' || type === '布尔') return sample;
+  if (sample === 'player') return sample;
+  return `'${sample}'`;
+}
+
+/** 给参数生成一个能直接跑的示例值（不含引号，加引号见 {@link sampleArg}）。 */
 function sampleFor(paramName: string, type: string): string {
   switch (type) {
     case '选择器':
