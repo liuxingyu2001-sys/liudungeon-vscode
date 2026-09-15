@@ -750,13 +750,22 @@
           "path": "groups.<组ID>.spawn_timing.type",
           "key": "type",
           "type": "枚举",
-          "doc": "该组的刷新时机",
+          "doc": "该组的刷新时机；写其它值一律按 MANUAL（不加倍率、不自动刷）",
           "values": [
             "AUTO_START",
+            "AUTO-START",
+            "AUTO",
+            "自动",
             "DELAYED",
+            "DELAY",
+            "延迟",
             "TRIGGERED",
-            "MANUAL",
-            "SCRIPTED"
+            "TRIGGER",
+            "触发",
+            "SCRIPTED",
+            "SCRIPT",
+            "脚本",
+            "MANUAL"
           ],
           "aliases": [
             "类型"
@@ -839,7 +848,7 @@
           "path": "groups.<组ID>.repeat.max",
           "key": "max",
           "type": "数字",
-          "doc": "重复次数上限，必须写否则会无限增援",
+          "doc": "重复上限；配了 repeat 段就必须有，否则按不重复处理",
           "aliases": [
             "次数"
           ],

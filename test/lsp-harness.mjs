@@ -239,6 +239,8 @@ function labels(items) {
   const got = labels(await completions(uri, 3, 12));
   check('spawn_timing.type 值补全含 AUTO_START', got.includes('AUTO_START'), got.join(','));
   check('spawn_timing.type 值补全含 TRIGGERED', got.includes('TRIGGERED'), got.join(','));
+  check('枚举补全给的是解析器真正接受的别名（含 自动 / AUTO-START）',
+    got.includes('自动') && got.includes('AUTO-START'), got.join(','));
   closeDoc(uri);
 }
 
