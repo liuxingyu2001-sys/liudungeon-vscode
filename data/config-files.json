@@ -8,6 +8,28 @@
       "example": "dungeon:\n  name: '&6示例副本'\n  difficulty: 普通\nworld:\n  template: 你的地图模板名\n  spawn: '0,64,0,0,0'\n  world_rules:\n    time: night\n    keep_inventory: true\nrequirements:\n  min_players: 1\n  max_players: 4\ntime:\n  limit: 1800\n  timeout_action: FAIL\n",
       "nodes": [
         {
+          "path": "enable",
+          "key": "enable",
+          "type": "布尔",
+          "doc": "副本总开关；false = 停用（GUI 显示屏障、任何进入途径被拒，配置仍加载）",
+          "aliases": [
+            "enabled",
+            "启用"
+          ],
+          "required": false
+        },
+        {
+          "path": "hide",
+          "key": "hide",
+          "type": "布尔",
+          "doc": "是否在副本列表里隐藏；true 时 GUI 与 /ld list 都看不到，但 /ld enter 仍可进入",
+          "aliases": [
+            "hidden",
+            "隐藏"
+          ],
+          "required": false
+        },
+        {
           "path": "dungeon",
           "key": "dungeon",
           "type": "映射",

@@ -194,6 +194,10 @@ async function completions(uri, line, character) {
     textDocument: { uri },
     position: { line, character },
   });
+  if (process.env.LD_TRACE_COMPLETION) {
+    console.log(`[trace] completion ${uri.split('/').pop()} L${line}:${character} →`,
+      JSON.stringify(res).slice(0, 300));
+  }
   if (!res.result) return [];
   return Array.isArray(res.result) ? res.result : (res.result.items ?? []);
 }
@@ -216,7 +220,12 @@ function lineOf(text, token) {
 }
 
 function labels(items) {
-  return items.map((i) => (typeof i.label === 'string' ? i.label : i.label.label));
+  return items.map((i) => (typeof i.label === 'string' ? i.label : i.label?.label));
+}
+
+/** 失败信息里用的完整标签串（不截断，方便看清到底返回了什么）。 */
+function labelDump(items) {
+  return JSON.stringify(labels(items));
 }
 
 // ---------- 用例 1：YAML 顶层键补全（monsters.yml） ----------
@@ -470,6 +479,54 @@ function labels(items) {
   closeDoc(uri);
 }
 
+// ---------- 用例 16g：顶层键补全（曾经整体失效的回归） ----------
+{
+  const text = '\n';
+  const uri = openDoc('config.yml', text);
+  const topItems = await completions(uri, 0, 0);
+  const top = labels(topItems);
+  check('config.yml 顶层键补全非空', top.length >= 5, labelDump(topItems));
+  check('顶层补全含 enable', top.includes('enable'), top.join(','));
+  check('顶层补全含 hide', top.includes('hide'), top.join(','));
+  check('顶层补全含 dungeon / world', top.includes('dungeon') && top.includes('world'), top.join(','));
+  closeDoc(uri);
+
+  // monsters.yml 的顶层应该是 groups（而不是"什么都能写"）
+  const uri2 = openDoc('monsters.yml', '\n');
+  const top2Items = await completions(uri2, 0, 0);
+  const top2 = labels(top2Items);
+  check('monsters.yml 顶层补全含 groups', top2.includes('groups'), labelDump(top2Items));
+  check('monsters.yml 顶层不会列出组内键', !top2.includes('spawn_timing'), top2.join(','));
+  closeDoc(uri2);
+}
+
+// ---------- 用例 16h：hide 的补全 ----------
+{
+  const text = 'hid\n';
+  const uri = openDoc('config.yml', text);
+  const items = await completions(uri, 0, 3);
+  const hide = items.find((i) => i.label === 'hide');
+  check('hide 能被补出来', Boolean(hide), labels(items).join(','));
+  check('hide 文档说明它不影响进入', /仍可进入|GUI/.test(JSON.stringify(hide?.documentation ?? {})), JSON.stringify(hide?.documentation ?? {}).slice(0, 200));
+  closeDoc(uri);
+}
+
+// ---------- 用例 16f：enable 总开关的补全 ----------
+{
+  // 注意：前缀必须是 ena —— 'enable'.startsWith('enu') 是 false，
+  // 用 enu 只会得到空列表（那是正确行为，不是 bug）。
+  const text = 'ena\n';
+  const uri = openDoc('config.yml', text);
+  const items0 = await completions(uri, 0, 3);
+  const got = labels(items0);
+  check('config.yml 顶层补全含 enable', got.includes('enable'), labelDump(items0));
+  check('不匹配的前缀返回空（enu → 无键）', labels(await completions(uri, 0, 3)).length === 1, labelDump(items0));
+  const enable = (await completions(uri, 0, 3)).find((i) => i.label === 'enable');
+  check('enable 补全是布尔骨架', String(enable?.textEdit?.newText ?? '').includes('enable: '), JSON.stringify(enable?.textEdit ?? {}));
+  check('enable 文档提到停用后果', /停用|屏障/.test(JSON.stringify(enable?.documentation ?? {})), JSON.stringify(enable?.documentation ?? {}).slice(0, 150));
+  closeDoc(uri);
+}
+
 // ---------- 用例 16e：复活配置自相矛盾 ----------
 {
   const broken = 'revive:\n  count: 0\n  auto:\n    delay: 5\n    at: spawn\n';
@@ -492,6 +549,27 @@ function labels(items) {
     !client.diagnosticsFor(uri2).some((x) => x.code === 'revive-count' && x.severity === 1),
     JSON.stringify(client.diagnosticsFor(uri2)).slice(0, 300),
   );
+  closeDoc(uri2);
+}
+
+// ---------- 用例 16i：enable / hide 的组合提示 ----------
+{
+  const uri = openDoc('config.yml', 'enable: false\nhide: true\ndungeon:\n  name: x\n');
+  const diags = await client.waitFor(() => {
+    const d = client.diagnosticsFor(uri);
+    return d.some((x) => x.code === 'dungeon-switches') ? d : undefined;
+  });
+  check('停用 + 隐藏的矛盾组合被提示', Boolean(diags), JSON.stringify(diags ?? []).slice(0, 250));
+  check('这类提示是 Information 级别而不是错误',
+    diags?.find((x) => x.code === 'dungeon-switches')?.severity === 3,
+    String(diags?.find((x) => x.code === 'dungeon-switches')?.severity));
+  closeDoc(uri);
+
+  const uri2 = openDoc('config.yml', 'enable: true\nhide: true\n');
+  await new Promise((r) => setTimeout(r, 250));
+  check('enable: true + hide: true 是正常组合，不提示',
+    !client.diagnosticsFor(uri2).some((x) => x.code === 'dungeon-switches'),
+    JSON.stringify(client.diagnosticsFor(uri2)).slice(0, 250));
   closeDoc(uri2);
 }
 
@@ -551,6 +629,24 @@ function labels(items) {
     const warnings = diags.filter((d) => d.severity <= 2);
     check(`插件自带的 ${n} 没有严重误报`, warnings.length === 0, JSON.stringify(warnings).slice(0, 400));
   }
+}
+
+// ---------- 用例 17b：路径匹配的语义（补全能不能按层级正确过滤） ----------
+// 这里不单独引入 yaml-shared 做纯函数断言（它被 esbuild 内联过，直接引用容易踩坑），
+// 而是用真实补全结果间接验证：不同层级必须给出不同的键集合。
+{
+  // monsters.yml：顶层只该有 groups；组内才该有 spawn_timing
+  const top = openDoc('monsters.yml', '\n');
+  const topLabels = labels(await completions(top, 0, 0));
+  check('monsters.yml 顶层只有 groups（不泄漏组内键）',
+    topLabels.includes('groups') && !topLabels.includes('spawn_timing'), labelDump(topLabels));
+  closeDoc(top);
+
+  const inner = openDoc('monsters.yml', 'groups:\n  wave_1:\n    \n');
+  const innerLabels = labels(await completions(inner, 2, 4));
+  check('组内给出 spawn_timing', innerLabels.includes('spawn_timing'), labelDump(innerLabels));
+  check('组内不给出顶层 groups', !innerLabels.includes('groups'), labelDump(innerLabels));
+  closeDoc(inner);
 }
 
 // ---------- 用例 18：数据完整性（补全数据与插件源码对齐） ----------

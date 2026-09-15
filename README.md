@@ -140,7 +140,7 @@ snippets/            构建时生成的 VS Code 片段
 
 ```bash
 npm run typecheck   # TS 类型检查
-npm test            # 构建 + 端到端自检（66 项断言，约 3 秒）
+npm test            # 构建 + 端到端自检（84 项断言，约 4 秒）
 npm run package     # 打成 vsix
 ```
 

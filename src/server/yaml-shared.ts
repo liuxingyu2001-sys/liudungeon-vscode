@@ -12,6 +12,9 @@ const PLACEHOLDER = /^<.+>$/;
  * 模板段 `<组ID>` / `[]` 视为通配一段。
  */
 export function nodePathMatchesSafe(pattern: string, concrete: string): boolean {
+  if (isRootPath(pattern) || isRootPath(concrete)) {
+    return isRootPath(pattern) && isRootPath(concrete);
+  }
   const p = pattern.split('.').map((s) => s.replace(/\[\]$/, ''));
   const c = concrete.split('.').filter((s) => s !== '');
   if (p.length !== c.length) return false;
@@ -21,6 +24,18 @@ export function nodePathMatchesSafe(pattern: string, concrete: string): boolean 
     return false;
   }
   return true;
+}
+
+/**
+ * 顶层键的匹配：pattern 与 concrete 都是空串（父路径为空 = 根映射）。
+ *
+ * <p>不特判会出大问题：`''.split('.')` 得到 `['']`（长度 1），于是根层级的匹配
+ * 永远失败 —— 表现为**所有 yml 的顶层键都没有补全**（config.yml 的 enable、dungeon、
+ * monsters.yml 的 groups …）。这个 bug 一开始被"monsters.yml 特殊回落"掩盖了，
+ * 修好匹配后才暴露出来。
+ */
+function isRootPath(s: string): boolean {
+  return s.trim() === '';
 }
 
 /** 该模板段是不是通配段。 */

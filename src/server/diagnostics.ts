@@ -78,9 +78,10 @@ export function computeDiagnostics(input: DiagnosticsInput): Diagnostic[] {
   // ---------- 9：dungeon 段里的 spawn（写错位置，运行时读的是 world.spawn）----------
   out.push(...checkSpawnKey(name, input.text));
 
-  // ---------- 10：config.yml 的复活配置自相矛盾 ----------
+  // ---------- 10：config.yml 的复活配置自相矛盾 / 开关组合 ----------
   if (name === 'config.yml') {
     out.push(...checkReviveConfig(input.text));
+    out.push(...checkDungeonSwitches(input.text));
   }
 
   // ---------- 11：rewards.yml 的随机奖励结构 ----------
@@ -716,6 +717,63 @@ function checkReviveConfig(text: string): Diagnostic[] {
     );
   }
 
+  return out;
+}
+
+/**
+ * `enable` 与 `hide` 的组合检查。
+ *
+ * <p>两个键同时出现、且方向相反（停用却又想显示 / 启用却谁都不给看）时，
+ * 通常是想错了 —— 提示一句，避免"改了没效果"。
+ */
+function checkDungeonSwitches(text: string): Diagnostic[] {
+  const out: Diagnostic[] = [];
+  let doc;
+  try {
+    doc = parseDocument(text, { keepSourceTokens: false });
+  } catch {
+    return out;
+  }
+  const root = doc.contents;
+  if (!(root instanceof YAMLMap)) return [];
+
+  const find = (keys: string[]) => findKey(root, keys);
+  const boolOf = (node: { value: unknown } | null): boolean | null => {
+    const raw = node ? scalarText((node.value as Scalar | null) ?? null) : null;
+    if (raw == null) return null;
+    const v = raw.trim().toLowerCase();
+    if (['true', 'yes', 'on', '是', '开'].includes(v)) return true;
+    if (['false', 'no', 'off', '否', '关'].includes(v)) return false;
+    return null;
+  };
+
+  const enableNode = find(['enable', 'enabled', '启用']);
+  const hideNode = find(['hide', 'hidden', '隐藏']);
+  const enabled = boolOf(enableNode);
+  const hidden = boolOf(hideNode);
+
+  if (enabled === false && hidden === false) {
+    out.push(
+      diagAt(
+        text,
+        hideNode?.key ?? enableNode?.key ?? root.items[0]?.key,
+        SEVERITY_INFO,
+        'enable: false 已经让这个副本进不去也看不到；hide: false 是多余的。',
+        'dungeon-switches',
+      ),
+    );
+  }
+  if (enabled === false && hidden === true) {
+    out.push(
+      diagAt(
+        text,
+        enableNode?.key ?? root.items[0]?.key,
+        SEVERITY_INFO,
+        '副本已停用（enable: false），hide 无论真假都不影响结果 —— 列表里它显示为屏障。',
+        'dungeon-switches',
+      ),
+    );
+  }
   return out;
 }
 

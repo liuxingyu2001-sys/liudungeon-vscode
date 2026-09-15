@@ -669,6 +669,15 @@ function playerMemberItems(range: Range, word: string): CompletionItem[] {
     }));
 }
 
+/**
+ * 补全要替换的范围：从「正在输入的词」开头到行尾。
+ *
+ * <p>必须用 `ctx.wordStart` 而不是 0，也不能只覆盖词本身：
+ * 这些补全项自带 `textEdit`，而 VS Code 的语言客户端会**丢弃**那些
+ * `newText` 与该范围内原文对不上的编辑 —— 范围算错的表现就是
+ * 「服务端明明返回了几百条补全，编辑器里却一条都不弹」。
+ * （`wordStart` 已经包含了引号前缀，例如 `"enu` 的起点是引号，这样 `'"enable'` 能对上。）
+ */
 function wordRange(line: number, start: number, lineEnd: number): Range {
   return { start: { line, character: Math.max(0, start) }, end: { line, character: lineEnd } };
 }
