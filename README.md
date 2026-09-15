@@ -91,8 +91,8 @@ function 检查(d) {
 | `钩子名不是 scripts.yml 的钩子` | 拼错的钩子不会执行，也不报错 |
 | `怪物组 / 区域 / 奖励「x」不存在` | 同副本目录里找不到定义 |
 | `spawn 写在 dungeon 段里不会生效` | 运行时读的是 `world.spawn` |
-| `complete / fail 钩子当前不会执行` | 源码级结论：`complete()` 先 `setState(COMPLETED)` 再跑钩子，而脚本引擎对终态副本直接 `return`。**结算请写在阶段机的通关脚本或怪物组 `on_end` 里** |
 | `player 在这个钩子里不存在` | `complete` / `fail` / `exit` / `all_death` 等钩子没有触发者，直接引用会抛 `ReferenceError` |
+| `钩子永远不会执行` | 用于登记「源码级确认写了不跑」的钩子；当前为空 —— `complete` / `fail` 的顺序问题插件已修复（先跑脚本再切终态） |
 | `type: random 的奖励没有 options 段` | 选项直接写在奖励名下面会整段被忽略：解析器只从 `options`（或 `选项`）里取选项，选项数为 0 → 抽奖返回空 → **奖励不发放且不报错**。提示里会把疑似写错的键名点出来 |
 | `选项的权重是 0，永远抽不到` | `weight` 默认 0；若所有选项都是 0，会退化成等概率（提示里会说明） |
 
@@ -139,7 +139,7 @@ snippets/            构建时生成的 VS Code 片段
 
 ```bash
 npm run typecheck   # TS 类型检查
-npm test            # 构建 + 端到端自检（60 项断言，约 3 秒）
+npm test            # 构建 + 端到端自检（62 项断言，约 3 秒）
 npm run package     # 打成 vsix
 ```
 
@@ -160,5 +160,6 @@ LD_PLUGIN_DIR=/path/to/liudungeon npm test
 - 键名补全按「路径模板 + 缩进」匹配，**不做完整 YAML AST**：极端缩进（用 Tab、或同一映射里
   缩进忽深忽浅）可能提示不准，但不会误报错误。
 - `player.*` 只补全常用 Bukkit 成员，不做完整 Bukkit API 补全（那不是本扩展的目标）。
-- 诊断的 `complete / fail 钩子不会执行` 是**当前插件版本**的源码结论；插件修好后这条提示
-  会跟着去掉（改 `src/server/api-model.ts` 里的 `DEAD_HOOKS`）。
+- 诊断里「钩子永远不会执行」这张表在 `src/server/api-model.ts` 的 `DEAD_HOOKS` 里，当前为空：
+  `complete` / `fail` 被终态守卫静默丢弃的问题已在插件 1.0.5 修掉（先跑脚本、再 `setState`）。
+  以后若再发现同类问题，往这个表里加一条即可，补全与悬停会自动标注。

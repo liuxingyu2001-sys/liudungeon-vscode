@@ -245,17 +245,15 @@ function buildHookMap(): Map<string, ScriptHook> {
   return map;
 }
 
-/** 文档里明确写出的“当前不会执行”的钩子（源码级结论，见 07 章 7.2 的警告）。 */
-export const DEAD_HOOKS: Map<string, string> = new Map([
-  [
-    'complete',
-    '当前版本不会执行：complete() 先 setState(COMPLETED) 再跑钩子，而 ScriptEngine 对终态副本直接 return。结算请写在阶段机的通关脚本或怪物组 on_end 里。',
-  ],
-  [
-    'fail',
-    '当前版本不会执行：fail() 先 setState(FAILED) 再跑钩子，而 ScriptEngine 对终态副本直接 return。',
-  ],
-]);
+/**
+ * 「写了不会执行」的钩子。
+ *
+ * 留空是有意的：`complete` / `fail` 曾经因为 `setState(...)` 排在 `scripts.xxx()` 之前，
+ * 被 `ScriptEngine.eval` 的终态守卫静默丢弃（插件 1.0.5 已修复：先跑脚本、再切终态）。
+ * 若以后又发现同一类「钩子永远不跑」的问题，在这里登记名字 + 原因即可，
+ * 补全与悬停会自动把它标出来。
+ */
+export const DEAD_HOOKS: Map<string, string> = new Map();
 
 /** 所有 action.* 前缀。 */
 export const ACTION_PREFIX = 'action.';

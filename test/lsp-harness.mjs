@@ -451,6 +451,25 @@ function labels(items) {
   );
 }
 
+// ---------- 用例 14b：complete 钩子不再被误标为「不会执行」 ----------
+{
+  const text = 'complete:\n  - "action.grant_reward(\'@all\', \'通关奖励\')"\n';
+  const uri = openDoc('scripts.yml', text);
+  await new Promise((r) => setTimeout(r, 250));
+  const diags = client.diagnosticsFor(uri);
+  check(
+    'complete 钩子不再被标成 dead-hook（插件已修顺序）',
+    !diags.some((d) => d.code === 'dead-hook'),
+    JSON.stringify(diags).slice(0, 300),
+  );
+  check(
+    'complete 钩子里的奖励名（rewards.yml 已定义）不报引用错误',
+    !diags.some((d) => d.code === 'unknown-reference'),
+    JSON.stringify(diags).slice(0, 300),
+  );
+  closeDoc(uri);
+}
+
 // ---------- 用例 16c：rewards.yml 的随机奖励结构诊断 ----------
 {
   // 少了 options 这一层：奖励会静默不发放
