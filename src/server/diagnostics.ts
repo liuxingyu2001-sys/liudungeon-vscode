@@ -423,6 +423,19 @@ function countArgs(args: string[]): number {
   return args.filter((a) => a !== '').length;
 }
 
+/**
+ * 区域脚本额外注入的占位符（ZoneManager.runZoneScript 在执行前对每一行做替换）。
+ * 不在全局占位符名单里，但必须认，否则 zones.yml 的进入/离开脚本会被误报。
+ */
+const ZONE_PLACEHOLDERS = new Set([
+  '{zone}',
+  '{区域}',
+  '{zone.name}',
+  '{区域名称}',
+  '{from_zone}',
+  '{来源区域}',
+]);
+
 /** 文本占位符检查：只在出现 action.message/title/actionbar/broadcast 的行上做。 */
 function checkPlaceholders(line: string, lineNo: number): Diagnostic[] {
   if (!/\baction\s*\.\s*(message|title|actionbar|broadcast)\s*\(/.test(line)) return [];
@@ -433,6 +446,7 @@ function checkPlaceholders(line: string, lineNo: number): Diagnostic[] {
     const key = m[1];
     if (key.startsWith('random') || key.startsWith('var')) continue;
     if (SELECTORS.has(m[0])) continue;
+    if (ZONE_PLACEHOLDERS.has(m[0])) continue;
     if (!PLACEHOLDERS.has(m[0])) {
       out.push({
         range: Range.create(lineNo, m.index, lineNo, m.index + m[0].length),

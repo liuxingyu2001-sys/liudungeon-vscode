@@ -392,6 +392,19 @@ function labels(items) {
   check('提示里点明要改成 world.spawn', /world\.spawn/.test(msg), msg);
 }
 
+// ---------- 用例 16b：区域脚本占位符不算错 ----------
+{
+  const text = 'start:\n  - "action.message(\'@trigger\', \'&e你进入了 {zone.name}\')"\n';
+  const uri = openDoc('scripts.yml', text);
+  await new Promise((r) => setTimeout(r, 250));
+  const diags = client.diagnosticsFor(uri);
+  check(
+    '{zone.name} 这类区域脚本占位符不报错',
+    !diags.some((d) => d.code === 'placeholder'),
+    JSON.stringify(diags).slice(0, 250),
+  );
+}
+
 // ---------- 用例 17：真实示例配置没有误报 ----------
 {
   for (const uri of openUris) closeDoc(uri);
