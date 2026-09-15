@@ -5,7 +5,7 @@
       "title": "副本主配置",
       "summary": "副本唯一必需的文件：基础信息、世界、进入要求、限制与复活等总开关",
       "containerAliases": {},
-      "example": "dungeon:\n  name: '&6示例副本'\n  difficulty: 普通\nworld:\n  template: 你的地图模板名\n  spawn: '0,64,0,0,0'\n  world_rules:\n    time: night\n    keep_inventory: true\nrequirements:\n  min_players: 1\n  max_players: 4\ntime:\n  limit: 1800\n  timeout_action: FAIL\n",
+      "example": "dungeon:\n  name: '&6示例副本'\n  difficulty: 普通\nworld:\n  template: voidgen\n  spawn: '0,65,0,0,0'\n  world_rules:\n    time: night\n    keep_inventory: true\nrequirements:\n  min_players: 1\n  max_players: 4\ntime:\n  limit: 1800\n  timeout_action: FAIL\n",
       "nodes": [
         {
           "path": "enable",
@@ -108,7 +108,7 @@
           "path": "world.template",
           "key": "template",
           "type": "文本",
-          "doc": "地图模板名，对应 maps/<模板名>/ 目录",
+          "doc": "地图模板名，对应 maps/<模板名>/ 目录。默认 voidgen = 插件内置的虚空世界（首次启动自动生成，只有 y=64 一层基岩地板、无区块文件）",
           "aliases": [
             "模板"
           ],
