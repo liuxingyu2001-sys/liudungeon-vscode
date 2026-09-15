@@ -109,10 +109,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(saveSub);
 
   // ---- 4. 类型声明（给 VS Code 自带的 JS 智能提示用）----
-  const wrote = await writeDts();
-  if (wrote) {
-    output.appendLine(`已生成类型声明：${wrote}`);
-    await ensureJsconfigIncludes(wrote);
+  // 写到扩展自己的 globalStorage，绝不往工作区里丢 jsconfig.json / .liudungeon：
+  // 那会在别人的仓库里留下未跟踪文件（踩过一次），而 VS Code 对 .d.ts 的自动加载
+  // 本来就是全局的 —— 放哪儿都能被 JS 语言服务读到。
+  const dts = await writeDts(context);
+  if (dts) {
+    output.appendLine(`已生成类型声明：${dts}`);
+    await removeLegacyWorkspaceArtifacts();
   }
 
   // ---- 5. 命令 ----
@@ -203,16 +206,12 @@ async function collectWorkspaceFiles(): Promise<Array<{ uri: string; text: strin
 //  类型声明
 // ==================================================================
 
-async function writeDts(): Promise<string | undefined> {
-  const folders = vscode.workspace.workspaceFolders;
-  if (!folders || !folders.length) return undefined;
-  const root = folders[0].uri;
-  const dir = vscode.Uri.joinPath(root, '.liudungeon');
+async function writeDts(context: vscode.ExtensionContext): Promise<string | undefined> {
+  const dir = context.globalStorageUri;
   const file = vscode.Uri.joinPath(dir, 'liudungeon.d.ts');
   try {
     await vscode.workspace.fs.createDirectory(dir);
-    const content = new TextEncoder().encode(buildDts());
-    await vscode.workspace.fs.writeFile(file, content);
+    await vscode.workspace.fs.writeFile(file, new TextEncoder().encode(buildDts()));
     return file.fsPath;
   } catch {
     return undefined;
@@ -220,43 +219,39 @@ async function writeDts(): Promise<string | undefined> {
 }
 
 /**
- * 让工作区的 jsconfig/tsconfig 把声明文件算进去。
- * 只在文件缺失或没提过 .liudungeon 时补一行，绝不覆盖用户已有配置。
+ * 清掉早期版本遗留在工作区根目录的两个文件。
+ *
+ * 只在内容确实是本扩展生成的时候删，避免误删用户自己的 jsconfig.json。
  */
-async function ensureJsconfigIncludes(dtsPath: string): Promise<void> {
-  const folders = vscode.workspace.workspaceFolders;
-  if (!folders?.length) return;
-  const jsconfigUri = vscode.Uri.joinPath(folders[0].uri, 'jsconfig.json');
-  let current: { compilerOptions?: { checkJs?: boolean }; include?: string[] } = {};
-  let exists = true;
-  try {
-    const bytes = await vscode.workspace.fs.readFile(jsconfigUri);
-    const text = new TextDecoder('utf-8').decode(bytes);
-    current = JSON.parse(stripJsonComments(text));
-  } catch {
-    exists = false;
-  }
-  const include = current.include ?? [];
-  if (include.some((i) => i.includes('.liudungeon'))) return;
-  include.push('.liudungeon/liudungeon.d.ts');
-  current.include = include;
-  current.compilerOptions = { checkJs: false, ...(current.compilerOptions ?? {}) };
-  try {
-    await vscode.workspace.fs.writeFile(
-      jsconfigUri,
-      new TextEncoder().encode(JSON.stringify(current, null, 2) + '\n'),
-    );
-    void dtsPath;
-    void exists;
-  } catch {
-    // 没权限写就算了，语言服务本身不依赖它
-  }
-}
+async function removeLegacyWorkspaceArtifacts(): Promise<void> {
+  const folders = vscode.workspace.workspaceFolders ?? [];
+  for (const folder of folders) {
+    const jsconfig = vscode.Uri.joinPath(folder.uri, 'jsconfig.json');
+    try {
+      const text = new TextDecoder('utf-8').decode(await vscode.workspace.fs.readFile(jsconfig));
+      const parsed = JSON.parse(text.replace(/^\s*\/\/.*$/gm, '')) as {
+        include?: string[];
+      };
+      const generated =
+        Array.isArray(parsed.include) &&
+        parsed.include.length === 1 &&
+        parsed.include[0].includes('.liudungeon');
+      if (generated) await vscode.workspace.fs.delete(jsconfig);
+    } catch {
+      // 不存在或不是我们生成的，忽略
+    }
 
-function stripJsonComments(text: string): string {
-  return text
-    .replace(/^\s*\/\/.*$/gm, '')
-    .replace(/\/\*[\s\S]*?\*\//g, '');
+    const legacyDir = vscode.Uri.joinPath(folder.uri, '.liudungeon');
+    const legacyDts = vscode.Uri.joinPath(legacyDir, 'liudungeon.d.ts');
+    try {
+      const text = new TextDecoder('utf-8').decode(await vscode.workspace.fs.readFile(legacyDts));
+      if (text.includes('由 LiuDungeon 脚本支持扩展自动生成')) {
+        await vscode.workspace.fs.delete(legacyDir, { recursive: true });
+      }
+    } catch {
+      // 同上
+    }
+  }
 }
 
 // ==================================================================
