@@ -3,4 +3,6 @@ out/
 *.vsix
 .liudungeon/
 # 临时探针脚本（排查 LSP 问题时用，不进仓库）
-probe-*.mjs
+# 注意用 probe*.mjs 而不是 probe-*.mjs：上一版写成 probe-*.mjs，结果 probe2.mjs
+# 既没被忽略、又被 vsce 打进了 .vsix（用户装到的扩展里带着一个排查脚本）。
+probe*.mjs

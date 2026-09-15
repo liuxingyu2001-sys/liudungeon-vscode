@@ -7,5 +7,7 @@ test/**
 tsconfig.json
 esbuild.mjs
 build.mjs
+# 探针脚本（排查语言服务问题时临时写的，不该给用户装上）
+probe*.mjs
 **/*.map
 **/*.ts

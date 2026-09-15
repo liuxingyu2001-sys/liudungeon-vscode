@@ -125,8 +125,10 @@
     "build": "node build.mjs",
     "watch": "node build.mjs --watch",
     "typecheck": "tsc --noEmit",
-    "test": "npm run build && node test/lsp-harness.mjs",
-    "package": "node build.mjs --production && vsce package --no-dependencies --allow-missing-repository -o liudungeon-script.vsix",
+    "test": "npm run build && node test/lsp-harness.mjs && node scripts/sync-docs.mjs --check",
+    "sync:docs": "node scripts/sync-docs.mjs",
+    "verify:vsix": "node scripts/check-vsix.mjs",
+    "package": "node build.mjs --production && vsce package --no-dependencies --allow-missing-repository -o liudungeon-script.vsix && node scripts/check-vsix.mjs liudungeon-script.vsix",
     "pretest": "npm run typecheck"
   },
   "dependencies": {
