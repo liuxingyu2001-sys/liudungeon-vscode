@@ -120,8 +120,11 @@ function yamlCompletions(input: CompletionInput): CompletionItem[] {
   const ctx = analyze(input.text, input.line, input.character);
   const range = wordRange(input.line, ctx.wordStart, ctx.lineText.length);
 
-  // 1) 在引号字符串里 → 其实在写 JS
-  if (ctx.quote) {
+  // 1) 块标量正文（on_end: |-）或引号字符串里 → 其实在写 JS
+  if (ctx.blockScalar) {
+    const js = javascriptCompletions(input, input.text, input.line, input.character);
+    if (js.length) return js;
+  } else if (ctx.quote) {
     const js = javascriptCompletions(input, ctx.stringBody, 0, ctx.stringBody.length);
     if (js.length) return js;
   }
@@ -413,6 +416,13 @@ export function parseJsContext(before: string): JsContext {
   return { word: word?.[1] ?? '', object: '', callMethod: '', inString: false };
 }
 
+/**
+ * JS 补全。
+ *
+ * @param text  用来定位上下文的文本：整份文档（块标量）或单行内容（引号字符串）
+ * @param line  text 里的行号
+ * @param character  该行的字符偏移
+ */
 function javascriptCompletions(
   input: CompletionInput,
   text: string,

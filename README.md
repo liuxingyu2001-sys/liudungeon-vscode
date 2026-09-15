@@ -12,7 +12,7 @@
 | 能力 | 说明 |
 | --- | --- |
 | **action.* / dungeon.* 补全** | 70 个 `action.*` + 49 个 `dungeon.*` 方法，含签名、参数表、分类、可直接跑的示例 |
-| **YAML 里嵌的 JS 也能补全** | `- "action.spawn_group('…')"` 这种字符串内部照常补全方法、选择器、内置函数 |
+| **YAML 里嵌的 JS 也能补全** | 两种写法都支持：引号字符串 `- "action.spawn_group('…')"`，以及**块标量** `on_end: \|-` 下面的多行脚本（块标量正文里补全、悬停、诊断照常生效） |
 | **配置文件键名补全** | `config.yml` / `monsters.yml` / `stages.yml` / `zones.yml` / `interacts.yml` / `tasks.yml` / `rewards.yml` / `scripts.yml` 的 167 个键，含中文别名与枚举取值 |
 | **悬停文档** | 鼠标停在方法名、键名、`@all`、`{player.name}` 上直接看中文说明 |
 | **跳转到定义** | `trigger_group: wave_1` 里的 `wave_1`、脚本里的 `'通关奖励'` 都能跳回定义处 |
@@ -93,6 +93,8 @@ function 检查(d) {
 | `spawn 写在 dungeon 段里不会生效` | 运行时读的是 `world.spawn` |
 | `complete / fail 钩子当前不会执行` | 源码级结论：`complete()` 先 `setState(COMPLETED)` 再跑钩子，而脚本引擎对终态副本直接 `return`。**结算请写在阶段机的通关脚本或怪物组 `on_end` 里** |
 | `player 在这个钩子里不存在` | `complete` / `fail` / `exit` / `all_death` 等钩子没有触发者，直接引用会抛 `ReferenceError` |
+| `type: random 的奖励没有 options 段` | 选项直接写在奖励名下面会整段被忽略：解析器只从 `options`（或 `选项`）里取选项，选项数为 0 → 抽奖返回空 → **奖励不发放且不报错**。提示里会把疑似写错的键名点出来 |
+| `选项的权重是 0，永远抽不到` | `weight` 默认 0；若所有选项都是 0，会退化成等概率（提示里会说明） |
 
 ---
 
@@ -137,7 +139,7 @@ snippets/            构建时生成的 VS Code 片段
 
 ```bash
 npm run typecheck   # TS 类型检查
-npm test            # 构建 + 端到端自检（44 项断言，约 2 秒）
+npm test            # 构建 + 端到端自检（60 项断言，约 3 秒）
 npm run package     # 打成 vsix
 ```
 

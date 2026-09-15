@@ -78,7 +78,12 @@ export function computeDiagnostics(input: DiagnosticsInput): Diagnostic[] {
   // ---------- 9：dungeon 段里的 spawn（写错位置，运行时读的是 world.spawn）----------
   out.push(...checkSpawnKey(name, input.text));
 
-  // ---------- 10：重复定义 ----------
+  // ---------- 10：rewards.yml 的随机奖励结构 ----------
+  if (name === 'rewards.yml') {
+    out.push(...checkRewards(input.text));
+  }
+
+  // ---------- 11：重复定义 ----------
   if (input.options.references && self) {
     out.push(...checkDuplicateNames(self, lines));
   }
@@ -630,6 +635,157 @@ function lineOffset(node: unknown): number {
 function lineStartOffset(text: string, offset: number): number {
   const nl = text.lastIndexOf('\n', Math.max(0, offset - 1));
   return nl + 1;
+}
+
+// ==================================================================
+//  rewards.yml：随机奖励的「少写一层就静默失效」检查
+// ==================================================================
+
+/** 插件真正会读取的奖励键（Keys.* 的别名合集）。 */
+const REWARD_KNOWN_KEYS = new Set([
+  'type', '类型', 'fixed',
+  'items', '物品', 'item', 'id',
+  'money', '金钱', '金币',
+  'exp', '经验',
+  'commands', '命令',
+  'options', '选项',
+  '保底', 'pity',
+]);
+
+/**
+ * 随机奖励最常见的坑：把选项直接写在奖励名下面，少了 options 这一层。
+ * RewardConfig.parseReward 只从 options / 选项 里取选项，
+ * 于是 roll() 拿到空 options 直接返回 null —— 奖励名对、脚本也在跑，玩家什么都拿不到，
+ * 而且日志里没有任何报错。
+ */
+function checkRewards(text: string): Diagnostic[] {
+  const out: Diagnostic[] = [];
+  let doc;
+  try {
+    doc = parseDocument(text, { keepSourceTokens: false });
+  } catch {
+    return out;
+  }
+  const root = doc.contents;
+  if (!(root instanceof YAMLMap)) return [];
+  const rewards = entryValue(root, ['rewards', '奖励']);
+  if (!(rewards instanceof YAMLMap)) return [];
+
+  for (const item of rewards.items) {
+    const rewardName = scalarText(item.key);
+    if (rewardName == null || !(item.value instanceof YAMLMap)) continue;
+    const sec = item.value;
+    const typeKey = findKey(sec, ['type', '类型']);
+    const typeValue = typeKey ? scalarText((typeKey.value as Scalar | null) ?? null) : null;
+    const isRandom =
+      typeValue != null && (/^random$/i.test(typeValue) || typeValue === '随机');
+
+    // 1) 非随机奖励却写了选项：说明是想写随机但漏了 type
+    const optionsKey = findKey(sec, ['options', '选项']);
+    if (!isRandom) {
+      if (optionsKey) {
+        out.push(diagAt(text, optionsKey.key, SEVERITY_WARN, 'options 只在 type: random 的奖励里生效，这里写了但奖励类型是固定奖励，整个 options 会被忽略。'));
+      }
+      continue;
+    }
+
+    // 2) type: random 但没有 options
+    if (!optionsKey) {
+      const strayKey = sec.items
+        .map((it) => scalarText(it.key))
+        .find((k) => k != null && !REWARD_KNOWN_KEYS.has(k));
+      out.push(
+        diagAt(
+          text,
+          typeKey?.value ?? sec.items[0]?.key ?? item.key,
+          SEVERITY_ERROR,
+          'type: random 的奖励没有 options（或 选项）段：解析器只从 options 里取选项，' +
+            '现在选项数为 0，抽奖会直接返回空 —— 奖励不发放且不报错。' +
+            (strayKey ? ` 看起来「${strayKey}」是想当选项写的，把它移到 options: 下面。` : ''),
+          'reward-options-missing',
+        ),
+      );
+      continue;
+    }
+
+    // 3) options 里没有任何正权重
+    const optionsValue = optionsKey.value;
+    if (optionsValue instanceof YAMLMap) {
+      const entries: Array<{ name: string; node: YAMLMap; keyNode: unknown }> = [];
+      for (const opt of optionsValue.items) {
+        const optName = scalarText(opt.key);
+        if (optName == null || !(opt.value instanceof YAMLMap)) continue;
+        entries.push({ name: optName, node: opt.value, keyNode: opt.key });
+      }
+      if (entries.length === 0) {
+        out.push(diagAt(text, optionsKey.key, SEVERITY_WARN, 'options 是空的，抽奖没有可选分支。'));
+      } else {
+        const weights = entries.map((e) => {
+          const w = findKey(e.node, ['weight', '权重']);
+          const raw = w ? scalarText((w.value as Scalar | null) ?? null) : null;
+          const n = raw == null ? null : Number(raw);
+          return { ...e, weight: n };
+        });
+        const positive = weights.filter((w) => w.weight != null && w.weight > 0);
+        if (positive.length === 0) {
+          out.push(
+            diagAt(
+              text,
+              optionsKey.key,
+              SEVERITY_WARN,
+              'options 里没有任何 weight > 0 的选项：权重默认是 0（写错键名或漏写都会变成 0）。' +
+                '这种配置会退化成「所有选项等概率」—— 通常不是你想要的。',
+              'reward-weight',
+            ),
+          );
+        } else if (positive.length < weights.length) {
+          for (const w of weights) {
+            if (w.weight != null && w.weight > 0) continue;
+            out.push(
+              diagAt(
+                text,
+                w.keyNode,
+                SEVERITY_WARN,
+                `选项「${w.name}」的权重是 ${w.weight ?? 0}，永远抽不到。权重默认 0，` +
+                  '要让它可抽必须写一个正数 weight。',
+                'reward-weight',
+              ),
+            );
+          }
+        }
+      }
+    }
+  }
+  return out;
+}
+
+function findKey(map: YAMLMap, keys: string[]): { key: unknown; value: unknown } | null {
+  for (const item of map.items) {
+    const k = scalarText(item.key);
+    if (k != null && keys.includes(k)) return { key: item.key, value: item.value };
+  }
+  return null;
+}
+
+function diagAt(
+  text: string,
+  node: unknown,
+  severity: DiagnosticSeverity,
+  message: string,
+  code?: string,
+): Diagnostic {
+  const offset = lineOffset(node);
+  const line = offsetToLine(text, offset);
+  const start = lineStartOffset(text, offset);
+  const label = node instanceof Scalar && typeof node.value === 'string' ? node.value : '';
+  const length = label ? label.length + 1 : 1;
+  return {
+    range: Range.create(line, offset - start, line, offset - start + length),
+    severity,
+    source: 'liudungeon',
+    message,
+    code,
+  };
 }
 
 // ==================================================================

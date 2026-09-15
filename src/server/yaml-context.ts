@@ -34,6 +34,18 @@ export interface YamlContext {
   currentKey: string;
   /** 当前行的键（可能是列表项内容）。 */
   lineKey: string | null;
+  /**
+   * 光标落在块标量（`|-` / `>`）的正文里时给出区域信息，否则 undefined。
+   * 块标量的正文是脚本文本，不是 YAML 结构 —— 所有补全都要按 JS 处理。
+   */
+  blockScalar?: {
+    /** 正文的起始缩进（用于把行内偏移换算成正文偏移）。 */
+    contentIndent: number;
+    /** 正文第一行的行号（0 基）。 */
+    firstLine: number;
+    /** 这个块标量挂在哪个键下。 */
+    key: string;
+  };
 }
 
 interface LineInfo {
@@ -79,6 +91,35 @@ export function analyze(text: string, line: number, character: number): YamlCont
     // 键名位置：把当前行所在层级（含同级列表项）先弹掉
     while (stack.length && stack[stack.length - 1].indent >= indent) stack.pop();
     ancestors = stack.map((s) => s.key as string);
+  }
+
+  // ---- 块标量（|- / >- / |+ …）：整段是「值」，但不是 YAML 结构而是脚本文本 ----
+  // 这里必须优先判断：`on_end: |-` 下面的每一行都只是文本，
+  // 不判断的话它们会被当成 `键: 值`（`action.foo()` 里那个冒号会骗过分析器），
+  // 于是 YAML 里嵌的 JS 完全得不到补全。
+  const block = detectBlockScalar(lines, line);
+  if (block) {
+    const rawBody = lines[line] ?? '';
+    const lead = rawBody.length - rawBody.trimStart().length;
+    const bodyOffset = Math.max(block.contentIndent, lead);
+    return {
+      lineText,
+      indent,
+      word: jsWordBefore(lineText),
+      wordStart: lineText.length - jsWordBefore(lineText).length,
+      inValue: true,
+      quote: null,
+      stringOffset: character - bodyOffset,
+      stringBody: rawBody.slice(bodyOffset, character),
+      ancestors: stack.map((s) => s.key as string),
+      currentKey: block.key,
+      lineKey: lineInfo(raw).key,
+      blockScalar: {
+        contentIndent: block.contentIndent,
+        firstLine: block.firstLine,
+        key: block.key,
+      },
+    };
   }
 
   // ---- 字符串与词 ----
@@ -270,4 +311,78 @@ export function nodeAt(file: string, ctx: YamlContext): ConfigNode | undefined {
     if (nodePathMatchesSafe(node.path, concrete)) return node;
   }
   return undefined;
+}
+
+/**
+ * 找光标所在行所属的块标量（`|-`、`|`、`>`、`>-`、`|+` 等）。
+ *
+ * 判定规则：从光标行往上找第一个非空行，若它比更上面的某一行「缩进更深」，
+ * 那么它就是块标量的正文，再往上找到声明行 `key: |-` 即成立。
+ * 正文缩进取正文第一行的缩进（YAML 规范允许它比父键多缩进任意格）。
+ */
+function detectBlockScalar(
+  lines: string[],
+  line: number,
+): { contentIndent: number; firstLine: number; key: string } | null {
+  let i = line;
+  // 先往上跳过空行（块标量正文可以包含空行）
+  while (i >= 0 && (lines[i] ?? '').trim() === '') i--;
+  if (i < 0) return null;
+
+  const body = lines[i] ?? '';
+  const bodyIndent = leadingSpaces(body);
+  if (bodyIndent === 0) return null;
+
+  // 跳过与首行同级（含更深）的其它正文行，找到正文开始处
+  let first = i;
+  const contentIndent = bodyIndent;
+  while (first - 1 >= 0) {
+    const prev = lines[first - 1] ?? '';
+    if (prev.trim() === '') {
+      // 空行可以属于正文（但如果再往上是声明行，则停在空行之后）
+      const above = findPrevNonBlank(lines, first - 2);
+      if (above < 0) break;
+      if (leadingSpaces(lines[above]) >= contentIndent) {
+        first = above;
+        continue;
+      }
+      break;
+    }
+    if (leadingSpaces(prev) >= contentIndent) {
+      first = first - 1;
+      continue;
+    }
+    break;
+  }
+
+  const header = findPrevNonBlank(lines, first - 1);
+  if (header < 0) return null;
+  if (!isBlockScalarHeader(lines[header] ?? '')) return null;
+
+  const m = /^\s*(?:-\s+)?("([^"]*)"|'([^']*)'|([^:#]+?))\s*:/.exec(lines[header] ?? '');
+  const key = m ? (m[2] ?? m[3] ?? m[4] ?? '').trim() : '';
+  return { contentIndent, firstLine: first, key };
+}
+
+function findPrevNonBlank(lines: string[], from: number): number {
+  for (let i = from; i >= 0; i--) {
+    if ((lines[i] ?? '').trim() !== '') return i;
+  }
+  return -1;
+}
+
+/** `on_end: |-` / `on_end: >-` / `on_end: |` … */
+function isBlockScalarHeader(line: string): boolean {
+  return /:\s*[|>][+-]?\d*\s*(#.*)?$/.test(line.trim());
+}
+
+/**
+ * 光标前正在输入的 JS 词。
+ *
+ * 只匹配标识符字符（`.` 由 completion 的 parseJsContext 负责解析），
+ * 这样 `action.complete` 会得到词 `complete`，而不是整串。
+ */
+function jsWordBefore(lineText: string): string {
+  const m = /[A-Za-z_$\u4e00-\u9fa5][\w$\u4e00-\u9fa5]*$/.exec(lineText);
+  return m ? m[0] : '';
 }

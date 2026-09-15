@@ -257,6 +257,36 @@ function labels(items) {
   check('YAML 字符串里 action. 后给全部方法（>=60）', all.length >= 60, `共 ${all.length}`);
 }
 
+// ---------- 用例 3b：块标量里的脚本（on_end: |- 这种最常见写法）----------
+{
+  const text = 'groups:\n  boss:\n    on_end: |-\n      action.complete_dungeon()\n      ac\n';
+  const uri = openDoc('monsters.yml', text);
+  const got = labels(await completions(uri, 4, 8));
+  check('块标量正文里输入 ac 有补全', got.length > 0, `共 ${got.length}`);
+  check('块标量里 ac 补到 action 对象', got.includes('action'), got.join(','));
+  check('ac 前缀不返回无关项', got.every((l) => l.startsWith('ac')), got.join(','));
+
+  const done = labels(await completions(uri, 3, '      action.'.length));
+  check('块标量里 action. 后给全部方法', done.length >= 60, `共 ${done.length}`);
+  check('块标量里 action. 补全含 complete_dungeon', done.includes('complete_dungeon'), done.join(','));
+
+  // 悬停也要认得块标量里的方法名
+  const h = await hover(uri, 3, '      action.complete'.length);
+  const hv = h?.contents?.value ?? '';
+  check('块标量里 action.complete_dungeon 悬停有方法文档', /complete_dungeon|通关/.test(hv), hv.slice(0, 120));
+
+  closeDoc(uri);
+}
+
+// ---------- 用例 3c：块标量里 action.message 的选择器 ----------
+{
+  const text = 'groups:\n  boss:\n    on_end: |\n      action.message(\'@a\')\n';
+  const uri = openDoc('monsters.yml', text);
+  const got = labels(await completions(uri, 3, '      action.message(\'@'.length));
+  check('块标量里选择器补全含 @all', got.includes('@all'), got.join(','));
+  closeDoc(uri);
+}
+
 // ---------- 用例 4：选择器补全 ----------
 {
   const text = 'start:\n  - "action.message(\'@a"\n';
@@ -311,6 +341,20 @@ function labels(items) {
   const value = h?.contents?.value ?? '';
   check('action.complete_dungeon 悬停有签名', value.includes('complete_dungeon'), value.slice(0, 80));
   check('悬停里有中文说明', /副本|通关|结算/.test(value), value.slice(0, 120));
+}
+
+// ---------- 用例 9b：块标量里的诊断 ----------
+{
+  const text = 'groups:\n  boss:\n    on_end: |-\n      action.messagee(\'@all\', \'x\')\n      dungeon.getNope()\n';
+  const uri = openDoc('monsters.yml', text);
+  const diags = await client.waitFor(() => {
+    const d = client.diagnosticsFor(uri);
+    return d.some((x) => /messagee/.test(x.message)) ? d : undefined;
+  });
+  check('块标量里的未知方法 action.messagee 被标记', Boolean(diags), JSON.stringify(diags ?? []).slice(0, 200));
+  check('块标量里的未知方法 dungeon.getNope 也被标记',
+    Boolean(diags?.some((x) => /getNope/.test(x.message))), JSON.stringify(diags ?? []).slice(0, 300));
+  closeDoc(uri);
 }
 
 // ---------- 用例 10：诊断 - 未知方法 ----------
@@ -405,6 +449,44 @@ function labels(items) {
     !diags.some((d) => d.code === 'placeholder'),
     JSON.stringify(diags).slice(0, 250),
   );
+}
+
+// ---------- 用例 16c：rewards.yml 的随机奖励结构诊断 ----------
+{
+  // 少了 options 这一层：奖励会静默不发放
+  const broken = 'rewards:\n  随机奖励:\n    type: random\n    book_1000:\n      commands:\n        - give %player% book 2\n    金币:\n      money: 1000\n';
+  const uri = openDoc('rewards.yml', broken);
+  const diags = await client.waitFor(() => {
+    const d = client.diagnosticsFor(uri);
+    return d.some((x) => x.code === 'reward-options-missing') ? d : undefined;
+  });
+  const miss = diags?.find((x) => x.code === 'reward-options-missing');
+  check('type: random 少写 options 被标为错误', miss?.severity === 1, JSON.stringify(diags ?? []).slice(0, 300));
+  check('提示里点出真正的问题是选项数为 0', /选项数为 0|不发放/.test(miss?.message ?? ''), miss?.message ?? '');
+  check('提示会把写错的键名点出来（book_1000）', /book_1000/.test(miss?.message ?? ''), miss?.message ?? '');
+  closeDoc(uri);
+}
+
+// ---------- 用例 16d：权重缺失 / 全零 ----------
+{
+  const someZero = 'rewards:\n  随机奖励:\n    type: random\n    options:\n      a:\n        weight: 10\n        money: 100\n      b:\n        commands:\n          - give %player% paper 2\n';
+  const uri = openDoc('rewards.yml', someZero);
+  const diags = await client.waitFor(() => {
+    const d = client.diagnosticsFor(uri);
+    return d.some((x) => x.code === 'reward-weight') ? d : undefined;
+  });
+  check('选项缺 weight 被标为「永远抽不到」', /永远抽不到/.test(JSON.stringify(diags ?? [])), JSON.stringify(diags ?? []).slice(0, 300));
+  closeDoc(uri);
+
+  const allZero = 'rewards:\n  随机奖励:\n    type: random\n    options:\n      a:\n        money: 100\n      b:\n        money: 200\n';
+  const uri2 = openDoc('rewards.yml', allZero);
+  const diags2 = await client.waitFor(() => {
+    const d = client.diagnosticsFor(uri2);
+    // 上一个用例的诊断也用同一个 code，必须等消息内容真的换成「等概率」那条
+    return d.some((x) => /等概率/.test(x.message)) ? d : undefined;
+  });
+  check('所有选项权重为 0 时提示会退化成等概率', /等概率/.test(JSON.stringify(diags2 ?? [])), JSON.stringify(diags2 ?? []).slice(0, 300));
+  closeDoc(uri2);
 }
 
 // ---------- 用例 17：真实示例配置没有误报 ----------
