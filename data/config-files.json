@@ -1881,9 +1881,9 @@
     {
       "file": "functions.js",
       "title": "JavaScript 函数库",
-      "summary": "目录下的 .js 文件会被读入，供所有脚本调用自定义函数",
+      "summary": "目录下的 .js 会被读入，供所有脚本按名字调用自定义函数（中文名也可以）",
       "containerAliases": {},
-      "example": "// 副本目录下的每个 .js 都会被读入，所有脚本都能直接调用这里的函数\n// 内置对象：action / dungeon / player / trigger\n// 内置函数：getVar(name) / setVar(name, value) / log(msg) / parseTime(str)\n\nfunction announceWave(no, name, tip) {\n    action.title('@all', '&6第 ' + no + ' 波', '&7' + name);\n    action.message('@all', '&e' + tip);\n}\n\nfunction aliveIn(group) {\n    return dungeon.getAliveMonsterCount(group);\n}\n",
+      "example": "// 副本目录下的每个 .js 都会被读入，本副本所有脚本都能直接按名字调用这里的函数\n// 函数名/变量名用中文完全可以；但「条件:」里会先做中文关键词替换，\n// 名字里不要出现 是/否/击杀数/存活怪物/剩余怪物/在线人数/运行时间/并且/或者（见 7.6.3）\n// 内置对象：action / dungeon / player / trigger（后两个只在有触发者的钩子里存在）\n// 内置函数：getVar(名字)（不存在时返回 0）/ setVar(名字, 值) / log(内容) / parseTime('3秒') / playerName()\n\n// 例 1：封装一句提示，别处直接写  喊话('第一波来了')\nfunction 喊话(内容) {\n    action.message('@all', '&e' + 内容);\n}\n\n// 例 2：用中文变量记进度，并在函数里调用另一个函数\nfunction 记进度(说明) {\n    var 当前进度 = getVar('进度') + 1;      // 第一次调用返回 0 → 1\n    setVar('进度', 当前进度);\n    喊话('进度 ' + 当前进度 + '：' + 说明);\n}\n\n// 例 3：读副本状态再决定说什么\nfunction 报还剩几只(怪物组) {\n    var 剩余 = dungeon.getAliveMonsterCount(怪物组);\n    if (剩余 > 0) {\n        喊话('「' + 怪物组 + '」还剩 ' + 剩余 + ' 只');\n    } else {\n        喊话('「' + 怪物组 + '」已经清空');\n    }\n}\n\n// 例 4：只发给触发者本人（没有触发者时会跳过）\nfunction 私聊(内容) {\n    if (typeof player === 'undefined' || player === null) {\n        log('私聊()：这次调用没有触发者，内容未发出 —— ' + 内容);\n        return;\n    }\n    action.message('@trigger', '&a' + 内容);\n}\n",
       "nodes": []
     }
   ],

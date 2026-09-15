@@ -189,19 +189,32 @@ export function functionSnippets(): SnippetDef[] {
   return [
     {
       label: 'function',
-      body: 'function ${1:函数名}(${2:参数}) {\n    ${3:// 实现}\n    return ${4:true}\n}',
-      doc: '普通函数；functions.js 里的函数可被同副本脚本按名字调用',
+      body: 'function ${1:函数名}(${2:参数}) {\n    ${3:// 实现}\n}',
+      doc: '普通函数；本副本所有脚本都能直接按名字调用（中文函数名也可以）',
     },
     {
-      label: 'onscript',
+      label: '基础函数',
       body:
-        '/**\n * ${1:这个库函数做什么}\n */\nfunction ${2:检查进度}(d) {\n    return d.getTotalAliveMonsters() <= 0\n}',
-      doc: '带注释的函数骨架（函数名会被脚本引擎在 require 时加载）',
+        "// 函数名用中文完全可以；调用处直接写  喊话('内容')\n" +
+        'function ${1:喊话}(内容) {\n' +
+        "    action.message('@all', '&e' + 内容);\n" +
+        '}',
+      doc: '函数库最基础的写法（封装一句提示，别处一行就能用）',
+    },
+    {
+      label: '记进度',
+      body:
+        'function ${1:记进度}(说明) {\n' +
+        "    var 当前进度 = getVar('${2:进度}') + 1;   // 变量不存在时 getVar 返回 0\n" +
+        "    setVar('${2:进度}', 当前进度);\n" +
+        "    action.message('@all', '&e${2:进度} ' + 当前进度 + '：' + 说明);\n" +
+        '}',
+      doc: '用变量记进度 / 记击杀数（getVar 不存在时返回 0）',
     },
     {
       label: 'ifplayer',
       body: "if (typeof player !== 'undefined') {\n    ${1:action.message('@trigger', '&7只有触发者能看到')}\n}",
-      doc: 'player 的存在性判断',
+      doc: 'player 的存在性判断（complete / fail / all_death 等钩子里没有 player）',
     },
   ];
 }

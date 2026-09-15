@@ -191,22 +191,30 @@
     "body": [
       "function ${1:函数名}(${2:参数}) {",
       "    ${3:// 实现}",
-      "    return ${4:true}",
       "}"
     ],
-    "description": "普通函数；functions.js 里的函数可被同副本脚本按名字调用"
+    "description": "普通函数；本副本所有脚本都能直接按名字调用（中文函数名也可以）"
   },
-  "ld-onscript": {
-    "prefix": "ld-onscript",
+  "ld-基础函数": {
+    "prefix": "ld-基础函数",
     "body": [
-      "/**",
-      " * ${1:这个库函数做什么}",
-      " */",
-      "function ${2:检查进度}(d) {",
-      "    return d.getTotalAliveMonsters() <= 0",
+      "// 函数名用中文完全可以；调用处直接写  喊话('内容')",
+      "function ${1:喊话}(内容) {",
+      "    action.message('@all', '&e' + 内容);",
       "}"
     ],
-    "description": "带注释的函数骨架（函数名会被脚本引擎在 require 时加载）"
+    "description": "函数库最基础的写法（封装一句提示，别处一行就能用）"
+  },
+  "ld-记进度": {
+    "prefix": "ld-记进度",
+    "body": [
+      "function ${1:记进度}(说明) {",
+      "    var 当前进度 = getVar('${2:进度}') + 1;   // 变量不存在时 getVar 返回 0",
+      "    setVar('${2:进度}', 当前进度);",
+      "    action.message('@all', '&e${2:进度} ' + 当前进度 + '：' + 说明);",
+      "}"
+    ],
+    "description": "用变量记进度 / 记击杀数（getVar 不存在时返回 0）"
   },
   "ld-ifplayer": {
     "prefix": "ld-ifplayer",
@@ -215,7 +223,7 @@
       "    ${1:action.message('@trigger', '&7只有触发者能看到')}",
       "}"
     ],
-    "description": "player 的存在性判断"
+    "description": "player 的存在性判断（complete / fail / all_death 等钩子里没有 player）"
   },
   "ld-message": {
     "prefix": "ld-message",
