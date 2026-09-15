@@ -184,6 +184,28 @@ function openDoc(name, text) {
   return uri;
 }
 
+/**
+ * 在文本里定位某个 token 的光标位置（返回落在词中间的那个字符位）。
+ *
+ * 手算列号很容易错（`    trigger_group: wave_1` 里 wave_1 从 19 开始，
+ * 而不是 20）—— 算错的后果是 symbolAt 取不到符号，测试会误报"功能没实现"。
+ */
+function posOf(text, token, occurrence = 1) {
+  const lines = text.split('\n');
+  let seen = 0;
+  for (let i = 0; i < lines.length; i++) {
+    let from = 0;
+    for (;;) {
+      const idx = lines[i].indexOf(token, from);
+      if (idx < 0) break;
+      seen++;
+      if (seen === occurrence) return { line: i, character: idx + Math.floor(token.length / 2) };
+      from = idx + token.length;
+    }
+  }
+  throw new Error(`找不到 token: ${token}`);
+}
+
 /** 关掉一个文档：关掉后索引回到磁盘版本，避免用例之间互相污染。 */
 function closeDoc(uri) {
   client.notify('textDocument/didClose', { textDocument: { uri } });
@@ -200,6 +222,11 @@ async function completions(uri, line, character) {
   }
   if (!res.result) return [];
   return Array.isArray(res.result) ? res.result : (res.result.items ?? []);
+}
+
+async function request(method, params) {
+  const res = await client.request(method, params);
+  return res.result;
 }
 
 async function hover(uri, line, character) {
@@ -647,6 +674,182 @@ function labelDump(items) {
   check('组内给出 spawn_timing', innerLabels.includes('spawn_timing'), labelDump(innerLabels));
   check('组内不给出顶层 groups', !innerLabels.includes('groups'), labelDump(innerLabels));
   closeDoc(inner);
+}
+
+// ---------- 用例 17c：引用查找 / 同词高亮 / 重命名（pkg 里的三个新能力） ----------
+{
+  // 造一个自洽的小副本：组名 wave_1 在 monsters.yml 里定义、被 trigger_group 引用，
+  // 又在 scripts.yml 的脚本里当成参数用 —— 这三处都必须被找出来。
+  const monstersText = [
+    '# 关卡定义',
+    'groups:',
+    '  wave_1:',
+    '    spawn_timing:',
+    '      type: AUTO_START',
+    '    on_end: |-',
+    "      action.complete_dungeon()",
+    '  boss:',
+    '    spawn_timing:',
+    '      type: TRIGGERED',
+    '    trigger_group: wave_1',
+    '    monsters:',
+    '      - id: Zombie',
+    "        location: '0,64,0'",
+    '',
+  ].join('\n');
+  const scriptsText = [
+    '# 脚本',
+    'start:',
+    '  - "action.message(\'@all\', \'开始\')"',
+    '  - "action.spawn_group(\'wave_1\')"',
+    '  - "dungeon.isGroupCleared(\'wave_1\')"',
+    '  # action.spawn_group(\'wave_1\')  <- 注释里不算引用',
+    '',
+  ].join('\n');
+  openDoc('config.yml', 'dungeon:\n  name: 测试\nenable: true\n');
+  const mUri = openDoc('monsters.yml', monstersText);
+  const sUri = openDoc('scripts.yml', scriptsText);
+  await new Promise((r) => setTimeout(r, 300));
+
+  // 引用查找：光标停在 trigger_group 的值上（第 10 行）
+  const atGroupRef = posOf(monstersText, 'wave_1'); // = trigger_group 的值
+  const refs = await request('textDocument/references', {
+    textDocument: { uri: mUri },
+    position: atGroupRef,
+    context: { includeDeclaration: true },
+  });
+  check('查找引用返回结果', Array.isArray(refs) && refs.length >= 3, JSON.stringify(refs ?? []).slice(0, 200));
+  const refFiles = new Set((refs ?? []).map((r) => r.uri.split('/').pop()));
+  check('引用跨越 monsters.yml 与 scripts.yml', refFiles.has('monsters.yml') && refFiles.has('scripts.yml'), [...refFiles].join(','));
+  check('注释里的同名写法不算引用', (refs ?? []).filter((r) => r.uri.endsWith('scripts.yml')).length === 2, JSON.stringify((refs ?? []).filter((r) => r.uri.endsWith('scripts.yml'))));
+
+  // 不带 includeDeclaration 时应排除定义处
+  const refsNoDecl = await request('textDocument/references', {
+    textDocument: { uri: mUri },
+    position: atGroupRef,
+    context: { includeDeclaration: false },
+  });
+  check('includeDeclaration:false 时定义处被排除', (refsNoDecl ?? []).length === (refs ?? []).length - 1, `${(refsNoDecl ?? []).length} vs ${(refs ?? []).length}`);
+
+  // 同词高亮：只在本文件
+  const highlights = await request('textDocument/documentHighlight', {
+    textDocument: { uri: mUri },
+    position: atGroupRef,
+  });
+  check('同词高亮只给本文件的命中', (highlights ?? []).length === 2, JSON.stringify(highlights ?? []));
+  check('高亮区分定义处与引用处',
+    (highlights ?? []).some((h) => h.kind === 3) && (highlights ?? []).some((h) => h.kind === 2),
+    JSON.stringify(highlights ?? []));
+
+  // 跳转定义
+  const defs = await request('textDocument/definition', {
+    textDocument: { uri: sUri },
+    position: posOf(scriptsText, 'wave_1'),
+  });
+  check('从脚本里的参数能跳到组定义', (defs ?? []).length === 1 && (defs ?? [])[0].range.start.line === 2,
+    JSON.stringify(defs ?? []));
+
+  // 重命名
+  const prepared = await request('textDocument/prepareRename', {
+    textDocument: { uri: mUri },
+    position: atGroupRef,
+  });
+  check('prepareRename 给出可改范围', Boolean(prepared?.range), JSON.stringify(prepared ?? {}));
+
+  const edit = await request('textDocument/rename', {
+    textDocument: { uri: mUri },
+    position: atGroupRef,
+    newName: 'wave_2',
+  });
+  const changedFiles = Object.keys(edit?.changes ?? {});
+  check('重命名同时改 monsters.yml 与 scripts.yml', changedFiles.length === 2, changedFiles.map((u) => u.split('/').pop()).join(','));
+  const mEdits = edit?.changes?.[mUri] ?? [];
+  const sEdits = edit?.changes?.[sUri] ?? [];
+  check('monsters.yml 改定义键 + trigger_group 值', mEdits.length === 2, JSON.stringify(mEdits));
+  check('scripts.yml 改两处参数', sEdits.length === 2, JSON.stringify(sEdits));
+  check('定义键的编辑带上了引号规则（无引号则不加）',
+    mEdits.some((e) => e.newText === 'wave_2') && mEdits.every((e) => !e.newText.includes("'")),
+    JSON.stringify(mEdits));
+
+  // 非法名字应被拒
+  const bad = await client.request('textDocument/rename', {
+    textDocument: { uri: mUri },
+    position: atGroupRef,
+    newName: 'bad.name',
+  });
+  check('含点号的新名字被拒绝', Boolean(bad.error), JSON.stringify(bad).slice(0, 200));
+
+  closeDoc(mUri);
+  closeDoc(sUri);
+  closeDoc('file://' + DUNGEON_ROOT + '/config.yml');
+}
+
+// ---------- 用例 17d：快速修复（code action） ----------
+{
+  // 场景 1：revive 配了方式却 count: 0 → 提供两个改法
+  const reviveText = 'revive:\n  count: 0\n  auto:\n    delay: 5\n';
+  const uri = openDoc('config.yml', reviveText);
+  const diags = await client.waitFor(() => {
+    const d = client.diagnosticsFor(uri);
+    return d.some((x) => x.code === 'revive-count' && x.severity === 1) ? d : undefined;
+  });
+  const actions = await request('textDocument/codeAction', {
+    textDocument: { uri },
+    range: { start: { line: 1, character: 0 }, end: { line: 1, character: 12 } },
+    context: { diagnostics: (diags ?? []).filter((d) => d.code === 'revive-count') },
+  });
+  const titles = (actions ?? []).map((a) => a.title);
+  check('count: 0 给出「改成 -1」的修复', titles.some((t) => t.includes('-1')), titles.join(' | '));
+  check('count: 0 给出「改成 3」的修复', titles.some((t) => t.includes('3')), titles.join(' | '));
+  const edit = (actions ?? []).find((a) => a.title.includes('-1'))?.edit?.changes?.[uri]?.[0];
+  check('修复的编辑范围与内容正确', edit?.newText === '  count: -1', JSON.stringify(edit ?? {}));
+  closeDoc(uri);
+
+  // 场景 2：随机奖励缺 options → 插入骨架
+  const rewardText = 'rewards:\n  随机奖励:\n    type: random\n    book_1000:\n      commands:\n        - give %player% book 2\n';
+  const rUri = openDoc('rewards.yml', rewardText);
+  const rDiags = await client.waitFor(() => {
+    const d = client.diagnosticsFor(rUri);
+    return d.some((x) => x.code === 'reward-options-missing') ? d : undefined;
+  });
+  const rActions = await request('textDocument/codeAction', {
+    textDocument: { uri: rUri },
+    range: { start: { line: 2, character: 0 }, end: { line: 2, character: 14 } },
+    context: { diagnostics: (rDiags ?? []).filter((d) => d.code === 'reward-options-missing') },
+  });
+  const insert = (rActions ?? [])[0]?.edit?.changes?.[rUri]?.[0];
+  check('缺 options 时提供插入骨架的修复', (rActions ?? []).length === 1, JSON.stringify(rActions ?? []).slice(0, 200));
+  check('插入内容含 options 与 weight', /options:/.test(insert?.newText ?? '') && /weight:/.test(insert?.newText ?? ''), JSON.stringify(insert ?? {}));
+  check('插入位置在 type 行之后', insert?.range?.start?.line === 3, JSON.stringify(insert?.range ?? {}));
+  closeDoc(rUri);
+
+  // 场景 3：拼错的钩子名 → 给出正确名的替换
+  const hookText = 'startt:\n  - "action.message(\'@all\', \'x\')"\n';
+  const hUri = openDoc('scripts.yml', hookText);
+  const hDiags = await client.waitFor(() => {
+    const d = client.diagnosticsFor(hUri);
+    return d.some((x) => x.code === 'unknown-hook') ? d : undefined;
+  });
+  const hActions = await request('textDocument/codeAction', {
+    textDocument: { uri: hUri },
+    range: { start: { line: 0, character: 0 }, end: { line: 0, character: 6 } },
+    context: { diagnostics: (hDiags ?? []).filter((d) => d.code === 'unknown-hook') },
+  });
+  check('startt 被建议改成 start', (hActions ?? [])[0]?.title?.includes('start'), JSON.stringify(hActions ?? []).slice(0, 150));
+  const hookEdit = (hActions ?? [])[0]?.edit?.changes?.[hUri]?.[0];
+  check('钩子修复是替换而非插入', hookEdit?.newText === 'start', JSON.stringify(hookEdit ?? {}));
+  closeDoc(hUri);
+
+  // 场景 4：没有诊断时不应乱给修复
+  const cleanUri = openDoc('config.yml', 'enable: true\nhide: false\n');
+  await new Promise((r) => setTimeout(r, 250));
+  const none = await request('textDocument/codeAction', {
+    textDocument: { uri: cleanUri },
+    range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } },
+    context: { diagnostics: [] },
+  });
+  check('没有诊断时不给修复', (none ?? []).length === 0, JSON.stringify(none ?? []).slice(0, 150));
+  closeDoc(cleanUri);
 }
 
 // ---------- 用例 18：数据完整性（补全数据与插件源码对齐） ----------

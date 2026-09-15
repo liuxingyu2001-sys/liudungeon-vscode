@@ -6,7 +6,10 @@
  * 远端 / 虚拟工作区（vscode.dev、Remote-SSH）也能正常工作。
  */
 import {
+  CodeAction,
   CompletionItem,
+  Diagnostic,
+  Range,
   createConnection,
   DidChangeConfigurationNotification,
   DocumentSymbol,
@@ -26,6 +29,14 @@ import { provideCompletions } from './completion';
 import { computeDiagnostics, type DiagnosticsOptions } from './diagnostics';
 import { IndexStore, baseName, REF_LABEL, type RefKind } from './index-store';
 import { provideHover } from './hover';
+import { provideCodeActions } from './code-actions';
+import {
+  findReferences,
+  symbolAt,
+  toLocation,
+  type RefHit,
+  type SymbolAtCursor,
+} from './references';
 
 const connection = createConnection(ProposedFeatures.all);
 
@@ -64,6 +75,12 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
       hoverProvider: true,
       definitionProvider: true,
       documentSymbolProvider: true,
+      referencesProvider: true,
+      documentHighlightProvider: true,
+      renameProvider: { prepareProvider: true },
+      codeActionProvider: {
+        codeActionKinds: ['quickfix'],
+      },
       workspace: {
         workspaceFolders: { supported: true },
       },
@@ -137,15 +154,18 @@ connection.onNotification('liudungeon/fileDeleted', (payload: { uri: string }) =
   rebuildIndex();
 });
 
-/** 用「工作区快照 + 未保存的打开文档」重建副本索引。 */
-function rebuildIndex(): void {
+/** 工作区快照 + 未保存的打开文档（引用查找与索引共用同一份数据）。 */
+function snapshotFiles(): Array<{ path: string; text: string }> {
   const merged = new Map(workspaceFiles);
   for (const doc of documents.all()) {
     merged.set(doc.uri, doc.getText());
   }
-  index.rebuild(
-    [...merged.entries()].map(([uri, text]) => ({ path: uriToPath(uri), text })),
-  );
+  return [...merged.entries()].map(([uri, text]) => ({ path: uriToPath(uri), text }));
+}
+
+/** 用「工作区快照 + 未保存的打开文档」重建副本索引。 */
+function rebuildIndex(): void {
+  index.rebuild(snapshotFiles());
   void refreshAllDiagnostics();
 }
 
@@ -197,58 +217,160 @@ connection.onHover((params): Hover | null => {
 });
 
 // ==================================================================
-//  跳转到定义（组名 / 区域名 / 奖励名 → 定义处）
+//  符号：跳转定义 / 查找引用 / 同词高亮 / 重命名
 // ==================================================================
 
-connection.onDefinition((params): Location[] | null => {
-  const doc = documents.get(params.textDocument.uri);
+/** 在光标位置解析出符号。 */
+function symbolHere(uri: string, position: { line: number; character: number }): SymbolAtCursor | null {
+  const doc = documents.get(uri);
   if (!doc) return null;
-  const filePath = uriToPath(params.textDocument.uri);
-  const name = baseName(filePath);
-  if (!name.endsWith('.yml') && !name.endsWith('.yaml')) return null;
+  const filePath = uriToPath(uri);
+  return symbolAt(index, filePath, doc.getText().split(/\r?\n/), position);
+}
 
-  const text = doc.getText();
-  const lines = text.split(/\r?\n/);
-  const line = lines[params.position.line] ?? '';
-  const dir = index.dirForFile(filePath);
-  if (!dir) return null;
+/** 找出该符号的全部引用（含定义），并补上 URI。 */
+function referencesHere(uri: string, position: { line: number; character: number }): {
+  symbol: SymbolAtCursor;
+  hits: RefHit[];
+} | null {
+  const symbol = symbolHere(uri, position);
+  if (!symbol) return null;
+  const hits = findReferences(index, snapshotFiles(), symbol.dir, symbol.kind, symbol.name).map(
+    (h) => ({ ...h, uri: h.uri || pathToFileUri(h.file) }),
+  );
+  return { symbol, hits };
+}
 
-  // 取光标下的词
-  const wordMatch = wordAtPosition(line, params.position.character);
-  if (!wordMatch) return null;
-  const word = wordMatch.word;
-
-  const kinds: RefKind[] = ['groups', 'zones', 'rewards', 'stages', 'interacts', 'tasks', 'points'];
-  for (const kind of kinds) {
-    const def = index.names(kind, dir).find((d) => d.name === word);
-    if (def) {
-      const target = index.list().find((i) => i.dir === dir);
-      const file = target?.files.find((f) => baseName(f) === def.file);
-      if (!file) continue;
-      return [
-        {
-          uri: pathToFileUri(file),
-          range: {
-            start: { line: def.line, character: 0 },
-            end: { line: def.line, character: word.length },
-          },
-        },
-      ];
-    }
-  }
-  return null;
+connection.onDefinition((params): Location[] | null => {
+  const found = referencesHere(params.textDocument.uri, params.position);
+  if (!found) return null;
+  const def = found.hits.find((h) => h.isDefinition);
+  // 优先跳到定义；找不到定义（引用写错了名字）时至少给第一个引用，避免"点了没反应"
+  return [toLocation(def ?? found.hits[0])];
 });
 
-function wordAtPosition(line: string, character: number): { word: string; start: number } | null {
-  const re = /[\w\u4e00-\u9fa5.@-]+/g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(line)) !== null) {
-    if (character >= m.index && character <= m.index + m[0].length) {
-      return { word: m[0], start: m.index };
+connection.onReferences((params): Location[] => {
+  const found = referencesHere(params.textDocument.uri, params.position);
+  if (!found) return [];
+  return found.hits
+    .filter((h) => params.context.includeDeclaration || !h.isDefinition)
+    .map(toLocation);
+});
+
+connection.onDocumentHighlight((params) => {
+  const found = referencesHere(params.textDocument.uri, params.position);
+  if (!found) return [];
+  const thisFile = uriToPath(params.textDocument.uri);
+  return found.hits
+    .filter((h) => h.file === thisFile)
+    .map((h) => ({
+      range: {
+        start: { line: h.line, character: h.start },
+        end: { line: h.line, character: h.start + h.length },
+      },
+      kind: h.isDefinition ? 3 : 2, // 3 = Write（定义处），2 = Read（引用处）
+    }));
+});
+
+connection.onPrepareRename((params) => {
+  const symbol = symbolHere(params.textDocument.uri, params.position);
+  if (!symbol) return null;
+  if (!isRenameable(symbol.name)) {
+    return null;
+  }
+  return { range: symbol.range, placeholder: symbol.name };
+});
+
+connection.onRenameRequest((params) => {
+  const found = referencesHere(params.textDocument.uri, params.position);
+  if (!found) return null;
+  if (!isRenameable(params.newName)) {
+    throw new Error('名字不能含空格、点号、冒号或路径分隔符（与编辑器/解析器的命名规则一致）');
+  }
+
+  const changes: Record<string, Array<{ range: Range; newText: string }>> = {};
+  for (const hit of found.hits) {
+    if (hit.isDefinition) continue; // 定义处由下面的"键名替换"统一处理
+    const list = (changes[hit.uri] ??= []);
+    list.push({
+      range: {
+        start: { line: hit.line, character: hit.start },
+        end: { line: hit.line, character: hit.start + hit.length },
+      },
+      newText: params.newName,
+    });
+  }
+
+  // 定义处：把「组名/区域名」这个键本身改掉
+  const defFile = index
+    .list()
+    .find((i) => i.dir === found.symbol.dir)
+    ?.files.find((f) => baseName(f) === REF_DEFINITION_FILE[found.symbol.kind]);
+  const def = found.hits.find((h) => h.isDefinition);
+  if (def && defFile) {
+    const defUri = pathToFileUri(defFile);
+    const list = (changes[defUri] ??= []);
+    // 定义行的形如 `  <名字>:`，键名从行首缩进之后开始
+    const text = documents.get(defUri)?.getText() ?? workspaceFiles.get(defUri) ?? '';
+    const lineText = text.split(/\r?\n/)[def.line] ?? '';
+    const indent = lineText.length - lineText.trimStart().length;
+    const quoted = /^['"]/.test(lineText.trimStart());
+    const nameInLine = lineText.indexOf(found.symbol.name, indent);
+    if (nameInLine >= 0) {
+      list.push({
+        range: {
+          start: { line: def.line, character: nameInLine },
+          end: { line: def.line, character: nameInLine + found.symbol.name.length },
+        },
+        newText: quoted ? `'${params.newName}'` : params.newName,
+      });
     }
   }
-  return null;
+
+  return { changes };
+});
+
+/** 定义每种符号的文件（重命名时要知道去哪改键名）。 */
+const REF_DEFINITION_FILE: Record<string, string> = {
+  groups: 'monsters.yml',
+  zones: 'zones.yml',
+  interacts: 'interacts.yml',
+  stages: 'stages.yml',
+  tasks: 'tasks.yml',
+  rewards: 'rewards.yml',
+  points: 'zones.yml',
+};
+
+/** 名字合法性：与编辑器 / 解析器的规则一致（不能含点号、空格、冒号、路径分隔符）。 */
+function isRenameable(name: string): boolean {
+  if (!name || name.trim() !== name) return false;
+  if (name.length > 64) return false;
+  if (/[.\s:/\\]/.test(name)) return false;
+  if (name.startsWith('.')) return false;
+  return true;
 }
+
+// ==================================================================
+//  快速修复
+// ==================================================================
+
+connection.onCodeAction((params): CodeAction[] => {
+  const doc = documents.get(params.textDocument.uri);
+  if (!doc) return [];
+  const actions = provideCodeActions({
+    text: doc.getText(),
+    diagnostics: params.context.diagnostics as Diagnostic[],
+  });
+  const uri = params.textDocument.uri;
+  return actions.map((a) => ({
+    title: a.title,
+    kind: a.kind,
+    diagnostics: a.diagnostics,
+    isPreferred: a.isPreferred,
+    edit: { changes: { [uri]: a.edits } },
+    data: a.code ? { code: a.code } : undefined,
+  }));
+});
 
 // ==================================================================
 //  文档符号（大纲：这个文件里定义了哪些波次 / 区域 / 奖励）

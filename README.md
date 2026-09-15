@@ -16,6 +16,10 @@
 | **配置文件键名补全** | `config.yml` / `monsters.yml` / `stages.yml` / `zones.yml` / `interacts.yml` / `tasks.yml` / `rewards.yml` / `scripts.yml` 的 167 个键，含中文别名与枚举取值 |
 | **悬停文档** | 鼠标停在方法名、键名、`@all`、`{player.name}` 上直接看中文说明 |
 | **跳转到定义** | `trigger_group: wave_1` 里的 `wave_1`、脚本里的 `'通关奖励'` 都能跳回定义处 |
+| **查找引用（Shift+Alt+F12）** | 一个怪物组 / 区域 / 奖励被哪些文件用到：`trigger_group`、`action.spawn_group('x')`、`dungeon.isGroupCleared('x')` 全部找出来（注释里的不算） |
+| **重命名（F2）** | 改名会同时改定义键与所有引用，跨 `monsters.yml` / `scripts.yml` 一起改；名字非法（含点号/空格/冒号）会被直接拒绝 |
+| **同词高亮** | 光标停在某个名字上，本文件里的定义处与引用处分别高亮（写/读两种颜色） |
+| **快速修复** | 能确定性修好的诊断给一键修：`count: 0` → `-1`/`3`、随机奖励缺 `options` → 插入骨架、拼错的钩子名 → 改成正确名、`dungeon` 段里的 `spawn` → 删掉 |
 | **大纲** | 文件里定义了哪些波次 / 区域 / 奖励，侧边栏直接看 |
 | **诊断（重点）** | 方法名写错、参数给多、选择器没实现、占位符写错、时间写法不合法、钩子名写错、引用了不存在的怪物组 / 区域 / 奖励、`spawn` 写到 `dungeon` 段里…… 全部直接标出来 |
 | **片段** | 补全面板 + `ld-` 前缀片段；常用写法一键展开 |
@@ -126,6 +130,8 @@ src/server/          语言服务（补全 / 悬停 / 跳转 / 诊断）
   diagnostics.ts     诊断
   yaml-context.ts    缩进栈解析：键路径 + 识别 YAML 里嵌的 JS
   index-store.ts     副本目录索引：定义了哪些组 / 区域 / 奖励
+  references.ts      引用引擎：定义 + 各处引用的位置（跳转/引用/重命名/高亮共用）
+  code-actions.ts    快速修复：只做机械且无歧义的改动
   api-model.ts       把 data/*.json 规整成可用结构
   snippets.ts        片段定义
 data/                从插件源码与文档提取的参考数据
@@ -140,7 +146,7 @@ snippets/            构建时生成的 VS Code 片段
 
 ```bash
 npm run typecheck   # TS 类型检查
-npm test            # 构建 + 端到端自检（84 项断言，约 4 秒）
+npm test            # 构建 + 端到端自检（106 项断言，约 5 秒）
 npm run package     # 打成 vsix
 ```
 

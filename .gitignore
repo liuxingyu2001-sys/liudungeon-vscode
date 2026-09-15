@@ -2,3 +2,5 @@ node_modules/
 out/
 *.vsix
 .liudungeon/
+# 临时探针脚本（排查 LSP 问题时用，不进仓库）
+probe-*.mjs
