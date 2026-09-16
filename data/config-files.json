@@ -125,12 +125,35 @@
           "required": false
         },
         {
+          "path": "world.allow_build",
+          "key": "allow_build",
+          "type": "布尔",
+          "doc": "是否允许玩家在副本里破坏/放置方块。不写 = false = 禁止（倒液体、点火、催熟也一并拦住；机关交互点不受影响）。只认 world 段这一处，写进 world_rules 不生效",
+          "aliases": [
+            "allow-build",
+            "允许建造",
+            "允许破坏"
+          ],
+          "required": false
+        },
+        {
           "path": "world.border",
           "key": "border",
           "type": "数字",
-          "doc": "世界边界半径，-1 或不写表示不设置",
+          "doc": "世界边界半径，-1 或不写表示不设置。圆心由 world.center 决定（不写 = 出生点的 x/z）",
           "aliases": [
             "边界"
+          ],
+          "required": false
+        },
+        {
+          "path": "world.center",
+          "key": "center",
+          "type": "坐标",
+          "doc": "世界边界的圆心，写水平坐标 x,z（x,y,z 与从 spawn 抄来的 5 段也认，中间那个 y 忽略）；不写 = 用出生点的 x/z。圆心错了的表现是玩家一进本就被边界推着走，/ld doctor 会算一遍并报出来",
+          "aliases": [
+            "中心",
+            "世界中心"
           ],
           "required": false
         },
@@ -138,7 +161,7 @@
           "path": "world.world_rules",
           "key": "world_rules",
           "type": "映射",
-          "doc": "世界规则段；除 time/storm/border 外都按 GameRule 写入",
+          "doc": "世界规则段；除 time/storm/border/center 外都按 GameRule 写入",
           "aliases": [
             "world-rules",
             "世界规则"
@@ -173,6 +196,17 @@
           "doc": "边界半径，优先级高于 world.border",
           "aliases": [
             "边界"
+          ],
+          "required": false
+        },
+        {
+          "path": "world.world_rules.center",
+          "key": "center",
+          "type": "坐标",
+          "doc": "边界圆心 x,z，优先级高于 world.center",
+          "aliases": [
+            "中心",
+            "世界中心"
           ],
           "required": false
         },
@@ -618,6 +652,29 @@
           "doc": "道具复活落点：spawn / inplace / 区域.点位",
           "aliases": [
             "位置"
+          ],
+          "required": false
+        },
+        {
+          "path": "revive.item.display-name",
+          "key": "display-name",
+          "type": "文本",
+          "doc": "给玩家看的复活道具名（支持中文与颜色代码）；不写 = 回落成材质名（如 TOTEM_OF_UNDYING）。刻意不读物品自己的自定义名 —— 能匹配上复活道具的只有材质",
+          "aliases": [
+            "display_name",
+            "显示名",
+            "显示名称"
+          ],
+          "required": false
+        },
+        {
+          "path": "revive.item.consume-message",
+          "key": "consume-message",
+          "type": "文本",
+          "doc": "消耗复活道具时的提示文案，{item} 会替换成道具名；不写 = 用插件默认提示",
+          "aliases": [
+            "consume_message",
+            "消耗提示"
           ],
           "required": false
         },
@@ -1424,7 +1481,8 @@
             "右键实体"
           ],
           "aliases": [
-            "类型"
+            "类型",
+            "右键方块"
           ],
           "required": false
         },

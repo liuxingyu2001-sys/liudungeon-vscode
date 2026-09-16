@@ -152,7 +152,7 @@ snippets/            构建时生成的 VS Code 片段
 
 ```bash
 npm run typecheck   # TS 类型检查
-npm test            # 构建 + 端到端自检（202 项断言，约 10 秒）
+npm test            # 构建 + 端到端自检（235 项断言，约 10 秒）
 bash scripts/mutate-refs.sh   # 变异测试：把关键修复逐个改回坏写法，确认自检真的会红
 npm run package     # 打成 vsix
 ```

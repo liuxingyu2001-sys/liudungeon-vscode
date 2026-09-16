@@ -1529,6 +1529,75 @@ function labelDump(items) {
   await new Promise((r) => setTimeout(r, 80));
 }
 
+// ---------- 用例 31：跟随插件新增的键（world.center / world.allow_build / 复活道具文案） ----------
+// 数据的价值不只是"多一条补全"。插件加了键而扩展没跟时，真正的危害是**把合法的键
+// 报成「插件不读的键」** —— 而按插件文档照抄的服主会以为是自己写错了，
+// 顺手把那行删掉。world.allow_build 尤其典型：它默认 false = 禁止玩家拆地形，
+// 被误报后删掉的是一道防护。world.center 同理（1.4.0 新增，不认它就会劝人删掉圆心）。
+{
+  // 1) 补全与文档：world 段下要能列出 center，且说清"圆心 + 不写等于出生点"
+  const text = 'world:\n  cen\n';
+  const uri = openDoc('config.yml', text);
+  const items = await completions(uri, 1, '  cen'.length);
+  const center = items.find((i) => i.label === 'center');
+  check('world 段下能补出 center', Boolean(center), labelDump(items));
+  const centerDoc = JSON.stringify(center?.documentation ?? {});
+  check('center 的文档讲清它是世界边界的圆心', /圆心/.test(centerDoc), centerDoc.slice(0, 200));
+  check('center 的文档说明不写 = 出生点', /出生点/.test(centerDoc), centerDoc.slice(0, 200));
+  closeDoc(uri);
+  await new Promise((r) => setTimeout(r, 80));
+
+  // 2) 悬停键名（与补全同一份数据，单独盯一次：键名悬停曾经整体失效过）
+  const hov = openDoc('config.yml', 'world:\n  center: \'-202,182\'\n');
+  const h = await hover(hov, 1, 4);
+  check('悬停 center 给出文档', /圆心|出生点/.test(JSON.stringify(h ?? {})), JSON.stringify(h ?? {}).slice(0, 200));
+  closeDoc(hov);
+  await new Promise((r) => setTimeout(r, 80));
+
+  // 3) 正对照：插件 1.4.0 认的写法一个都不许报 unknown-key
+  const goodText =
+    "world:\n  template: voidgen\n  spawn: '-202,25,182,0,0'\n  border: 200\n"
+    + "  center: '-202,182'\n  allow_build: false\n  world_rules:\n    center: '-202,182'\n";
+  const good = openDoc('config.yml', goodText);
+  await new Promise((r) => setTimeout(r, 300));
+  const goodKeys = client.diagnosticsFor(good).filter((d) => d.code === 'unknown-key');
+  check('center / allow_build / world_rules.center 都不报 unknown-key', goodKeys.length === 0, JSON.stringify(goodKeys).slice(0, 300));
+  closeDoc(good);
+  await new Promise((r) => setTimeout(r, 80));
+
+  // 4) 中文别名同样不许报（插件的中文键名是正经支持的写法）
+  const cnText = "world:\n  模板: voidgen\n  世界中心: '-202,182'\n  允许破坏: true\n";
+  const cn = openDoc('config.yml', cnText);
+  await new Promise((r) => setTimeout(r, 300));
+  const cnKeys = client.diagnosticsFor(cn).filter((d) => d.code === 'unknown-key');
+  check('中文别名（世界中心 / 允许破坏）不报 unknown-key', cnKeys.length === 0, JSON.stringify(cnKeys).slice(0, 300));
+  closeDoc(cn);
+  await new Promise((r) => setTimeout(r, 80));
+
+  // 5) 反向对照：真写错还是要报 —— 否则上面两条可能只是"这一层不查"
+  const typo = openDoc('config.yml', "world:\n  centr: '1,2'\n");
+  const typoDiags = await client.waitFor(() => {
+    const d = client.diagnosticsFor(typo);
+    return d.some((x) => x.code === 'unknown-key') ? d : undefined;
+  });
+  const typoHit = (typoDiags ?? []).find((x) => x.code === 'unknown-key');
+  check('把 center 写成 centr 报 unknown-key', Boolean(typoHit), JSON.stringify(typoDiags ?? []).slice(0, 300));
+  check('unknown-key 提示里给出最接近的键 center', /\bcenter\b/.test(typoHit?.message ?? ''), typoHit?.message ?? '');
+  closeDoc(typo);
+  await new Promise((r) => setTimeout(r, 80));
+
+  // 6) 复活道具的两个新键（display-name / consume-message）
+  const itemText =
+    "revive:\n  count: 3\n  item:\n    id: TOTEM_OF_UNDYING\n"
+    + "    显示名: '&d复活图腾'\n    消耗提示: '用掉了 {item}'\n";
+  const item = openDoc('config.yml', itemText);
+  await new Promise((r) => setTimeout(r, 300));
+  const itemKeys = client.diagnosticsFor(item).filter((d) => d.code === 'unknown-key');
+  check('revive.item 的 显示名 / 消耗提示 不报 unknown-key', itemKeys.length === 0, JSON.stringify(itemKeys).slice(0, 300));
+  closeDoc(item);
+  await new Promise((r) => setTimeout(r, 80));
+}
+
 // ---------- 收尾 ----------
 client.notify('exit', {});
 child.kill();
