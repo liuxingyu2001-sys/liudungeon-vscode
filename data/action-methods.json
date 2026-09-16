@@ -741,10 +741,31 @@
         }
       ],
       "returns": "void",
-      "doc": "传送玩家，位置解析失败只打 warning",
+      "doc": "传送玩家，位置解析失败只打 warning；落地后自动 resync 玩家区域状态",
       "category": "玩家",
-      "aliases": [],
+      "aliases": ["tp"],
       "example": "action.teleport('@all', 'Boss房.落点')"
+    },
+    {
+      "name": "tp",
+      "signature": "tp(selector, locationRef)",
+      "params": [
+        {
+          "name": "selector",
+          "type": "选择器",
+          "doc": "目标玩家选择器"
+        },
+        {
+          "name": "locationRef",
+          "type": "点位引用",
+          "doc": "区域.点位 或 x,y,z[,yaw,pitch]"
+        }
+      ],
+      "returns": "void",
+      "doc": "teleport 的短别名，传送玩家到点位（落地后自动 resync 玩家区域状态）",
+      "category": "玩家",
+      "aliases": ["teleport"],
+      "example": "action.tp('@所有玩家', '-149,64,17')"
     },
     {
       "name": "give_item",
@@ -1043,7 +1064,7 @@
         }
       ],
       "returns": "void",
-      "doc": "设置行走速度，出本会由快照还原",
+      "doc": "设置行走速度（出本不再自动还原，脚本要自己收尾）",
       "category": "玩家",
       "aliases": [],
       "example": "action.set_walk_speed('@all', 0.14)"

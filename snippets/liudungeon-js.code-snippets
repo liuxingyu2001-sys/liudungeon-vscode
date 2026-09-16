@@ -286,7 +286,7 @@
     "body": [
       "action.teleport('@all', 'Boss房.落点')"
     ],
-    "description": "teleport(selector, locationRef) — 传送玩家，位置解析失败只打 warning"
+    "description": "teleport(selector, locationRef) — 传送玩家，位置解析失败只打 warning；落地后自动 resync 玩家区域状态"
   },
   "ld-teleport_point": {
     "prefix": "ld-teleport_point",
