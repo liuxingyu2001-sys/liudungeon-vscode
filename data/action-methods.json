@@ -23,6 +23,22 @@
       "example": "action.message('@all', '&e准备开始')"
     },
     {
+      "name": "message",
+      "signature": "message(text)",
+      "params": [
+        {
+          "name": "text",
+          "type": "文本",
+          "doc": "支持 & 颜色与 {占位符}"
+        }
+      ],
+      "returns": "void",
+      "doc": "给全员发消息（不带插件前缀），等价 message('@all', text)",
+      "category": "消息",
+      "aliases": [],
+      "example": "action.message('&e准备开始')"
+    },
+    {
       "name": "broadcast",
       "signature": "broadcast(text)",
       "params": [
@@ -63,6 +79,43 @@
       "category": "消息",
       "aliases": [],
       "example": "action.title('@all', '&6&lBOSS 降临', '&7小心脚下')"
+    },
+    {
+      "name": "title",
+      "signature": "title(selector, title)",
+      "params": [
+        {
+          "name": "selector",
+          "type": "选择器",
+          "doc": "目标玩家选择器"
+        },
+        {
+          "name": "title",
+          "type": "文本",
+          "doc": "主标题，支持 & 颜色与 {占位符}"
+        }
+      ],
+      "returns": "void",
+      "doc": "给选择器命中的玩家显示标题（无副标题）",
+      "category": "消息",
+      "aliases": [],
+      "example": "action.title('@all', '&6&lBOSS 降临')"
+    },
+    {
+      "name": "title",
+      "signature": "title(title)",
+      "params": [
+        {
+          "name": "title",
+          "type": "文本",
+          "doc": "主标题，支持 & 颜色与 {占位符}"
+        }
+      ],
+      "returns": "void",
+      "doc": "给全员显示标题（无副标题）",
+      "category": "消息",
+      "aliases": [],
+      "example": "action.title('&6&lBOSS 降临')"
     },
     {
       "name": "actionbar",
@@ -720,6 +773,27 @@
       "example": "action.give_item('@all', 'DIAMOND', 3)"
     },
     {
+      "name": "give_item",
+      "signature": "give_item(selector, material)",
+      "params": [
+        {
+          "name": "selector",
+          "type": "选择器",
+          "doc": "目标玩家选择器"
+        },
+        {
+          "name": "material",
+          "type": "文本",
+          "doc": "Bukkit Material 名，如 DIAMOND"
+        }
+      ],
+      "returns": "void",
+      "doc": "给物品（默认 1 个，背包满掉落在脚下）",
+      "category": "玩家",
+      "aliases": [],
+      "example": "action.give_item('@all', 'DIAMOND')"
+    },
+    {
       "name": "heal",
       "signature": "heal(selector)",
       "params": [
@@ -832,6 +906,32 @@
       "example": "action.apply_potion('@all', 'SPEED', '10s', 0)"
     },
     {
+      "name": "apply_potion",
+      "signature": "apply_potion(selector, effectName, duration)",
+      "params": [
+        {
+          "name": "selector",
+          "type": "选择器",
+          "doc": "目标玩家选择器"
+        },
+        {
+          "name": "effectName",
+          "type": "文本",
+          "doc": "PotionEffectType 名或 minecraft: 键"
+        },
+        {
+          "name": "duration",
+          "type": "秒数或时间字符串",
+          "doc": "持续时间，用时间字符串如 10s"
+        }
+      ],
+      "returns": "void",
+      "doc": "给玩家加药水效果（默认 I 级）",
+      "category": "玩家",
+      "aliases": [],
+      "example": "action.apply_potion('@all', 'SPEED', '10s')"
+    },
+    {
       "name": "potion",
       "signature": "potion(selector, effectName, duration, amplifier)",
       "params": [
@@ -863,6 +963,32 @@
         "apply_potion"
       ],
       "example": "action.potion('@all', 'SPEED', '10s', 0)"
+    },
+    {
+      "name": "potion",
+      "signature": "potion(selector, effectName, duration)",
+      "params": [
+        {
+          "name": "selector",
+          "type": "选择器",
+          "doc": "目标玩家选择器"
+        },
+        {
+          "name": "effectName",
+          "type": "文本",
+          "doc": "PotionEffectType 名或 minecraft: 键"
+        },
+        {
+          "name": "duration",
+          "type": "秒数或时间字符串",
+          "doc": "持续时间，用时间字符串如 10s"
+        }
+      ],
+      "returns": "void",
+      "doc": "apply_potion 的别名（默认 I 级）",
+      "category": "玩家",
+      "aliases": [],
+      "example": "action.potion('@all', 'SPEED', '10s')"
     },
     {
       "name": "clear_potion",
@@ -977,6 +1103,32 @@
     },
     {
       "name": "sound",
+      "signature": "sound(selector, soundName, volume)",
+      "params": [
+        {
+          "name": "selector",
+          "type": "选择器",
+          "doc": "目标玩家选择器"
+        },
+        {
+          "name": "soundName",
+          "type": "文本",
+          "doc": "Bukkit Sound 枚举名"
+        },
+        {
+          "name": "volume",
+          "type": "数字",
+          "doc": "音量"
+        }
+      ],
+      "returns": "void",
+      "doc": "播放音效（音高默认 1.0）",
+      "category": "特效",
+      "aliases": [],
+      "example": "action.sound('@all', 'ENTITY_PLAYER_LEVELUP', 1.0)"
+    },
+    {
+      "name": "sound",
       "signature": "sound(selector, soundName, volume, pitch)",
       "params": [
         {
@@ -1038,6 +1190,32 @@
       "example": "action.particle('@all', 'FLAME', 'Boss房.中心', 20)"
     },
     {
+      "name": "particle",
+      "signature": "particle(selector, particleName, locationRef)",
+      "params": [
+        {
+          "name": "selector",
+          "type": "选择器",
+          "doc": "目标玩家选择器"
+        },
+        {
+          "name": "particleName",
+          "type": "文本",
+          "doc": "Bukkit Particle 枚举名"
+        },
+        {
+          "name": "locationRef",
+          "type": "文本",
+          "doc": "点位或 x,y,z"
+        }
+      ],
+      "returns": "void",
+      "doc": "放粒子效果（默认 1 个粒子）",
+      "category": "特效",
+      "aliases": [],
+      "example": "action.particle('@all', 'FLAME', 'Boss房.中心')"
+    },
+    {
       "name": "lightning",
       "signature": "lightning(locationRef, damaging)",
       "params": [
@@ -1057,6 +1235,22 @@
       "category": "特效",
       "aliases": [],
       "example": "action.lightning('Boss房.中心', false)"
+    },
+    {
+      "name": "lightning",
+      "signature": "lightning(locationRef)",
+      "params": [
+        {
+          "name": "locationRef",
+          "type": "文本",
+          "doc": "点位或 x,y,z"
+        }
+      ],
+      "returns": "void",
+      "doc": "在指定位置落雷（带伤害）",
+      "category": "特效",
+      "aliases": [],
+      "example": "action.lightning('Boss房.中心')"
     },
     {
       "name": "explosion",
@@ -1116,17 +1310,17 @@
       "params": [
         {
           "name": "timeRef",
-          "type": "秒数或时间字符串",
-          "doc": "day/noon/night/midnight、中文或秒数"
+          "type": "tick 数、day/noon/night/midnight 或时间字符串",
+          "doc": "day/noon/night/midnight（中文同义）、纯数字按 tick（同 /time set 6000）、带单位按时间字符串（300s）"
         }
       ],
       "returns": "void",
-      "doc": "设置副本地图世界时间，纯数字按秒解释而非 tick",
+      "doc": "设置副本地图世界时间，纯数字按 tick 解释（对齐 /time set）",
       "category": "世界 / 工具 / 流程",
       "aliases": [
         "time"
       ],
-      "example": "action.world_time('noon')"
+      "example": "action.world_time('6000')"
     },
     {
       "name": "time",
@@ -1224,6 +1418,22 @@
       "category": "世界 / 工具 / 流程",
       "aliases": [],
       "example": "action.command('@all', 'dbuff choose {player.name}')"
+    },
+    {
+      "name": "command",
+      "signature": "command(command)",
+      "params": [
+        {
+          "name": "command",
+          "type": "文本",
+          "doc": "控制台命令，可带 / 前缀"
+        }
+      ],
+      "returns": "void",
+      "doc": "以控制台身份执行命令",
+      "category": "工具",
+      "aliases": [],
+      "example": "action.command('weather clear')"
     },
     {
       "name": "player_command",

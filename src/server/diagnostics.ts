@@ -321,17 +321,21 @@ function checkMethodCalls(
       continue;
     }
 
-    // 参数个数：只报「给多了」，给少了可能是有意使用重载/可选参数
+    // 参数个数：与数据里同名重载的有效参数个数集合比对。
+    // 以前只报「给多了」，少写一个参数（如 title 少传副标题）就静默无效，
+    // 服主只能等服务端运行时报 Arity error 才发现 —— 现在没有重载能接住的写法直接标出来。
     const call = extractCall(line, m.index + m[0].length - 1);
     if (call) {
       const arity = countArgs(call.args);
-      const max = maxArity(methodName, object);
-      if (arity > max) {
+      const rows = overloadRows(methodName, object);
+      if (rows.length > 0 && !matchesSomeOverload(rows, arity)) {
+        const arities = [...new Set(rows.map((r) => r.params.length))].sort((a, b) => a - b).join(' 或 ');
+        const sigs = rows.map((r) => r.signature).join(' / ');
         out.push({
           range: Range.create(lineNo, nameStart, lineNo, nameStart + methodName.length),
           severity: SEVERITY_WARN,
           source: 'liudungeon',
-          message: `${object}.${methodName} 最多接受 ${max} 个参数，这里给了 ${arity} 个。签名：${method.signature}`,
+          message: `${object}.${methodName} 没有 ${arity} 个参数的版本（可用 ${arities} 个参数）。签名：${sigs}`,
           code: 'arity',
         });
       }
@@ -363,11 +367,22 @@ function checkMethodCalls(
   return out;
 }
 
-/** 同名重载里的最大参数个数（数据里重载会被拆成多行，这里取并集）。 */
-function maxArity(methodName: string, object: string): number {
+/** 同名重载的全部数据行（数据里重载会被拆成多行）。 */
+function overloadRows(methodName: string, object: string): ApiMethod[] {
   const table = object === 'action' ? ACTION_OVERLOADS : DUNGEON_OVERLOADS;
-  const rows = table.get(methodName) ?? [];
-  return rows.reduce((max, m) => Math.max(max, m.params.length), 0);
+  return table.get(methodName) ?? [];
+}
+
+/**
+ * 参数个数是否被某个重载接住。
+ * 末位参数是 {@code ...xxx} 的可变参数按「至少给够前面的」放宽，避免随机组名误报。
+ */
+function matchesSomeOverload(rows: ApiMethod[], arity: number): boolean {
+  return rows.some((m) => {
+    const last = m.params[m.params.length - 1];
+    if (last?.name.startsWith('...')) return arity >= m.params.length - 1;
+    return arity === m.params.length;
+  });
 }
 
 const NAMED_ARG_KINDS: Record<string, RefKind> = {

@@ -165,9 +165,9 @@
   "ld-time": {
     "prefix": "ld-time",
     "body": [
-      "action.world_time('noon')"
+      "action.world_time('6000')"
     ],
-    "description": "world_time(timeRef) — 设置副本地图世界时间，纯数字按秒解释而非 tick（world_time 的别名）"
+    "description": "world_time(timeRef) — 设置副本地图世界时间，纯数字按 tick 解释（对齐 /time set）（world_time 的别名）"
   },
   "ld-potion": {
     "prefix": "ld-potion",

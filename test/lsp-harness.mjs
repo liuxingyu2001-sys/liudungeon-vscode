@@ -474,6 +474,28 @@ function labelDump(items) {
   check('提示里点明要改成 world.spawn', /world\.spawn/.test(msg), msg);
 }
 
+// ---------- 用例 17：诊断 - 参数个数按重载集合校验（少写也报） ----------
+{
+  // title 现在有 1/2/3 参三个版本：两参是合法重载，不能报
+  const okText = "start: |-\n  action.title('@all', '标题')\n";
+  const okUri = openDoc('scripts.yml', okText);
+  await new Promise((r) => setTimeout(r, 250));
+  const okArity = client.diagnosticsFor(okUri).filter((x) => x.code === 'arity');
+  check('title 两参（合法重载）不报 arity', okArity.length === 0, JSON.stringify(okArity).slice(0, 200));
+  closeDoc(okUri);
+
+  const badText = "start: |-\n  action.message()\n  action.spawn_group('wave_1', 2)\n";
+  const badUri = openDoc('scripts.yml', badText);
+  const badDiags = await client.waitFor(() => {
+    const d = client.diagnosticsFor(badUri).filter((x) => x.code === 'arity');
+    return d.length >= 1 ? d : undefined;
+  });
+  const msgs = (badDiags ?? []).map((x) => x.message).join(' | ');
+  check('message 零参被报（没有 0 参版本）', /message 没有 0 个参数的版本/.test(msgs), msgs);
+  check('spawn_group 两参（带倍率重载）不误报', !/spawn_group 没有/.test(msgs), msgs);
+  closeDoc(badUri);
+}
+
 // ---------- 用例 16b：区域脚本占位符不算错 ----------
 {
   const text = 'start:\n  - "action.message(\'@trigger\', \'&e你进入了 {zone.name}\')"\n';
