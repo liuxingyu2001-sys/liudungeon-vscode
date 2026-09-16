@@ -35,6 +35,7 @@ export interface DungeonIndex {
 export type RefKind =
   | 'groups'
   | 'zones'
+  | 'obstacles'
   | 'interacts'
   | 'stages'
   | 'tasks'
@@ -45,6 +46,7 @@ export type RefKind =
 export const REF_LABEL: Record<RefKind, string> = {
   groups: '怪物组',
   zones: '区域',
+  obstacles: '障碍物',
   interacts: '交互点',
   stages: '阶段',
   tasks: '任务',
@@ -56,12 +58,21 @@ export const REF_LABEL: Record<RefKind, string> = {
 const DEFINING_FILE: Record<RefKind, string> = {
   groups: 'monsters.yml',
   zones: 'zones.yml',
+  obstacles: 'obstacles.yml',
   interacts: 'interacts.yml',
   stages: 'stages.yml',
   tasks: 'tasks.yml',
   rewards: 'rewards.yml',
   points: 'zones.yml',
 };
+
+/**
+ * 全部引用类型。
+ *
+ * <p>遍历「所有种类」的地方（悬停找定义、诊断列举）请用它，不要就地写一份数组 ——
+ * 之前 hover.ts 里硬编码的清单漏了 obstacles，新增类型时不会报错、只会静默少一项。
+ */
+export const ALL_REF_KINDS = Object.keys(DEFINING_FILE) as RefKind[];
 
 /** 允许出现在副本目录里的文件（与 DungeonScaffold 的清单对齐）。 */
 export const KNOWN_FILES = new Set(
@@ -96,6 +107,7 @@ export class IndexStore {
       const defs: Record<RefKind, Def[]> = {
         groups: [],
         zones: [],
+        obstacles: [],
         interacts: [],
         stages: [],
         tasks: [],
@@ -106,7 +118,10 @@ export class IndexStore {
       for (const kind of Object.keys(DEFINING_FILE) as RefKind[]) {
         const file = group.find((f) => baseName(f.path) === DEFINING_FILE[kind]);
         if (!file) continue;
-        const containers = containerAliases(DEFINING_FILE[kind], kind);
+        // 点位住在 zones.yml 的「区域.<区域名>.点位」里，容器别名必须按 zones 取；
+        // 按 points 取会退回 ['points']，于是所有点位都收不到。
+        const containerKind: RefKind = kind === 'points' ? 'zones' : kind;
+        const containers = containerAliases(DEFINING_FILE[kind], containerKind);
         if (kind === 'points') {
           defs[kind] = collectPoints(file.text, file.path, containers);
         } else {
@@ -169,6 +184,11 @@ export class IndexStore {
  *
  * 数据里的 containerAliases 形如 {"groups": ["groups","怪物组","waves","波次"]}；
  * 对 zones/interacts 这类“空文件默认写在根节点”的文件，根映射本身就是容器。
+ *
+ * <p><b>键必须是 {@link RefKind}（不是容器名）</b>。这条契约一度被写反：zones.yml
+ * 那份写成了 `{"区域": [...]}` 而这里查的是 `['zones']`，于是查不到、静默退回 `[kind]`，
+ * 结果「区域 / 交互 / 阶段」三类的名字一个都没进索引 —— 补全空白、引用校验全放行。
+ * 这类笔误不会报错，所以由 harness 的用例 24 直接对数据文件断言，别只靠这里兜。
  */
 export function containerAliases(file: string, kind: RefKind): string[] {
   const cfg = CONFIG_FILE_BY_NAME.get(file);
@@ -251,8 +271,11 @@ function collectNames(text: string, file: string, containers: string[]): Def[] {
       break;
     }
   }
-  // zones.yml / interacts.yml 允许直接写在根节点
-  if (!container && (file === 'zones.yml' || file === 'interacts.yml')) {
+  // zones.yml / interacts.yml 允许直接写在根节点。
+  // 这里必须比 basename：file 是绝对路径，早先拿全路径跟 'zones.yml' 比，
+  // 这个兜底从来没生效过（写根节点的文件一个名字都收不到）。
+  const shortName = baseName(file);
+  if (!container && (shortName === 'zones.yml' || shortName === 'interacts.yml')) {
     container = root;
   }
   if (!container) return [];

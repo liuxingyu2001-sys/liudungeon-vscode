@@ -16,7 +16,7 @@ import {
   scriptBlockLines,
   type ApiMethod,
 } from './api-model';
-import { IndexStore, REF_LABEL, type RefKind } from './index-store';
+import { ALL_REF_KINDS, IndexStore, REF_LABEL } from './index-store';
 import { analyze, nodeAt } from './yaml-context';
 import { baseName, keySpellings } from './yaml-shared';
 
@@ -120,10 +120,10 @@ export function provideHover(input: HoverInput): Hover | null {
     }
   }
 
-  // 7) 引用的名字（怪物组 / 区域 / 奖励 …）→ 显示定义位置
+  // 7) 引用的名字（怪物组 / 区域 / 障碍物 / 奖励 …）→ 显示定义位置
   const dir = input.index.dirForFile(input.filePath);
   if (dir) {
-    for (const kind of ['groups', 'zones', 'rewards', 'stages', 'interacts', 'tasks', 'points'] as RefKind[]) {
+    for (const kind of ALL_REF_KINDS) {
       const def = input.index.names(kind, dir).find((d) => d.name === word.word);
       if (def) {
         return {

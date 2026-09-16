@@ -11,17 +11,18 @@
 
 | 能力 | 说明 |
 | --- | --- |
-| **action.* / dungeon.* 补全** | 70 个 `action.*` + 49 个 `dungeon.*` 方法，含签名、参数表、分类、可直接跑的示例 |
+| **action.* / dungeon.* 补全** | 84 个 `action.*` + 51 个 `dungeon.*` 方法，含签名、参数表、分类、可直接跑的示例 |
 | **YAML 里嵌的 JS 也能补全** | 脚本字段统一 **`\|-` 块**写法（`complete: \|-` 下面一行一条、行尾分号）；老配置的引号字符串 `- "action.spawn_group('…')"` 列表也照常支持。两种写法里补全、悬停、诊断都生效 |
-| **配置文件键名补全** | `config.yml` / `monsters.yml` / `stages.yml` / `zones.yml` / `interacts.yml` / `tasks.yml` / `rewards.yml` / `scripts.yml` 的 167 个键，含中文别名与枚举取值 |
+| **配置文件键名补全** | `config.yml` / `monsters.yml` / `stages.yml` / `zones.yml` / `obstacles.yml` / `interacts.yml` / `tasks.yml` / `rewards.yml` / `scripts.yml` / `functions.js` 的 177 个键，含中文别名与枚举取值 |
+| **名字补全（副本里已定义的名字）** | 参数位置直接列出本副本的定义：`action.spawn_group('…')` 给怪物组、`enable_zone` 给区域、`teleport_point` 给点位、`create_obstacle` 给障碍物、`goto_stage` 给阶段、`grant_reward` 给奖励；YAML 里 `区域:` / `触发组:` / `点位:` 这类键（中英文键名都算）同样给名字 |
 | **悬停文档** | 鼠标停在方法名、键名、`@all`、`{player.name}` 上直接看中文说明 |
-| **跳转到定义** | `trigger_group: wave_1` 里的 `wave_1`、脚本里的 `'通关奖励'` 都能跳回定义处 |
-| **查找引用（Shift+Alt+F12）** | 一个怪物组 / 区域 / 奖励被哪些文件用到：`trigger_group`、`action.spawn_group('x')`、`dungeon.isGroupCleared('x')` 全部找出来（注释里的不算） |
+| **跳转到定义** | `trigger_group: wave_1` 里的 `wave_1`、脚本里的 `'通关奖励'`、`enable_zone('前厅')` 里的 `'前厅'` 都能跳回定义处 |
+| **查找引用（Shift+Alt+F12）** | 一个怪物组 / 区域 / 障碍物 / 奖励被哪些文件用到：`trigger_group`、`action.spawn_group('x')`、`dungeon.isGroupCleared('x')` 全部找出来（注释里的不算） |
 | **重命名（F2）** | 改名会同时改定义键与所有引用，跨 `monsters.yml` / `scripts.yml` 一起改；名字非法（含点号/空格/冒号）会被直接拒绝 |
 | **同词高亮** | 光标停在某个名字上，本文件里的定义处与引用处分别高亮（写/读两种颜色） |
 | **快速修复** | 能确定性修好的诊断给一键修：`count: 0` → `-1`/`3`、随机奖励缺 `options` → 插入骨架、拼错的钩子名 → 改成正确名、`dungeon` 段里的 `spawn` → 删掉 |
 | **大纲** | 文件里定义了哪些波次 / 区域 / 奖励，侧边栏直接看 |
-| **诊断（重点）** | 方法名写错、参数给多、选择器没实现、占位符写错、时间写法不合法、钩子名写错、引用了不存在的怪物组 / 区域 / 奖励、`spawn` 写到 `dungeon` 段里…… 全部直接标出来 |
+| **诊断（重点）** | 方法名写错、参数给多、选择器没实现、占位符写错、时间写法不合法、钩子名写错（**中文钩子名也报** —— 插件只认 `init`/`start`/`complete`/`fail`/`exit`/`player_death`/`all_death`，写「开始:」等于整段脚本不执行）、引用了不存在的怪物组 / 区域 / 障碍物 / 交互点 / 阶段 / 奖励 / 点位（**脚本参数与 YAML 键两种写法都查**）、`spawn` 写到 `dungeon` 段里…… 全部直接标出来 |
 | **片段** | 补全面板 + `ld-` 前缀片段；常用写法一键展开 |
 | **类型声明** | 自动生成 `.liudungeon/liudungeon.d.ts`，让 VS Code 自带的 JS 智能提示也认识 `action` / `dungeon` |
 
@@ -94,8 +95,8 @@ function 检查(d) {
 | `选择器 @party 没有实现` | `resolveSelector` 里没有这个分支，会回落到触发者 |
 | `占位符 {player_name} 不会被替换` | 占位符是固定名单，写错就原样显示给玩家 |
 | `时间写法 "3秒钟" 解析失败会静默变成 0` | 只认 `3s` / `3秒` / `5m` / `5分` / `2h` / `100t` / `500ms` / 纯数字 |
-| `钩子名不是 scripts.yml 的钩子` | 拼错的钩子不会执行，也不报错 |
-| `怪物组 / 区域 / 奖励「x」不存在` | 同副本目录里找不到定义 |
+| `钩子名不是 scripts.yml 的钩子` | 拼错的钩子不会执行，也不报错。**中文钩子名同样报**（插件只认 `init`/`start`/`complete`/`fail`/`exit`/`player_death`/`all_death`；写「开始:」看起来很像对的，实际整段脚本一次都不跑） |
+| `怪物组 / 区域 / 障碍物 / 交互点 / 阶段 / 奖励 / 点位「x」不存在` | 同副本目录里找不到定义。脚本参数（`action.enable_zone('前厅')`）与 YAML 键（`区域: 前厅`、`zone: 前厅`）两种写法都查 |
 | `spawn 写在 dungeon 段里不会生效` | 运行时读的是 `world.spawn` |
 | `revive 配了复活方式但 count: 0` | `count` 默认 0 = 禁止复活，`auto`/`item`/`ally` 全都不会生效 —— 玩家倒下后卡在旁观者视角，看起来就像「复活系统跟摆设一样」 |
 | `player 在这个钩子里不存在` | `complete` / `fail` / `exit` / `all_death` 等钩子没有触发者，直接引用会抛 `ReferenceError` |
@@ -131,7 +132,7 @@ src/server/          语言服务（补全 / 悬停 / 跳转 / 诊断）
   hover.ts           悬停
   diagnostics.ts     诊断
   yaml-context.ts    缩进栈解析：键路径 + 识别 YAML 里嵌的 JS
-  index-store.ts     副本目录索引：定义了哪些组 / 区域 / 奖励
+  index-store.ts     副本目录索引：定义了哪些组 / 区域 / 障碍物 / 交互点 / 阶段 / 奖励 / 点位
   references.ts      引用引擎：定义 + 各处引用的位置（跳转/引用/重命名/高亮共用）
   code-actions.ts    快速修复：只做机械且无歧义的改动
   api-model.ts       把 data/*.json 规整成可用结构
@@ -139,6 +140,7 @@ src/server/          语言服务（补全 / 悬停 / 跳转 / 诊断）
 data/                从插件源码与文档提取的参考数据
   action-methods.json / dungeon-methods.json / config-files.json
 test/lsp-harness.mjs 端到端自检（真跑一个 LSP 服务）
+scripts/mutate-refs.sh 变异测试：把这次的修复逐个改回坏写法，确认自检真的会红
 snippets/            构建时生成的 VS Code 片段
 ```
 
@@ -148,13 +150,18 @@ snippets/            构建时生成的 VS Code 片段
 
 ```bash
 npm run typecheck   # TS 类型检查
-npm test            # 构建 + 端到端自检（134 项断言，约 5 秒）
+npm test            # 构建 + 端到端自检（202 项断言，约 10 秒）
+bash scripts/mutate-refs.sh   # 变异测试：把关键修复逐个改回坏写法，确认自检真的会红
 npm run package     # 打成 vsix
 ```
 
 自检脚本会：真启动语言服务、发真实 LSP 报文、并用插件仓库里 `src/main/resources/example/`
 的真实配置做「不许有误报」的回归。它还会核对 ActionApi.java / DungeonApi.java 的每个
 public 方法都在补全数据里，防止插件升级后扩展悄悄过期。
+
+「名字补全」与「引用校验」另有一份 tmp 下现造的副本目录（`test/lsp-harness.mjs` 里的
+`REF_FILES`）：插件自带的 example/ 里 `zones.yml` / `stages.yml` / `interacts.yml` 全是
+注释示例，一个区域、一个阶段都没定义 —— 只靠它测，这几类名字全空也不会有人发现。
 
 如果插件仓库不在 `/home/liu/plugins/liudungeon`，用环境变量指定：
 

@@ -1035,7 +1035,7 @@
       "title": "阶段流程机",
       "summary": "事件驱动的阶段主线：通关条件、限时与分支跳转",
       "containerAliases": {
-        "阶段": [
+        "stages": [
           "阶段",
           "stages"
         ]
@@ -1163,7 +1163,7 @@
       "title": "区域与命名点位",
       "summary": "集中维护长方体区域与命名坐标，供怪物组、交互点与脚本引用",
       "containerAliases": {
-        "区域": [
+        "zones": [
           "区域",
           "zones"
         ]
@@ -1277,7 +1277,7 @@
       "title": "障碍物（可开关的方块组）",
       "summary": "一组方块，脚本可以让它出现/消失；开启时自动恢复原方块快照",
       "containerAliases": {
-        "障碍物": [
+        "obstacles": [
           "障碍物",
           "obstacles"
         ]
@@ -1376,7 +1376,7 @@
       "title": "交互点",
       "summary": "定义可触发的方块、区域与实体交互，触发时执行脚本",
       "containerAliases": {
-        "交互": [
+        "interacts": [
           "交互",
           "interacts"
         ]

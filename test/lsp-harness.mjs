@@ -9,7 +9,8 @@
  * 这里只需要一个会说 LSP 的客户端就能覆盖，跑得也快（< 2 秒）。
  */
 import { spawn } from 'node:child_process';
-import { readFileSync, readdirSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -128,6 +129,57 @@ class LspClient {
 const PLUGIN_DIR = process.env.LD_PLUGIN_DIR ?? '/home/liu/plugins/liudungeon';
 const DUNGEON_ROOT = join(PLUGIN_DIR, 'src/main/resources/example');
 
+/**
+ * 自造一个「**有真定义**的副本目录」。
+ *
+ * 为什么不能省：插件自带的 example/ 里 zones.yml / stages.yml / interacts.yml
+ * 全是注释示例（一个区域、一个阶段都没定义），所以「名字补全」与「跨文件引用校验」
+ * 在那份工作区上永远是空的 —— 早先正是这样，索引里区域/点位/交互/阶段四类一个
+ * 都没收进来（containerAliases 的键写成了容器名而不是引用类型），却没有任何用例
+ * 发现。这里落到 tmp 下的 dungeons/<名>/（路径含 /dungeons/ 才会启用诊断），
+ * 并把 config.yml 一并写上 —— 索引只认「目录里有 config.yml」的目录。
+ */
+const REF_DIR = join(mkdtempSync(join(tmpdir(), 'ld-ref-')), 'dungeons', 'refdungeon');
+
+const REF_FILES = {
+  'config.yml': "dungeon:\n  name: '&e校验用副本'\nworld:\n  template: voidgen\n  spawn: '0,65,0,0,0'\n",
+  'zones.yml': "区域:\n  战斗区:\n    范围: '0,60,0 ~ 20,80,20'\n    点位:\n      中心: '10,64,10'\n      落点: '10,64,10,90,0'\n",
+  'obstacles.yml': "障碍物:\n  Boss门:\n    区域: 战斗区\n    材质: IRON_BARS\n    默认状态: 开启\n",
+  'monsters.yml': "怪物组:\n  wave_1:\n    刷新时机:\n      type: AUTO_START\n    区域: 战斗区\n    monsters:\n      - id: Zombie\n        point: 中心\n",
+  'interacts.yml': "交互:\n  能量核心:\n    类型: RIGHT_CLICK_BLOCK\n    坐标: '0,64,0'\n",
+  'stages.yml': '阶段:\n  第一阶段:\n    目标: kill_all\n',
+  'rewards.yml': '奖励:\n  通关奖励:\n    经验: 10\n',
+  'tasks.yml': 'tasks:\n  倒计时:\n    type: 定时\n    times:\n      300: |-\n        action.message(\'@all\', \'&e还剩 5 分钟\');\n',
+  'scripts.yml': "start: |-\n  action.message('@all', '&e开始');\n",
+};
+
+/** 区域直接写在根节点的写法（插件允许，见 zones.yml 示例顶部注释）。 */
+const REF_FLAT_DIR = join(mkdtempSync(join(tmpdir(), 'ld-flat-')), 'dungeons', 'flatdungeon');
+
+const REF_FLAT_FILES = {
+  'config.yml': "dungeon:\n  name: '&e根节点写法'\nworld:\n  template: voidgen\n",
+  'zones.yml': "前厅:\n  名称: '&e前厅'\n  范围: '0,60,0 ~ 10,70,10'\n  点位:\n    落点: '5,64,5'\n",
+  'monsters.yml': '怪物组:\n  wave_1:\n    刷新时机:\n      type: AUTO_START\n    monsters:\n      - id: Zombie\n        location: \'0,64,0\'\n',
+};
+
+function writeRefFixture() {
+  try {
+    mkdirSync(REF_DIR, { recursive: true });
+    for (const [name, text] of Object.entries(REF_FILES)) {
+      writeFileSync(join(REF_DIR, name), text, 'utf8');
+    }
+    // 第二种写法：区域/交互直接写在根节点（没有 `区域:` 外层）。
+    // 插件允许这样写，索引里的「根节点兜底」分支必须真的生效 ——
+    // 那条分支一度拿绝对路径去比 'zones.yml'，永远不成立。
+    mkdirSync(REF_FLAT_DIR, { recursive: true });
+    for (const [name, text] of Object.entries(REF_FLAT_FILES)) {
+      writeFileSync(join(REF_FLAT_DIR, name), text, 'utf8');
+    }
+  } catch {
+    /* 写不出来时相关用例会失败并给出空白结果，比静默跳过更容易发现 */
+  }
+}
+
 /** 造一份「副本目录」快照：example/ 下的所有文件都算 trial 副本。 */
 function buildWorkspace() {
   const files = [];
@@ -141,6 +193,13 @@ function buildWorkspace() {
     if (!/\.(ya?ml|js|md)$/.test(n)) continue;
     const text = readFileSync(join(DUNGEON_ROOT, n), 'utf8');
     files.push({ uri: `file://${DUNGEON_ROOT}/${n}`, text });
+  }
+  writeRefFixture();
+  for (const [name, text] of Object.entries(REF_FILES)) {
+    files.push({ uri: `file://${REF_DIR}/${name}`, text });
+  }
+  for (const [name, text] of Object.entries(REF_FLAT_FILES)) {
+    files.push({ uri: `file://${REF_FLAT_DIR}/${name}`, text });
   }
   return files;
 }
@@ -172,11 +231,17 @@ client.notify('initialized', {});
 const ws = buildWorkspace();
 client.notify('liudungeon/loadWorkspace', { files: ws });
 
-/** 打开一个虚拟文档（内容可覆盖），返回 uri。 */
+/** 打开过的虚拟文档（用例 17 会统一关掉，避免互相污染）。 */
 const openUris = [];
 
-function openDoc(name, text) {
-  const uri = `file://${DUNGEON_ROOT}/${name}`;
+/**
+ * 打开一个虚拟文档（内容可覆盖），返回 uri。
+ *
+ * `dir` 默认用插件示例目录；传 REF_DIR 就能在「有真定义」的那份副本上测名字补全
+ * 与引用校验（见 REF_FILES 的说明）。
+ */
+function openDoc(name, text, dir = DUNGEON_ROOT) {
+  const uri = `file://${dir}/${name}`;
   if (!openUris.includes(uri)) openUris.push(uri);
   client.notify('textDocument/didOpen', {
     textDocument: { uri, languageId: name.endsWith('.js') ? 'javascript' : 'yaml', version: 1, text },
@@ -1080,6 +1145,221 @@ function labelDump(items) {
     check('liudungeon.d.ts 生成通过 tsc 语法检查', true, '');
   } catch (e) {
     check('liudungeon.d.ts 生成通过 tsc 语法检查', false, String(e.stdout ?? e.message).slice(0, 400));
+  }
+}
+
+// ---------- 用例 20：名字补全（每种引用类型都要能列出本副本的定义） ----------
+// 这一组是回归的重点：索引层一度把「区域 / 点位 / 交互 / 阶段」四类全收丢了
+// （containerAliases 的键写成了容器名而不是引用类型），表现在括号里给出的是
+// 一长串方法名，而不是副本里的名字 —— 而当时没有任何用例覆盖到。
+{
+  const cases = [
+    ['enable_zone', 'zones', '战斗区', "start:\n  - \"action.enable_zone('')\"\n"],
+    ['teleport_point', 'points', '战斗区.中心', "start:\n  - \"action.teleport_point('')\"\n"],
+    ['trigger_interact', 'interacts', '能量核心', "start:\n  - \"action.trigger_interact('')\"\n"],
+    ['goto_stage', 'stages', '第一阶段', "start:\n  - \"action.goto_stage('')\"\n"],
+    ['grant_reward', 'rewards', '通关奖励', "start:\n  - \"action.grant_reward('@all','')\"\n"],
+    ['spawn_group', 'groups', 'wave_1', "start:\n  - \"action.spawn_group('')\"\n"],
+    ['create_obstacle', 'obstacles', 'Boss门', "start:\n  - \"action.create_obstacle('')\"\n"],
+    ['remove_obstacle', 'obstacles', 'Boss门', "start:\n  - \"action.remove_obstacle('')\"\n"],
+    ['toggle_obstacle', 'obstacles', 'Boss门', "start:\n  - \"action.toggle_obstacle('')\"\n"],
+  ];
+  for (const [method, kind, expect, text] of cases) {
+    const uri = openDoc('scripts.yml', text, REF_DIR);
+    await new Promise((r) => setTimeout(r, 150));
+    const got = labels(await completions(uri, 1, text.split('\n')[1].indexOf(`'`) + 1));
+    check(`${method} 的参数补全列出${kind}的「${expect}」`, got.includes(expect), got.join(','));
+    check(`${method} 的参数补全不再退回方法名清单`, !got.includes('complete_dungeon'), got.slice(0, 8).join(','));
+    closeDoc(uri);
+    await new Promise((r) => setTimeout(r, 80));
+  }
+
+  // dungeon.* 侧的障碍物查询
+  for (const method of ['isObstacleClosed', 'hasObstacle']) {
+    const text = `start:\n  - "dungeon.${method}('')"\n`;
+    const uri = openDoc('scripts.yml', text, REF_DIR);
+    await new Promise((r) => setTimeout(r, 150));
+    const got = labels(await completions(uri, 1, text.split('\n')[1].indexOf(`'`) + 1));
+    check(`dungeon.${method} 的名字补全列出「Boss门」`, got.includes('Boss门'), got.join(','));
+    closeDoc(uri);
+    await new Promise((r) => setTimeout(r, 80));
+  }
+}
+
+// ---------- 用例 21：YAML 值位置的名字补全（中英文键都要有） ----------
+{
+  const cases = [
+    ['monsters.yml', 'groups:\n  wave_1:\n    zone: \n', 'zone: ', '战斗区'],
+    ['monsters.yml', '怪物组:\n  wave_1:\n    区域: \n', '区域: ', '战斗区'],
+    ['monsters.yml', '怪物组:\n  wave_1:\n    monsters:\n      x:\n        点位: \n', '点位: ', '战斗区.中心'],
+    ['monsters.yml', '怪物组:\n  wave_1:\n    触发组: \n', '触发组: ', 'wave_1'],
+    ['obstacles.yml', '障碍物:\n  Boss门:\n    区域: \n', '区域: ', '战斗区'],
+  ];
+  for (const [file, text, token, expect] of cases) {
+    const uri = openDoc(file, text, REF_DIR);
+    await new Promise((r) => setTimeout(r, 150));
+    const line = text.split('\n').findIndex((l) => l.includes(token));
+    const got = labels(await completions(uri, line, text.split('\n')[line].length));
+    check(`${file} 的「${token.trim()}」值补全列出「${expect}」`, got.includes(expect), got.join(','));
+    closeDoc(uri);
+    await new Promise((r) => setTimeout(r, 80));
+  }
+}
+
+// ---------- 用例 22：跨文件引用校验（写错的名字要报出来） ----------
+{
+  const bad = [
+    ['scripts.yml', "start:\n  - \"action.enable_zone('查无此区')\"\n", /区域「查无此区」/, '区域'],
+    ['scripts.yml', "start:\n  - \"action.goto_stage('查无此阶段')\"\n", /阶段「查无此阶段」/, '阶段'],
+    ['scripts.yml', "start:\n  - \"action.trigger_interact('查无此点')\"\n", /交互点「查无此点」/, '交互点'],
+    ['scripts.yml', "start:\n  - \"action.create_obstacle('查无此门')\"\n", /障碍物「查无此门」/, '障碍物'],
+    ['scripts.yml', "start:\n  - \"dungeon.isObstacleClosed('查无此门')\"\n", /障碍物「查无此门」/, '障碍物'],
+    ['monsters.yml', '怪物组:\n  wave_1:\n    区域: 查无此区\n', /区域「查无此区」/, 'YAML 的 区域:'],
+    ['monsters.yml', 'groups:\n  wave_1:\n    zone: 查无此区\n', /区域「查无此区」/, 'YAML 的 zone:'],
+  ];
+  for (const [file, text, re, what] of bad) {
+    const uri = openDoc(file, text, REF_DIR);
+    const diags = await client.waitFor(() => {
+      const d = client.diagnosticsFor(uri);
+      return d.some((x) => x.code === 'unknown-reference') ? d : undefined;
+    });
+    const hit = (diags ?? []).some((x) => re.test(x.message));
+    check(`${what} 写错时报 unknown-reference`, hit, JSON.stringify(diags ?? []).slice(0, 300));
+    closeDoc(uri);
+    await new Promise((r) => setTimeout(r, 80));
+  }
+
+  // 反向：名字写对时一条引用错误都不能有（误报比漏报更烦人）
+  const good = [
+    ['scripts.yml', "start:\n  - \"action.enable_zone('战斗区')\"\n"],
+    ['scripts.yml', "start:\n  - \"action.create_obstacle('Boss门')\"\n"],
+    ['scripts.yml', "start:\n  - \"action.teleport_point('@all','战斗区.中心')\"\n"],
+    ['monsters.yml', '怪物组:\n  wave_1:\n    区域: 战斗区\n',],
+    ['obstacles.yml', '障碍物:\n  Boss门:\n    区域: 战斗区\n'],
+  ];
+  for (const [file, text] of good) {
+    const uri = openDoc(file, text, REF_DIR);
+    await new Promise((r) => setTimeout(r, 350));
+    const refs = client.diagnosticsFor(uri).filter((d) => d.code === 'unknown-reference');
+    check(`${file} 里写对的名字没有引用误报`, refs.length === 0, JSON.stringify(refs).slice(0, 300));
+    closeDoc(uri);
+    await new Promise((r) => setTimeout(r, 80));
+  }
+
+  // 属性键不能被当成名字引用（区域名称/默认开启/范围 的值不是名字）
+  const props = openDoc('zones.yml', "区域:\n  战斗区:\n    区域名称: '&e前厅战斗区'\n    范围: '0,60,0 ~ 20,80,20'\n    默认开启: true\n", REF_DIR);
+  await new Promise((r) => setTimeout(r, 350));
+  const propRefs = client.diagnosticsFor(props).filter((d) => d.code === 'unknown-reference');
+  check('zones.yml 的 区域名称/范围/默认开启 不产生引用误报', propRefs.length === 0, JSON.stringify(propRefs).slice(0, 300));
+  closeDoc(props);
+  await new Promise((r) => setTimeout(r, 80));
+}
+
+// ---------- 用例 23：钩子名 —— 中文键也必须报（写了不会执行） ----------
+{
+  const cases = [
+    ['start:', true, '英文合法钩子'],
+    ['nosuchhook:', false, '英文非法钩子'],
+    ['开始:', false, '中文非法钩子'],
+    ['通关:', false, '中文非法钩子'],
+  ];
+  for (const [key, ok, what] of cases) {
+    const text = `${key}\n  - "action.message('@all','x')"\n`;
+    const uri = openDoc('scripts.yml', text);
+    await new Promise((r) => setTimeout(r, 350));
+    const got = client.diagnosticsFor(uri).filter((d) => d.code === 'unknown-hook');
+    check(`${what}「${key}」${ok ? '不报' : '报 unknown-hook'}`, ok ? got.length === 0 : got.length > 0, JSON.stringify(got).slice(0, 250));
+    closeDoc(uri);
+    await new Promise((r) => setTimeout(r, 80));
+  }
+}
+
+// ---------- 用例 24：引用数据自身的契约（挡住这次那类笔误） ----------
+// containerAliases 的键必须是引用类型（RefKind），不是容器名 —— 写反了不会报错，
+// 只会让那一类名字静默地全部收不到。这里直接对数据文件断言，别等表现异常才发现。
+{
+  const cfg = JSON.parse(readFileSync('data/config-files.json', 'utf8'));
+  const KINDS = ['groups', 'zones', 'obstacles', 'interacts', 'stages', 'tasks', 'rewards'];
+  const DEFINING = {
+    groups: 'monsters.yml',
+    zones: 'zones.yml',
+    obstacles: 'obstacles.yml',
+    interacts: 'interacts.yml',
+    stages: 'stages.yml',
+    tasks: 'tasks.yml',
+    rewards: 'rewards.yml',
+  };
+  for (const kind of KINDS) {
+    const f = cfg.files.find((x) => x.file === DEFINING[kind]);
+    const aliases = f?.containerAliases?.[kind];
+    check(`data/config-files.json 里 ${DEFINING[kind]} 的 containerAliases 以「${kind}」为键`,
+      Array.isArray(aliases) && aliases.length > 0, JSON.stringify(f?.containerAliases ?? null));
+  }
+}
+
+// ---------- 用例 25：区域写在根节点时也要能补全与校验 ----------
+// 插件允许 zones.yml 不写 `区域:` 外层（示例文件顶部就是这么说的）。
+{
+  const text = "start:\n  - \"action.enable_zone('')\"\n";
+  const uri = openDoc('scripts.yml', text, REF_FLAT_DIR);
+  await new Promise((r) => setTimeout(r, 200));
+  const got = labels(await completions(uri, 1, text.split('\n')[1].indexOf(`'`) + 1));
+  check('根节点写法：enable_zone 补全列出「前厅」', got.includes('前厅'), got.join(','));
+  closeDoc(uri);
+  await new Promise((r) => setTimeout(r, 100));
+
+  // 点位：走 YAML 值位置（collectPoints 的根节点兜底分支）
+  const ptText = '怪物组:\n  wave_1:\n    点位: \n';
+  const pt = openDoc('monsters.yml', ptText, REF_FLAT_DIR);
+  await new Promise((r) => setTimeout(r, 200));
+  const gotPt = labels(await completions(pt, 2, '    点位: '.length));
+  check('根节点写法：点位补全列出「前厅.落点」', gotPt.includes('前厅.落点'), gotPt.join(','));
+  closeDoc(pt);
+  await new Promise((r) => setTimeout(r, 100));
+
+  const bad = openDoc('scripts.yml', "start:\n  - \"action.enable_zone('查无此区')\"\n", REF_FLAT_DIR);
+  const diags = await client.waitFor(() => {
+    const d = client.diagnosticsFor(bad);
+    return d.some((x) => x.code === 'unknown-reference') ? d : undefined;
+  });
+  check('根节点写法：写错的区域名也报出来', Boolean(diags?.some((x) => /区域「查无此区」/.test(x.message))), JSON.stringify(diags ?? []).slice(0, 250));
+  closeDoc(bad);
+  await new Promise((r) => setTimeout(r, 100));
+}
+
+// ---------- 用例 26：跳转 / 查引用 / 重命名 也要认识新加的名字类别 ----------
+// 这一段是补全之外的「另一半」：symbolAt 里硬编码过一份 kind 清单，新增 obstacles 时
+// 漏掉，表现很割裂 —— 同一行里障碍物名能补全出来，点它却跳不过去、F2 也改不了。
+{
+  const cases = [
+    ['action.create_obstacle(\'Boss门\')', 'Boss门', 'obstacles.yml', '障碍物'],
+    ['action.enable_zone(\'战斗区\')', '战斗区', 'zones.yml', '区域'],
+    ['action.trigger_interact(\'能量核心\')', '能量核心', 'interacts.yml', '交互点'],
+    ['action.goto_stage(\'第一阶段\')', '第一阶段', 'stages.yml', '阶段'],
+  ];
+  for (const [call, name, defFile, what] of cases) {
+    const text = `start:\n  - "${call}"\n`;
+    const uri = openDoc('scripts.yml', text, REF_DIR);
+    await new Promise((r) => setTimeout(r, 200));
+    const at = posOf(text, name);
+
+    const defs = await request('textDocument/definition', { textDocument: { uri }, position: at });
+    check(`${what}「${name}」能跳到 ${defFile}`,
+      (defs ?? []).length === 1 && (defs ?? [])[0].uri.endsWith(defFile),
+      JSON.stringify(defs ?? []).slice(0, 200));
+
+    const refs = await request('textDocument/references', {
+      textDocument: { uri }, position: at, context: { includeDeclaration: true },
+    });
+    const files = new Set((refs ?? []).map((r) => r.uri.split('/').pop()));
+    check(`${what}「${name}」的引用同时含定义文件与 scripts.yml`,
+      files.has(defFile) && files.has('scripts.yml'), [...files].join(','));
+
+    const prepared = await request('textDocument/prepareRename', { textDocument: { uri }, position: at });
+    check(`${what}「${name}」可重命名`, Boolean(prepared?.range), JSON.stringify(prepared ?? {}));
+
+    closeDoc(uri);
+    await new Promise((r) => setTimeout(r, 80));
   }
 }
 

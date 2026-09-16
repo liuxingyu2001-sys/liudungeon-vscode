@@ -28,6 +28,7 @@ import {
   type ConfigNode,
 } from './api-model';
 import { IndexStore, RefKind, REF_LABEL } from './index-store';
+import { kindOfJsMethod } from './references';
 import { analyze, childNodes, nodeAt, type YamlContext } from './yaml-context';
 import { baseName, keySpellings, splitPath } from './yaml-shared';
 import { functionSnippets, javascriptSnippets } from './snippets';
@@ -59,49 +60,49 @@ const SCRIPT_KEYS = new Set([
 
 const CONDITION_HINT_KEYS = new Set(['condition', '条件', 'when']);
 
-/** 值为“名字引用”的键 → 对应容器类型；键名与脚本 API 参数名都收在这里。 */
+/**
+ * 值为“名字引用”的 **YAML 键名** → 对应引用类型。
+ *
+ * <p>只放 YAML 键名与个别别名：脚本方法名（`spawn_group(''）`那种）一律走
+ * {@link kindOfJsMethod}，那份表在 references.ts 里，是「方法名 → 引用类型」的唯一出处。
+ * 早先这里另抄了一份方法名，两边越走越远 —— 障碍物的 5 个方法只在补全表里漏了，
+ * 表现是括号里给出一长串方法名，而不是副本里的名字。
+ *
+ * <p>键名要与 references.ts 的 RULES.yamlRefKeys 对齐，否则「中文键写的位置能给补全、
+ * 写错了却不报」或者反过来。
+ */
 const NAME_REF_KEYS: Record<string, RefKind> = {
-  // 脚本 API 参数名
-  spawn_group: 'groups',
-  monster_group: 'groups',
-  random_spawn_group: 'groups',
-  random_monster_group: 'groups',
-  stop_repeat: 'groups',
-  cancel_group: 'groups',
-  clear_group: 'groups',
-  skip_group: 'groups',
-  wait_clear: 'groups',
-  enable_zone: 'zones',
-  disable_zone: 'zones',
-  teleport_zone: 'zones',
-  trigger_interact: 'interacts',
-  grant_reward: 'rewards',
-  goto_stage: 'stages',
-  teleport_point: 'points',
-  getAliveMonsterCount: 'groups',
-  isGroupCleared: 'groups',
-  isGroupActive: 'groups',
-  getGroupSpawned: 'groups',
-  getGroupKilled: 'groups',
-  getRepeatCount: 'groups',
-  isBossKilled: 'groups',
-  getZone: 'zones',
-  getZoneName: 'zones',
-  isInZone: 'zones',
-  getZonePlayerCount: 'zones',
-  isZoneEnabled: 'zones',
-  // YAML 键名
+  // 怪物组
   group: 'groups',
   trigger_group: 'groups',
+  触发组: 'groups',
+  分组: 'groups',
+  // 区域
   zone: 'zones',
+  区域: 'zones',
+  进入区域: 'zones',
+  离开区域: 'zones',
+  区域名称: 'zones',
+  // 交互点
   interact: 'interacts',
   interact_id: 'interacts',
+  交互: 'interacts',
+  交互点: 'interacts',
+  // 奖励
   reward: 'rewards',
   reward_name: 'rewards',
+  奖励: 'rewards',
+  // 阶段
   stage: 'stages',
+  阶段: 'stages',
+  // 任务
   task: 'tasks',
   tasks: 'tasks',
+  任务: 'tasks',
+  // 点位
   point: 'points',
+  点位: 'points',
+  落点: 'points',
 };
 
 export function provideCompletions(input: CompletionInput): CompletionItem[] {
@@ -456,8 +457,8 @@ function javascriptCompletions(
     if (out.length) return out;
   }
 
-  // 名字类参数（组名 / 区域名 / 奖励名 …）
-  const refKind = NAME_REF_KEYS[ctx.callMethod];
+  // 名字类参数（组名 / 区域名 / 障碍物名 …）
+  const refKind = NAME_REF_KEYS[ctx.callMethod] ?? kindOfJsMethod(ctx.callMethod);
   if (ctx.inString && refKind) {
     const items = nameItems(input.index, input.index.dirForFile(input.filePath), refKind, range)
       .filter((i) => !ctx.word || String(i.label).startsWith(ctx.word));

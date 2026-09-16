@@ -12,7 +12,7 @@
  * 这样才不会把注释里、文案里恰好同名的字符串误认成引用。
  */
 import { Location, Position, Range } from 'vscode-languageserver';
-import { IndexStore, RefKind, REF_LABEL } from './index-store';
+import { ALL_REF_KINDS, IndexStore, RefKind, REF_LABEL } from './index-store';
 import { baseName } from './yaml-shared';
 
 export interface RefHit {
@@ -39,6 +39,7 @@ export interface SymbolAtCursor {
 const DEF_FILE: Record<RefKind, string> = {
   groups: 'monsters.yml',
   zones: 'zones.yml',
+  obstacles: 'obstacles.yml',
   interacts: 'interacts.yml',
   rewards: 'rewards.yml',
   stages: 'stages.yml',
@@ -47,9 +48,15 @@ const DEF_FILE: Record<RefKind, string> = {
 };
 
 /** 每种符号允许出现的位置：YAML 键 + 脚本 API 的方法名（字符串参数里）。 */
-const RULES: Record<RefKind, { yamlKeys: string[]; jsMethods: string[] }> = {
+const RULES: Record<
+  RefKind,
+  { yamlKeys: string[]; yamlRefKeys: string[]; jsMethods: string[] }
+> = {
   groups: {
     yamlKeys: ['trigger_group', 'group', '触发组', '分组'],
+    // yamlRefKeys = yamlKeys 里「值确实是别处定义的名字」的那部分，用于校验；
+    // yamlKeys 更宽（找引用时宁多勿少），校验时宁少勿错。
+    yamlRefKeys: ['trigger_group', 'group', '触发组'],
     jsMethods: [
       'spawn_group',
       'monster_group',
@@ -80,6 +87,9 @@ const RULES: Record<RefKind, { yamlKeys: string[]; jsMethods: string[] }> = {
       '默认开启',
       '范围',
     ],
+    // 只收「值就是区域名」的键：范围/默认开启/区域名称 的值是坐标/开关/显示名，
+    // 拿它们去校验会满屏误报（区域名称: '&e前厅战斗区' 并不指向任何区域）。
+    yamlRefKeys: ['zone', '区域', '进入区域', '离开区域'],
     jsMethods: [
       'enable_zone',
       'disable_zone',
@@ -92,32 +102,77 @@ const RULES: Record<RefKind, { yamlKeys: string[]; jsMethods: string[] }> = {
       'isZoneEnabled',
     ],
   },
+  obstacles: {
+    // obstacles.yml 的「区域」指向 zones.yml，不算障碍物自己的引用，因此不收在这里。
+    yamlKeys: [],
+    yamlRefKeys: [],
+    jsMethods: [
+      'create_obstacle',
+      'remove_obstacle',
+      'toggle_obstacle',
+      'isObstacleClosed',
+      'hasObstacle',
+    ],
+  },
   interacts: {
     yamlKeys: ['interact', 'interact_id', '交互', '交互点'],
+    yamlRefKeys: ['interact', 'interact_id', '交互', '交互点'],
     jsMethods: ['trigger_interact'],
   },
   rewards: {
     yamlKeys: ['reward', 'reward_name', '奖励', 'sweep.reward'],
+    yamlRefKeys: ['reward', 'reward_name', '奖励'],
     jsMethods: ['grant_reward', 'reward'],
   },
   stages: {
     yamlKeys: ['stage', '阶段', 'goto', '入口', '目标'],
+    yamlRefKeys: ['stage', 'goto', '下一阶段', '入口'],
     jsMethods: ['goto_stage', 'restart_stage'],
   },
   tasks: {
     yamlKeys: ['task', '任务'],
+    yamlRefKeys: ['task', '任务'],
     jsMethods: [],
   },
   points: {
     yamlKeys: ['落点', 'point', '点位'],
+    yamlRefKeys: ['落点', 'point', '点位'],
     jsMethods: ['teleport_point'],
   },
 };
 
+/**
+ * 由 kind 反查「可校验的 YAML 引用键」——值是别处定义的名字，写错应当报错。
+ *
+ * <p>比 {@link kindOfYamlKey} 窄：只包含值就是名字的键，避免把坐标、开关、
+ * 显示名当成引用名去查（那会满屏误报，比不报更烦）。
+ */
+export function refKindOfYamlKey(key: string): RefKind | undefined {
+  for (const kind of ALL_REF_KINDS) {
+    if (RULES[kind].yamlRefKeys.includes(key)) return kind;
+  }
+  return undefined;
+}
+
+/**
+ * 由脚本方法名反查：这个方法的具名参数引用的是哪种符号。
+ *
+ * <p>这是「方法名 → 引用类型」的**唯一**出处。补全（completion 的 NAME_REF_KEYS）、
+ * 引用查找（本文件的 RULES）与诊断（diagnostics 的具名参数校验）原先各维护一份，
+ * 三份已经对不上（诊断那份少了 8 个方法、补全那份一个障碍物方法都没有），
+ * 表现是「跳转能跳、补全空着、写错了也不报」。新增方法只改这里。
+ */
+export function kindOfJsMethod(method: string): RefKind | undefined {
+  for (const kind of ALL_REF_KINDS) {
+    if (RULES[kind].jsMethods.includes(method)) return kind;
+  }
+  return undefined;
+}
+
 /** 由 kind 反查：某个 YAML 键名属于哪种符号（用来在键值位置识别引用）。 */
 export function kindOfYamlKey(key: string): RefKind[] {
   const out: RefKind[] = [];
-  for (const kind of Object.keys(RULES) as RefKind[]) {
+  for (const kind of ALL_REF_KINDS) {
     const keys = RULES[kind].yamlKeys;
     if (keys.some((k) => k === key || k.endsWith('.' + key))) out.push(kind);
   }
@@ -326,7 +381,9 @@ export function symbolAt(
   const word = wordAt(line, position.character);
   if (!word) return null;
 
-  const kinds: RefKind[] = ['groups', 'zones', 'rewards', 'stages', 'interacts', 'tasks', 'points'];
+  // 用 ALL_REF_KINDS 而不是就地写一份清单：这里原先硬编码了一份，
+  // 新增 obstacles 时漏掉，结果「障碍物名」补全有、跳转/查引用/重命名全都没有。
+  const kinds: RefKind[] = ALL_REF_KINDS;
   for (const kind of kinds) {
     const def = index.names(kind, dir).find((d) => d.name === word.word);
     if (!def) continue;

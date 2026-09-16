@@ -1,8 +1,8 @@
 {
   "name": "liudungeon-script",
   "displayName": "LiuDungeon 脚本与配置支持",
-  "description": "为 LiuDungeon 地牢副本插件提供脚本补全、悬停文档、诊断与片段：action.* / dungeon.* API、scripts.yml 钩子、monsters/zones/stages 等全部配置文件键名",
-  "version": "1.2.4",
+  "description": "为 LiuDungeon 地牢副本插件提供脚本补全、名字补全（副本里已定义的组/区域/障碍物/点位名）、悬停文档、跨文件引用校验与片段：action.* / dungeon.* API、scripts.yml 钩子、全部配置文件键名",
+  "version": "1.2.5",
   "publisher": "liu",
   "license": "MIT",
   "author": {
@@ -82,7 +82,7 @@
         "liudungeon.diagnostics.references": {
           "type": "boolean",
           "default": true,
-          "description": "校验同副本目录内的跨文件引用（怪物组、区域、奖励、点位、交互点）"
+          "description": "校验同副本目录内的跨文件引用（怪物组、区域、障碍物、奖励、点位、交互点、阶段；脚本参数与 YAML 键两种写法都查）"
         },
         "liudungeon.diagnostics.knownHooks": {
           "type": "boolean",

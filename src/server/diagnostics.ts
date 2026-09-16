@@ -29,6 +29,7 @@ import {
   type ApiMethod,
 } from './api-model';
 import { IndexStore, RefKind, REF_LABEL } from './index-store';
+import { kindOfJsMethod, refKindOfYamlKey } from './references';
 import { baseName, offsetToLine } from './yaml-shared';
 
 export interface DiagnosticsOptions {
@@ -360,7 +361,11 @@ function checkMethodCalls(
 
       // 名字类参数检查（组名 / 区域名 / 奖励名 / 点位）
       if (dir) {
-        out.push(...checkNamedArgs(method, methodName, call, lineNo, index, dir));
+        // 重载要按实参个数挑那一行再校验：trigger_interact 既有 (selector, id)
+        // 也有 (id)，拿两参那行去查单参调用会去读 args[1]（undefined）然后直接放行 ——
+        // 表现就是「单参写法里名字写错了不报」。多参重载同理。
+        const row = rows.find((r) => r.params.length === arity) ?? method;
+        out.push(...checkNamedArgs(row, methodName, call, lineNo, index, dir));
       }
     }
   }
@@ -421,7 +426,8 @@ function checkNamedArgs(
   index: IndexStore,
   dir: string,
 ): Diagnostic[] {
-  const kind = NAMED_ARG_KINDS[methodName];
+  // 显式表优先；没列到的按 references.ts 的 RULES 兜底（那份是方法名 → 引用类型的唯一出处）。
+  const kind = NAMED_ARG_KINDS[methodName] ?? kindOfJsMethod(methodName);
   if (!kind) return [];
   const idx = method.params.findIndex((p) => !/selector/i.test(p.name));
   const pos = idx >= 0 ? idx : 0;
@@ -442,21 +448,22 @@ function checkNamedArgs(
   ];
 }
 
+// 每种引用定义在哪个文件 —— 用于「引用了不存在的 X」的诊断文案。
+// 用查表而不是 switch + default：default 会把新增的类型（tasks、obstacles）
+// 悄悄说成 zones.yml，报错指错文件比不报还费时间。
+const DEFINING_FILE_TEXT: Record<RefKind, string> = {
+  groups: 'monsters.yml',
+  zones: 'zones.yml',
+  obstacles: 'obstacles.yml',
+  interacts: 'interacts.yml',
+  rewards: 'rewards.yml',
+  stages: 'stages.yml',
+  tasks: 'tasks.yml',
+  points: 'zones.yml 的 点位',
+};
+
 function definingFile(kind: RefKind): string {
-  switch (kind) {
-    case 'groups':
-      return 'monsters.yml';
-    case 'rewards':
-      return 'rewards.yml';
-    case 'interacts':
-      return 'interacts.yml';
-    case 'stages':
-      return 'stages.yml';
-    case 'points':
-      return 'zones.yml 的 点位';
-    default:
-      return 'zones.yml';
-  }
+  return DEFINING_FILE_TEXT[kind];
 }
 
 /** 从 `(` 位置开始做简单的括号配对，切出参数。 */
@@ -712,23 +719,66 @@ function checkReferences(
   const out: Diagnostic[] = [];
   const name = baseName(input.filePath);
 
-  // trigger_group / group：检查组名存在
+  // YAML 侧的跨文件引用：`zone: 大厅`、`交互: 能量核心`、`下一阶段: Boss战` 这类。
+  // 键名表在 references.ts 的 RULES.yamlRefKeys（与脚本参数、补全共用一份）。
+  // 判定条件刻意收紧，宁可漏报也不误报：值必须是单个标量（带引号或裸写），
+  // 且不像坐标/数字/开关 —— 否则 `默认开启: true`、`范围: '0,64,0 ~ 1,65,1'`
+  // 都会被拿去查名字，报出一堆「区域「true」不存在」。
+  for (let i = 0; i < lines.length; i++) {
+    const m = /^\s*([^\s:#-][^:#]*?)\s*:\s*(.*)$/.exec(lines[i]);
+    if (!m) continue;
+    const kind = refKindOfYamlKey(m[1].trim());
+    if (!kind) continue;
+
+    const raw = m[2].trim();
+    if (!raw || raw.startsWith('#') || raw.startsWith('|') || raw.startsWith('[') || raw.startsWith('{')) continue;
+
+    // 带引号 → 整个引号内容就是名字（允许中间有空格，如 'Boss 门'）
+    const quoted = /^(['"])(.*)\1\s*(?:#.*)?$/.exec(raw);
+    let value: string | null = null;
+    if (quoted) {
+      value = quoted[2];
+    } else {
+      const bare = /^([^\s#'"]+)\s*(?:#.*)?$/.exec(raw);
+      if (bare) value = bare[1];
+    }
+    if (value === null || value === '') continue;
+    // 坐标 / 数字 / 开关：不是名字
+    if (/^-?\d/.test(value)) continue;
+    if (/^(true|false|yes|no|on|off|null|~)$/i.test(value)) continue;
+    if (value.includes('~') || value.includes(',')) continue;
+
+    if (input.index.has(kind, dir, value)) continue;
+    const at = lines[i].indexOf(raw);
+    out.push({
+      range: Range.create(i, at, i, at + raw.length),
+      severity: SEVERITY_WARN,
+      source: 'liudungeon',
+      message:
+        `${REF_LABEL[kind]}「${value}」在本副本里没有定义` +
+        `（检查拼写；定义位置见 ${definingFile(kind)}）。`,
+      code: 'unknown-reference',
+    });
+  }
+
+  // trigger_group 指向同文件里的组名，文案带「已有」清单，单独给一条更具体的
   if (name === 'monsters.yml' && self) {
     const groups = new Set(self.defs.groups.map((g) => g.name));
     for (let i = 0; i < lines.length; i++) {
       const m = /^\s*(trigger_group|group|触发组)\s*:\s*['"]?([^'"#\s]+)['"]?/.exec(lines[i]);
       if (!m) continue;
       const target = m[2];
-      if (!groups.has(target)) {
-        const at = lines[i].indexOf(target);
-        out.push({
-          range: Range.create(i, at, i, at + target.length),
-          severity: SEVERITY_WARN,
-          source: 'liudungeon',
-          message: `trigger_group 指向的怪物组「${target}」不存在${groups.size ? `。已有：${[...groups].join(' / ')}` : ''}`,
-          code: 'unknown-reference',
-        });
-      }
+      if (groups.has(target)) continue;
+      // 上面那条通用检查已经报过同一行就不重复（避免同一处两个红点）
+      if (out.some((d) => d.range.start.line === i)) continue;
+      const at = lines[i].indexOf(target);
+      out.push({
+        range: Range.create(i, at, i, at + target.length),
+        severity: SEVERITY_WARN,
+        source: 'liudungeon',
+        message: `trigger_group 指向的怪物组「${target}」不存在${groups.size ? `。已有：${[...groups].join(' / ')}` : ''}`,
+        code: 'unknown-reference',
+      });
     }
   }
 
@@ -765,7 +815,12 @@ function checkHooks(lines: string[]): Diagnostic[] {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     if (line.trim() === '' || /^\s*#/.test(line)) continue;
-    const m = /^([A-Za-z_][\w-]*)\s*:/.exec(line);
+    // 顶层键名：必须是【非 ASCII 限制】的写法 —— 早先这条正则要求键以 [A-Za-z_] 开头，
+    // 于是「开始: |-」这类中文钩子名直接不匹配、被 continue 掉：插件根本不认这个键
+    // （钩子名只有 init/start/complete/fail/exit/player_death/all_death），
+    // 脚本永远不会执行，而编辑器一句提示都不给。
+    // 首字符排除 - 与空白，避免把列表项（`- id: Zombie`）和缩进内容当成钩子。
+    const m = /^([^\s:#-][^:#]*?)\s*:/.exec(line);
     if (!m) continue;
     const hook = m[1];
     if (!HOOK_NAMES.has(hook)) {
