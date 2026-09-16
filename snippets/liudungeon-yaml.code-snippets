@@ -129,6 +129,19 @@
     ],
     "description": "区域与命名点位 —— 最小可用模板"
   },
+  "ld-obstaclesyml": {
+    "prefix": "ld-obstaclesyml",
+    "body": [
+      "障碍物:",
+      "  Boss门:",
+      "    区域: Boss门洞",
+      "    材质: IRON_BARS",
+      "    默认状态: 开启",
+      "    开启时: |-",
+      "      action.message('@all', '&a大门已打开');"
+    ],
+    "description": "障碍物（可开关的方块组） —— 最小可用模板"
+  },
   "ld-interactsyml": {
     "prefix": "ld-interactsyml",
     "body": [

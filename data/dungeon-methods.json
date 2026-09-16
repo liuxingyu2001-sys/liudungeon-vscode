@@ -475,6 +475,38 @@
       "example": "dungeon.isZoneEnabled('隐藏房区域')"
     },
     {
+      "name": "isObstacleClosed",
+      "signature": "isObstacleClosed(obstacle)",
+      "params": [
+        {
+          "name": "obstacle",
+          "type": "障碍物ID",
+          "doc": "obstacles.yml 的键"
+        }
+      ],
+      "returns": "boolean",
+      "doc": "该障碍物是否处于关闭（方块已铺上）",
+      "category": "障碍物",
+      "aliases": [],
+      "example": "dungeon.isObstacleClosed('Boss门')"
+    },
+    {
+      "name": "hasObstacle",
+      "signature": "hasObstacle(obstacle)",
+      "params": [
+        {
+          "name": "obstacle",
+          "type": "障碍物ID",
+          "doc": "obstacles.yml 的键"
+        }
+      ],
+      "returns": "boolean",
+      "doc": "该障碍物是否存在（obstacles.yml 里有没有这个键）",
+      "category": "障碍物",
+      "aliases": [],
+      "example": "dungeon.hasObstacle('Boss门')"
+    },
+    {
       "name": "getStage",
       "signature": "getStage()",
       "params": [],

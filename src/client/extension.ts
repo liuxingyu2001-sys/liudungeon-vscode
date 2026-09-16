@@ -23,7 +23,7 @@ const DUNGEON_GLOB = '**/{dungeons,liudungeon}/**/*.{yml,yaml}';
 
 /** 工作区里需要同步给语言服务的文件（与插件读取的文件名一致）。 */
 const FILE_GLOB =
-  '**/{dungeons,liudungeon}/{**/config.yml,**/monsters.yml,**/scripts.yml,**/rewards.yml,**/zones.yml,**/interacts.yml,**/tasks.yml,**/stages.yml,**/chest_rewards.yml,**/gui.yml,**/functions.js}';
+  '**/{dungeons,liudungeon}/{**/config.yml,**/monsters.yml,**/scripts.yml,**/rewards.yml,**/zones.yml,**/obstacles.yml,**/interacts.yml,**/tasks.yml,**/stages.yml,**/chest_rewards.yml,**/gui.yml,**/functions.js}';
 const FALLBACK_GLOB = '**/{config,monsters,scripts,rewards,zones,interacts,tasks,stages}.yml';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {

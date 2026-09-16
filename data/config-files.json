@@ -1273,6 +1273,105 @@
       ]
     },
     {
+      "file": "obstacles.yml",
+      "title": "障碍物（可开关的方块组）",
+      "summary": "一组方块，脚本可以让它出现/消失；开启时自动恢复原方块快照",
+      "containerAliases": {
+        "障碍物": [
+          "障碍物",
+          "obstacles"
+        ]
+      },
+      "example": "障碍物:\n  Boss门:\n    区域: Boss门洞\n    材质: IRON_BARS\n    默认状态: 开启\n    开启时: |-\n      action.message('@all', '&a大门已打开');\n",
+      "nodes": [
+        {
+          "path": "障碍物",
+          "key": "障碍物",
+          "type": "映射",
+          "doc": "障碍物容器；障碍物名即 key，最多 64 个",
+          "aliases": [
+            "obstacles"
+          ],
+          "required": false
+        },
+        {
+          "path": "障碍物.<障碍物ID>.区域",
+          "key": "区域",
+          "type": "文本",
+          "doc": "引用 zones.yml 的区域：关闭时把该区域范围盒整盒铺实",
+          "aliases": [
+            "zone"
+          ],
+          "required": false
+        },
+        {
+          "path": "障碍物.<障碍物ID>.方块",
+          "key": "方块",
+          "type": "列表",
+          "doc": "逐格清单 x,y,z,材质（与 区域 二选一，每行可不同材质）",
+          "aliases": [
+            "blocks"
+          ],
+          "required": false
+        },
+        {
+          "path": "障碍物.<障碍物ID>.材质",
+          "key": "材质",
+          "type": "材质",
+          "doc": "区域模式必填：关闭时铺什么方块",
+          "aliases": [
+            "关闭材质",
+            "material"
+          ],
+          "required": false
+        },
+        {
+          "path": "障碍物.<障碍物ID>.开启材质",
+          "key": "开启材质",
+          "type": "材质",
+          "doc": "开启时改成什么；不写 = 恢复原方块快照（写 AIR 即清空）",
+          "aliases": [
+            "open_material",
+            "open-material"
+          ],
+          "required": false
+        },
+        {
+          "path": "障碍物.<障碍物ID>.默认状态",
+          "key": "默认状态",
+          "type": "文本",
+          "doc": "关闭/closed = 副本开始就铺好（且不跑「关闭时」脚本）",
+          "aliases": [
+            "default_state",
+            "default-state"
+          ],
+          "required": false
+        },
+        {
+          "path": "障碍物.<障碍物ID>.关闭时",
+          "key": "关闭时",
+          "type": "脚本",
+          "doc": "铺完方块之后执行",
+          "aliases": [
+            "on_create",
+            "on-create"
+          ],
+          "required": false
+        },
+        {
+          "path": "障碍物.<障碍物ID>.开启时",
+          "key": "开启时",
+          "type": "脚本",
+          "doc": "清完方块（恢复原方块）之后执行",
+          "aliases": [
+            "on_delete",
+            "on-delete"
+          ],
+          "required": false
+        }
+      ]
+    },
+    {
       "file": "interacts.yml",
       "title": "交互点",
       "summary": "定义可触发的方块、区域与实体交互，触发时执行脚本",

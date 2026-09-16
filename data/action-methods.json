@@ -471,6 +471,54 @@
       "example": "action.disable_zone('隐藏房区域')"
     },
     {
+      "name": "create_obstacle",
+      "signature": "create_obstacle(obstacleId)",
+      "params": [
+        {
+          "name": "obstacleId",
+          "type": "障碍物ID",
+          "doc": "obstacles.yml 的键；不存在时打 warning"
+        }
+      ],
+      "returns": "void",
+      "doc": "关闭障碍物：把方块铺上挡路（同步，返回时方块已就位）",
+      "category": "障碍物",
+      "aliases": [],
+      "example": "action.create_obstacle('Boss门')"
+    },
+    {
+      "name": "remove_obstacle",
+      "signature": "remove_obstacle(obstacleId)",
+      "params": [
+        {
+          "name": "obstacleId",
+          "type": "障碍物ID",
+          "doc": "obstacles.yml 的键"
+        }
+      ],
+      "returns": "void",
+      "doc": "开启障碍物：清掉方块并恢复原方块快照",
+      "category": "障碍物",
+      "aliases": [],
+      "example": "action.remove_obstacle('Boss门')"
+    },
+    {
+      "name": "toggle_obstacle",
+      "signature": "toggle_obstacle(obstacleId)",
+      "params": [
+        {
+          "name": "obstacleId",
+          "type": "障碍物ID",
+          "doc": "obstacles.yml 的键"
+        }
+      ],
+      "returns": "void",
+      "doc": "切换开关状态（适合 tasks.yml 的循环任务做机关门）",
+      "category": "障碍物",
+      "aliases": [],
+      "example": "action.toggle_obstacle('机关门')"
+    },
+    {
       "name": "teleport_zone",
       "signature": "teleport_zone(selector, zoneId)",
       "params": [
@@ -743,7 +791,9 @@
       "returns": "void",
       "doc": "传送玩家，位置解析失败只打 warning；落地后自动 resync 玩家区域状态",
       "category": "玩家",
-      "aliases": ["tp"],
+      "aliases": [
+        "tp"
+      ],
       "example": "action.teleport('@all', 'Boss房.落点')"
     },
     {
@@ -764,7 +814,9 @@
       "returns": "void",
       "doc": "teleport 的短别名，传送玩家到点位（落地后自动 resync 玩家区域状态）",
       "category": "玩家",
-      "aliases": ["teleport"],
+      "aliases": [
+        "teleport"
+      ],
       "example": "action.tp('@所有玩家', '-149,64,17')"
     },
     {

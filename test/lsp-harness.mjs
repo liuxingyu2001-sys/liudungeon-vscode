@@ -665,7 +665,7 @@ function labelDump(items) {
   for (const uri of openUris) closeDoc(uri);
   openUris.length = 0;
   await new Promise((r) => setTimeout(r, 150));
-  for (const n of ['config.yml', 'monsters.yml', 'scripts.yml', 'rewards.yml', 'zones.yml', 'interacts.yml', 'tasks.yml', 'stages.yml']) {
+  for (const n of ['config.yml', 'monsters.yml', 'scripts.yml', 'rewards.yml', 'zones.yml', 'obstacles.yml', 'interacts.yml', 'tasks.yml', 'stages.yml']) {
     let text;
     try {
       text = readFileSync(join(DUNGEON_ROOT, n), 'utf8');
@@ -1051,7 +1051,7 @@ function labelDump(items) {
   const config = JSON.parse(readFileSync('data/config-files.json', 'utf8'));
   check('action API 方法数 >= 60', action.methods.length >= 60, `实际 ${action.methods.length}`);
   check('dungeon API 方法数 >= 45', dungeon.methods.length >= 45, `实际 ${dungeon.methods.length}`);
-  check('配置文件覆盖 9 个文件', config.files.length === 9, `实际 ${config.files.length}`);
+  check('配置文件覆盖 10 个文件', config.files.length === 10, `实际 ${config.files.length}`);
   check('配置节点数 >= 150', config.files.reduce((n, f) => n + f.nodes.length, 0) >= 150, '');
   check('生命周期钩子 7 个', config.scriptHooks.length === 7, `实际 ${config.scriptHooks.length}`);
   check('中文条件关键词 >= 14', config.conditions.keywords.length >= 14, `实际 ${config.conditions.keywords.length}`);
