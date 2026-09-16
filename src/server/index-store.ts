@@ -11,7 +11,6 @@ import {
   CONFIG_DATA,
   baseName,
   dirOf,
-  nodePathMatchesSafe,
 } from './yaml-shared';
 
 export interface Def {
@@ -196,9 +195,6 @@ export function containerAliases(file: string, kind: RefKind): string[] {
   if (fromData && fromData.length) return fromData;
   return [kind];
 }
-
-/** 该文件的顶层容器下应当出现的节点前缀（用于把 nodes 归类）。 */
-export { nodePathMatchesSafe };
 
 // ==================================================================
 //  YAML 遍历工具

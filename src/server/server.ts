@@ -57,6 +57,7 @@ let options: DiagnosticsOptions = {
   unknownMethod: true,
   references: true,
   knownHooks: true,
+  unknownKeys: true,
 };
 
 let diagnosticsEnabled = true;
@@ -104,6 +105,7 @@ interface Settings {
     unknownMethod?: boolean;
     references?: boolean;
     knownHooks?: boolean;
+    unknownKeys?: boolean;
   };
 }
 
@@ -115,6 +117,7 @@ async function pullSettings(): Promise<void> {
       unknownMethod: s?.diagnostics?.unknownMethod !== false,
       references: s?.diagnostics?.references !== false,
       knownHooks: s?.diagnostics?.knownHooks !== false,
+      unknownKeys: s?.diagnostics?.unknownKeys !== false,
     };
     await refreshAllDiagnostics();
   } catch {

@@ -13,9 +13,9 @@
 | --- | --- |
 | **action.* / dungeon.* 补全** | 84 个 `action.*` + 51 个 `dungeon.*` 方法，含签名、参数表、分类、可直接跑的示例 |
 | **YAML 里嵌的 JS 也能补全** | 脚本字段统一 **`\|-` 块**写法（`complete: \|-` 下面一行一条、行尾分号）；老配置的引号字符串 `- "action.spawn_group('…')"` 列表也照常支持。两种写法里补全、悬停、诊断都生效 |
-| **配置文件键名补全** | `config.yml` / `monsters.yml` / `stages.yml` / `zones.yml` / `obstacles.yml` / `interacts.yml` / `tasks.yml` / `rewards.yml` / `scripts.yml` / `functions.js` 的 177 个键，含中文别名与枚举取值 |
+| **配置文件键名补全** | `config.yml` / `monsters.yml` / `stages.yml` / `zones.yml` / `obstacles.yml` / `interacts.yml` / `tasks.yml` / `rewards.yml` / `chest_rewards.yml` / `scripts.yml` / `functions.js` 的 189 个键，含中文别名与枚举取值。**外层键写别名也认**：`obstacles:` / `怪物组:` / `zones:` 与 `障碍物:` / `groups:` / `区域:` 等价（按插件源码的别名表归一化） |
 | **名字补全（副本里已定义的名字）** | 参数位置直接列出本副本的定义：`action.spawn_group('…')` 给怪物组、`enable_zone` 给区域、`teleport_point` 给点位、`create_obstacle` 给障碍物、`goto_stage` 给阶段、`grant_reward` 给奖励；YAML 里 `区域:` / `触发组:` / `点位:` 这类键（中英文键名都算）同样给名字 |
-| **悬停文档** | 鼠标停在方法名、键名、`@all`、`{player.name}` 上直接看中文说明 |
+| **悬停文档** | 鼠标停在方法名、**键名（含根键与子键）**、`@all`、`{player.name}` 上直接看中文说明 |
 | **跳转到定义** | `trigger_group: wave_1` 里的 `wave_1`、脚本里的 `'通关奖励'`、`enable_zone('前厅')` 里的 `'前厅'` 都能跳回定义处 |
 | **查找引用（Shift+Alt+F12）** | 一个怪物组 / 区域 / 障碍物 / 奖励被哪些文件用到：`trigger_group`、`action.spawn_group('x')`、`dungeon.isGroupCleared('x')` 全部找出来（注释里的不算） |
 | **重命名（F2）** | 改名会同时改定义键与所有引用，跨 `monsters.yml` / `scripts.yml` 一起改；名字非法（含点号/空格/冒号）会被直接拒绝 |
@@ -23,6 +23,7 @@
 | **快速修复** | 能确定性修好的诊断给一键修：`count: 0` → `-1`/`3`、随机奖励缺 `options` → 插入骨架、拼错的钩子名 → 改成正确名、`dungeon` 段里的 `spawn` → 删掉 |
 | **大纲** | 文件里定义了哪些波次 / 区域 / 奖励，侧边栏直接看 |
 | **诊断（重点）** | 方法名写错、参数给多、选择器没实现、占位符写错、时间写法不合法、钩子名写错（**中文钩子名也报** —— 插件只认 `init`/`start`/`complete`/`fail`/`exit`/`player_death`/`all_death`，写「开始:」等于整段脚本不执行）、引用了不存在的怪物组 / 区域 / 障碍物 / 交互点 / 阶段 / 奖励 / 点位（**脚本参数与 YAML 键两种写法都查**）、`spawn` 写到 `dungeon` 段里…… 全部直接标出来 |
+| **「插件不读的键」** | 键名写错时插件只是取默认值：既不报错也不生效（例如障碍物里写「开启时候」而不是「开启时」，那行声音脚本一次都不放）。这类键会被标黄并给出最接近的正确写法 —— 只在数据能完整枚举子键的层级上检查，动态命名的层级（怪物组名、`<规则名>`、时间点…）不报 |
 | **片段** | 补全面板 + `ld-` 前缀片段；常用写法一键展开 |
 | **类型声明** | 自动生成 `.liudungeon/liudungeon.d.ts`，让 VS Code 自带的 JS 智能提示也认识 `action` / `dungeon` |
 
@@ -96,7 +97,8 @@ function 检查(d) {
 | `占位符 {player_name} 不会被替换` | 占位符是固定名单，写错就原样显示给玩家 |
 | `时间写法 "3秒钟" 解析失败会静默变成 0` | 只认 `3s` / `3秒` / `5m` / `5分` / `2h` / `100t` / `500ms` / 纯数字 |
 | `钩子名不是 scripts.yml 的钩子` | 拼错的钩子不会执行，也不报错。**中文钩子名同样报**（插件只认 `init`/`start`/`complete`/`fail`/`exit`/`player_death`/`all_death`；写「开始:」看起来很像对的，实际整段脚本一次都不跑） |
-| `怪物组 / 区域 / 障碍物 / 交互点 / 阶段 / 奖励 / 点位「x」不存在` | 同副本目录里找不到定义。脚本参数（`action.enable_zone('前厅')`）与 YAML 键（`区域: 前厅`、`zone: 前厅`）两种写法都查 |
+| `怪物组 / 区域 / 障碍物 / 交互点 / 阶段 / 奖励 / 点位「x」不存在` | 同副本目录里找不到定义。脚本参数（`action.enable_zone('前厅')`）、YAML 键（`区域: 前厅`、`zone: 前厅`）与**列表项里的键**（宝箱 `- reward: 通关奖励`）都查 |
+| `插件不读「开启时候」这个键` | 插件的解析器一律「按名字取键、取不到用默认值」：键名写错既不报错也不生效。会给出最接近的正确键名 |
 | `spawn 写在 dungeon 段里不会生效` | 运行时读的是 `world.spawn` |
 | `revive 配了复活方式但 count: 0` | `count` 默认 0 = 禁止复活，`auto`/`item`/`ally` 全都不会生效 —— 玩家倒下后卡在旁观者视角，看起来就像「复活系统跟摆设一样」 |
 | `player 在这个钩子里不存在` | `complete` / `fail` / `exit` / `all_death` 等钩子没有触发者，直接引用会抛 `ReferenceError` |

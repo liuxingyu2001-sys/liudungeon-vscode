@@ -30,12 +30,22 @@ import {
 } from './api-model';
 import { IndexStore, RefKind, REF_LABEL } from './index-store';
 import { kindOfJsMethod, refKindOfYamlKey } from './references';
-import { baseName, offsetToLine } from './yaml-shared';
+import { linePaths } from './yaml-context';
+import {
+  CONFIG_FILE_BY_NAME,
+  baseName,
+  keySpellings,
+  nodePathMatches,
+  offsetToLine,
+  splitPath,
+  type ConfigNode,
+} from './yaml-shared';
 
 export interface DiagnosticsOptions {
   unknownMethod: boolean;
   references: boolean;
   knownHooks: boolean;
+  unknownKeys: boolean;
 }
 
 export interface DiagnosticsInput {
@@ -74,6 +84,11 @@ export function computeDiagnostics(input: DiagnosticsInput): Diagnostic[] {
   // ---------- 6、7：钩子名 ----------
   if (input.options.knownHooks && isScriptsFile) {
     out.push(...checkHooks(lines));
+  }
+
+  // ---------- 6b：插件根本不读的键（写错只会被静默忽略）----------
+  if (input.options.unknownKeys) {
+    out.push(...checkUnknownKeys(name, lines, scriptRanges));
   }
 
   // ---------- 9：dungeon 段里的 spawn（写错位置，运行时读的是 world.spawn）----------
@@ -725,7 +740,9 @@ function checkReferences(
   // 且不像坐标/数字/开关 —— 否则 `默认开启: true`、`范围: '0,64,0 ~ 1,65,1'`
   // 都会被拿去查名字，报出一堆「区域「true」不存在」。
   for (let i = 0; i < lines.length; i++) {
-    const m = /^\s*([^\s:#-][^:#]*?)\s*:\s*(.*)$/.exec(lines[i]);
+    // 列表项里的键（`- reward: 通关奖励`）也要查：宝箱选项、怪物条目都是这种写法，
+    // 不加这个可选的 `- ` 前缀，那一整类引用就完全没人管。
+    const m = /^\s*(?:-\s+)?([^\s:#-][^:#]*?)\s*:\s*(.*)$/.exec(lines[i]);
     if (!m) continue;
     const kind = refKindOfYamlKey(m[1].trim());
     if (!kind) continue;
@@ -809,6 +826,124 @@ function checkReferences(
 // ==================================================================
 //  钩子名与 dungeon.spawn
 // ==================================================================
+
+/**
+ * 插件读不到的键。
+ *
+ * <p>插件的解析器一律是「按名字取键、取不到就用默认值」（`Keys.getString`），
+ * 所以键名写错既不报错也不生效 —— 服主的表现是「照文档配了，进本什么都没有」。
+ * 实测就有：障碍物里写 `开启时候:`（插件只认 `开启时` / `on_delete` / `删除时`），
+ * 那行声音脚本一次都不会执行，日志里也没有任何痕迹。
+ *
+ * <p><b>只在数据能完整枚举子键的层级上核对</b>：某一层的键名是动态的（怪物组名、
+ * 障碍物名、`<规则名>`、`<秒数>` 这类占位节点）时整层跳过 —— 那里本来就什么都能写。
+ * 这条规则同时也挡住了绝大多数误报：数据里没有的层级一律不管。
+ */
+function checkUnknownKeys(
+  fileName: string,
+  lines: string[],
+  scriptRanges: Region[],
+): Diagnostic[] {
+  const out: Diagnostic[] = [];
+  const cfg = CONFIG_FILE_BY_NAME.get(fileName);
+  if (!cfg) return out;
+  const inScript = (line: number) => scriptRanges.some((r) => line >= r.start && line <= r.end);
+  // 一次扫描拿到每行的父路径（逐行调 analyze 是 O(行数²)，56KB 的 monsters.yml 会卡住诊断）
+  const paths = linePaths(lines);
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (line.trim() === '' || /^\s*#/.test(line)) continue;
+    if (inScript(i)) continue;
+    const m = /^(\s*)(?:-\s+)?(?:"([^"]+)"|'([^']+)'|([^:#]+?))\s*:(?:\s|$)/.exec(line);
+    if (!m) continue;
+    const key = (m[2] ?? m[3] ?? m[4] ?? '').trim();
+    if (!key) continue;
+
+    const { keys, dynamic } = dataChildren(fileName, paths[i]?.parent ?? '');
+    if (dynamic || keys.length === 0) continue; // 这一层是动态命名 / 数据里没有 → 不管
+    if (keys.some((n) => keySpellings(n).includes(key))) continue;
+
+    const near = closestSpelling(key, keys.flatMap((n) => keySpellings(n)));
+    const at = line.indexOf(key);
+    out.push({
+      range: Range.create(i, at, i, at + key.length),
+      severity: SEVERITY_WARN,
+      source: 'liudungeon',
+      message:
+        `插件不读「${key}」这个键（${fileName} 这一层只有 ` +
+        `${keys.map((n) => n.key).join(' / ')}）：键名对不上时解析器取默认值，` +
+        `既不报错也不生效。` + (near ? `是不是想写「${near}」？` : ''),
+      code: 'unknown-key',
+    });
+  }
+  return out;
+}
+
+/**
+ * 数据里某一层的子键；`dynamic` = 这一层有占位节点（名字随便写）。
+ *
+ * <p>结果按「文件 + 父路径」缓存：一个文件里绝大多数行的父路径是重复的
+ * （2592 行的 monsters.yml 只有几十种），不缓存的话每行都要把全部节点过一遍，
+ * 实测这一项就占掉诊断 70ms 里的绝大部分。
+ */
+const CHILD_CACHE = new Map<string, { keys: ConfigNode[]; dynamic: boolean }>();
+
+function dataChildren(
+  file: string,
+  parentPath: string,
+): { keys: ConfigNode[]; dynamic: boolean } {
+  const cacheKey = `${file}\u0000${parentPath}`;
+  const cached = CHILD_CACHE.get(cacheKey);
+  if (cached) return cached;
+
+  const cfg = CONFIG_FILE_BY_NAME.get(file);
+  const keys: ConfigNode[] = [];
+  let dynamic = false;
+  for (const n of cfg?.nodes ?? []) {
+    const segments = splitPath(n.path);
+    if (segments.length === 0) continue;
+    if (!nodePathMatches(file, segments.slice(0, -1).join('.'), parentPath)) continue;
+    if (n.key.includes('<')) {
+      dynamic = true;
+      continue;
+    }
+    keys.push(n);
+  }
+  const out = { keys, dynamic };
+  CHILD_CACHE.set(cacheKey, out);
+  return out;
+}
+
+/** 找一个最接近的写法（前缀相同或编辑距离 ≤ 2），用于提示。 */
+function closestSpelling(input: string, candidates: string[]): string | null {
+  let best: string | null = null;
+  let bestScore = Infinity;
+  for (const c of candidates) {
+    if (c === input) continue;
+    const d = editDistance(input, c);
+    if (d < bestScore) {
+      bestScore = d;
+      best = c;
+    }
+  }
+  return bestScore <= Math.max(2, Math.floor(input.length / 3)) ? best : null;
+}
+
+function editDistance(a: string, b: string): number {
+  const dp = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+  for (let j = 0; j <= b.length; j++) dp[0][j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      dp[i][j] = Math.min(
+        dp[i - 1][j] + 1,
+        dp[i][j - 1] + 1,
+        dp[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),
+      );
+    }
+  }
+  return dp[a.length][b.length];
+}
 
 function checkHooks(lines: string[]): Diagnostic[] {
   const out: Diagnostic[] = [];

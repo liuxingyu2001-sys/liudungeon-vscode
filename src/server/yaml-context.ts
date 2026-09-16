@@ -9,7 +9,7 @@
  * （`- "..."` 的缩进与父键相同），导致 `groups.wave_1.spawn_timing.type`
  * 被算成 `groups.wave_1.type`。
  */
-import { CONFIG_FILE_BY_NAME, type ConfigNode, nodePathMatchesSafe, splitPath } from './yaml-shared';
+import { CONFIG_FILE_BY_NAME, type ConfigNode, nodePathMatches, splitPath } from './yaml-shared';
 
 export interface YamlContext {
   /** 当前行光标之前的文本。 */
@@ -52,6 +52,48 @@ interface LineInfo {
   indent: number;
   key: string | null;
   isListItem: boolean;
+  /** 序列框 `[]`：某个列表项集合的公共父级（`monsters` 下那一串 `- id:` 的父路径）。 */
+  list?: true;
+}
+
+/**
+ * 弹掉「不属于当前行」的栈帧。
+ *
+ * <p>两条规则：
+ * <ul>
+ *   <li>比当前行更深的帧一定要弹（上一行/上一项残留的子键）。</li>
+ *   <li>与当前行**同缩进**的帧：只有「当前行是列表项 + 该帧是序列框」时保留 ——
+ *       `- id: Zombie` 的父路径正是靠那个序列框；而同级的普通键（`on_start:`、
+ *       `death_check_mode:`）必须把序列框弹掉，否则父路径会变成
+ *       `groups.wave_1.[]`，与数据里的 `groups.<组ID>` 对不上。</li>
+ * </ul>
+ */
+function popToCurrentLine(stack: LineInfo[], info: LineInfo): void {
+  while (stack.length) {
+    const top = stack[stack.length - 1];
+    // 列表项：同缩进的帧要留着 —— 它要么是「拥有这个列表的键」（`monsters:` 与
+    // `- id:` 同缩进的那种写法），要么是同一列表的序列框（第二项开始）。
+    // 普通键：同缩进的是同级键，必须弹掉。
+    const keep = info.isListItem ? top.indent <= info.indent : top.indent < info.indent;
+    if (keep) break;
+    stack.pop();
+  }
+}
+
+/** 序列框帧（`[]`）：某个 key 下那一串列表项的公共父级。 */
+function listFrame(indent: number): LineInfo {
+  return { indent, key: '[]', isListItem: true, list: true };
+}
+
+/** 把一行压进缩进栈（供它下面的行当祖先）。 */
+function pushLine(stack: LineInfo[], info: LineInfo): void {
+  if (info.key == null && !info.isListItem) return; // 空行 / 注释 / 裸文本不进栈
+  popToCurrentLine(stack, info);
+  if (info.isListItem) {
+    if (!stack.length || stack[stack.length - 1].list !== true) stack.push(listFrame(info.indent));
+    return;
+  }
+  stack.push({ ...info, list: undefined });
 }
 
 export function analyze(text: string, line: number, character: number): YamlContext {
@@ -61,12 +103,17 @@ export function analyze(text: string, line: number, character: number): YamlCont
   const indent = leadingSpaces(raw);
 
   // ---- 祖先：用缩进栈扫到当前行之前 ----
+  //
+  // 列表项（`- id: Zombie`）要单独处理，否则路径会整体错一层：
+  //   · 列表项里的键（id）**不能进栈** —— 进了栈，同一项后面那几行
+  //     （`location:` / `amount:`）就会被算成 id 的子键，父路径变成
+  //     `groups.wave_1.id`，于是这些行既没有补全、也被当成「插件不读的键」。
+  //   · 拥有列表的那个 key（`monsters:`）与序列框必须留在栈上，不然 `- id:` 的
+  //     父路径会掉回怪物组那一层。插件自己的示例与真实副本用的都是
+  //     「`- ` 与键同缩进」的写法，所以这条路径是主路径。
   const stack: LineInfo[] = [];
   for (let i = 0; i < line; i++) {
-    const info = lineInfo(lines[i] ?? '');
-    if (info.key == null) continue;
-    while (stack.length && stack[stack.length - 1].indent >= info.indent) stack.pop();
-    stack.push(info);
+    pushLine(stack, lineInfo(lines[i] ?? ''));
   }
 
   // ---- 当前行：可能是「键: 值」也可能是裸的列表项（`- "action.xxx()"`）----
@@ -77,10 +124,15 @@ export function analyze(text: string, line: number, character: number): YamlCont
   const info = lineInfo(raw);
   let ancestors = stack.map((s) => s.key as string);
 
-  // 值位置：当前行的键也在祖先里（ancestors 里含它自己），先弹出
+  // 当前行：把「上一层残留的帧」弹掉，并在当前行是列表项时补上序列框
+  //（上面的循环只看当前行之前的行，当前行自己的帧得在这里进）
+  popToCurrentLine(stack, info);
+  if (info.isListItem && (!stack.length || stack[stack.length - 1].list !== true)) {
+    stack.push(listFrame(info.indent));
+  }
+
   let currentKey = '';
   if (inValue) {
-    while (stack.length && stack[stack.length - 1].indent >= indent) stack.pop();
     currentKey = info.key ?? '';
     ancestors = stack.map((s) => s.key as string);
     if (!currentKey && ancestors.length) {
@@ -88,8 +140,7 @@ export function analyze(text: string, line: number, character: number): YamlCont
       ancestors = ancestors.slice(0, -1);
     }
   } else {
-    // 键名位置：把当前行所在层级（含同级列表项）先弹掉
-    while (stack.length && stack[stack.length - 1].indent >= indent) stack.pop();
+    // 键名位置：当前行自己不在祖先里，上面已经弹好了
     ancestors = stack.map((s) => s.key as string);
   }
 
@@ -284,6 +335,44 @@ function lineInfo(raw: string): LineInfo {
   return { indent, key, isListItem };
 }
 
+/**
+ * 逐行的父路径（整个文件一次扫描）。
+ *
+ * <p>给「要遍历全部行」的调用方用（诊断里的键名核对）。逐行去调 {@link analyze}
+ * 是 O(行数²)：它每行都要从文件头重新扫一遍栈，真实副本那个 56KB 的 monsters.yml
+ * 上千行，诊断会从毫秒级涨到秒级（实测编辑器里要等好几秒才出诊断）。
+ * 这里的语义与 `analyze` 的键名位置结果一致，由自检逐行比对钉住。
+ */
+export function linePaths(lines: string[]): Array<{ key: string | null; parent: string }> {
+  const stack: LineInfo[] = [];
+  const out: Array<{ key: string | null; parent: string }> = [];
+  const stackKeys = () => stack.map((s) => s.key as string).join('.');
+
+  for (const raw of lines) {
+    const info = lineInfo(raw ?? '');
+    if (info.key == null && !info.isListItem) {
+      // 空行 / 注释 / 裸文本：不参与缩进栈（否则空行的缩进 0 会把整个栈清空，
+      // 后面所有行的父路径都变成根 —— 这在 rewards.yml 那种带空行分隔的文件上必现）
+      out.push({ key: null, parent: stackKeys() });
+      continue;
+    }
+    popToCurrentLine(stack, info);
+    if (info.isListItem && (!stack.length || stack[stack.length - 1].list !== true)) {
+      stack.push(listFrame(info.indent));
+    }
+    if (info.isListItem && info.key == null) {
+      // 裸列表项（`- "action.xxx()"`）：analyze 把序列框弹掉、把宿主键当 currentKey，
+      // 父路径里不含序列框 —— 这里跟它保持一致，否则自检的逐行比对会报不一致。
+      const keys = stack.map((x) => x.key as string);
+      out.push({ key: null, parent: keys.slice(0, -1).join('.') });
+      continue;
+    }
+    out.push({ key: info.key, parent: stackKeys() });
+    if (!info.isListItem && info.key != null) stack.push({ ...info, list: undefined });
+  }
+  return out;
+}
+
 /** 在某个文件的 nodes 里找“父路径匹配 + 可补全的键”。 */
 export function childNodes(file: string, ctx: YamlContext): ConfigNode[] {
   const cfg = CONFIG_FILE_BY_NAME.get(file);
@@ -294,7 +383,7 @@ export function childNodes(file: string, ctx: YamlContext): ConfigNode[] {
     const segments = splitPath(node.path);
     if (segments.length === 0) continue;
     const parentSegments = segments.slice(0, -1);
-    if (!nodePathMatchesSafe(parentSegments.join('.'), parentPath)) continue;
+    if (!nodePathMatches(file, parentSegments.join('.'), parentPath)) continue;
     if (node.key.includes('<')) continue; // 占位符节点不作为键提示
     out.push(node);
   }
@@ -308,7 +397,7 @@ export function nodeAt(file: string, ctx: YamlContext): ConfigNode | undefined {
   const concrete = [...ctx.ancestors, ctx.currentKey].filter(Boolean).join('.');
   if (!concrete) return undefined;
   for (const node of cfg.nodes) {
-    if (nodePathMatchesSafe(node.path, concrete)) return node;
+    if (nodePathMatches(file, node.path, concrete)) return node;
   }
   return undefined;
 }

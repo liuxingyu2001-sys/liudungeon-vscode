@@ -257,6 +257,13 @@
           "required": false
         },
         {
+          "path": "world.world_rules.pvp",
+          "key": "pvp",
+          "type": "布尔",
+          "doc": "玩家之间能否造成伤害。写 false 即副本内队友之间不掉血（26.x / 1.21.11 都有这条规则；直接攻击会被挡下，玩家引爆炸药与伤害药水不受它管）",
+          "required": false
+        },
+        {
           "path": "world.world_rules.random_tick_speed",
           "key": "random_tick_speed",
           "type": "数字",
@@ -1351,10 +1358,11 @@
           "path": "障碍物.<障碍物ID>.关闭时",
           "key": "关闭时",
           "type": "脚本",
-          "doc": "铺完方块之后执行",
+          "doc": "铺完方块之后执行（别名 on_create / on-create / 创建时）",
           "aliases": [
             "on_create",
-            "on-create"
+            "on-create",
+            "创建时"
           ],
           "required": false
         },
@@ -1362,10 +1370,11 @@
           "path": "障碍物.<障碍物ID>.开启时",
           "key": "开启时",
           "type": "脚本",
-          "doc": "清完方块（恢复原方块）之后执行",
+          "doc": "清完方块（恢复原方块）之后执行（别名 on_delete / on-delete / 删除时）",
           "aliases": [
             "on_delete",
-            "on-delete"
+            "on-delete",
+            "删除时"
           ],
           "required": false
         }
@@ -1397,15 +1406,22 @@
           "path": "交互.<交互ID>.type",
           "key": "type",
           "type": "枚举",
-          "doc": "触发方式；默认 RIGHT_CLICK_BLOCK",
+          "doc": "触发方式；中英文都认，写错会静默按右键方块处理",
           "values": [
             "RIGHT_CLICK_BLOCK",
+            "右键方块",
             "LEFT_CLICK_BLOCK",
+            "左键方块",
             "BREAK_BLOCK",
+            "破坏方块",
             "PLACE_BLOCK",
+            "放置方块",
             "STEP_ON",
+            "踩踏",
             "ENTER_REGION",
-            "RIGHT_CLICK_ENTITY"
+            "进入区域",
+            "RIGHT_CLICK_ENTITY",
+            "右键实体"
           ],
           "aliases": [
             "类型"
@@ -1974,6 +1990,137 @@
             "all-death"
           ],
           "required": false
+        }
+      ]
+    },
+    {
+      "file": "chest_rewards.yml",
+      "title": "宝箱奖励 UI",
+      "summary": "用箱子界面让玩家自己挑奖励（每个槽位指向 rewards.yml 里的一个奖励名）",
+      "containerAliases": {},
+      "example": "chests:\n  通关宝箱:\n    title: '&6选一个奖励'\n    rows: 3\n    mode: single\n    options:\n      - slot: 11\n        icon: DIAMOND\n        name: '&b钻石'\n        reward: 钻石奖励\n",
+      "nodes": [
+        {
+          "path": "chests",
+          "key": "chests",
+          "type": "映射",
+          "doc": "宝箱容器；宝箱名即 key（也可以像 zones.yml 那样直接写在根节点）。⚠ 当前版本这个文件整体未生效：插件会解析并校验 reward 引用，但不会发奖 —— 想真发奖用 rewards.yml",
+          "aliases": [
+            "宝箱"
+          ],
+          "required": false
+        },
+        {
+          "path": "chests.<宝箱ID>.title",
+          "key": "title",
+          "type": "文本",
+          "doc": "界面标题；不写用宝箱名",
+          "aliases": [
+            "标题"
+          ],
+          "required": false
+        },
+        {
+          "path": "chests.<宝箱ID>.rows",
+          "key": "rows",
+          "type": "数字",
+          "doc": "箱子行数 1-6，不写 3",
+          "aliases": [
+            "行数"
+          ],
+          "required": false
+        },
+        {
+          "path": "chests.<宝箱ID>.mode",
+          "key": "mode",
+          "type": "枚举",
+          "doc": "single = 只能选一个（选完即关闭）；multiple = 可以选多个（上限看 max_select）",
+          "values": [
+            "single",
+            "multiple"
+          ],
+          "aliases": [
+            "模式"
+          ],
+          "required": false
+        },
+        {
+          "path": "chests.<宝箱ID>.max_select",
+          "key": "max_select",
+          "type": "数字",
+          "doc": "multiple 模式下最多能选几个，不写 1",
+          "aliases": [
+            "max-select",
+            "最大选择"
+          ],
+          "required": false
+        },
+        {
+          "path": "chests.<宝箱ID>.background",
+          "key": "background",
+          "type": "材质",
+          "doc": "空槽位的背景材质，不写则是空气",
+          "aliases": [
+            "背景"
+          ],
+          "required": false
+        },
+        {
+          "path": "chests.<宝箱ID>.options",
+          "key": "options",
+          "type": "列表",
+          "doc": "奖励选项列表；每项写 slot / icon / name / lore / reward",
+          "required": false
+        },
+        {
+          "path": "chests.<宝箱ID>.options[].slot",
+          "key": "slot",
+          "type": "数字",
+          "doc": "放在第几个槽位（0-53）",
+          "aliases": [
+            "槽位"
+          ],
+          "required": true
+        },
+        {
+          "path": "chests.<宝箱ID>.options[].icon",
+          "key": "icon",
+          "type": "材质",
+          "doc": "图标材质，不写 CHEST",
+          "aliases": [
+            "图标"
+          ],
+          "required": false
+        },
+        {
+          "path": "chests.<宝箱ID>.options[].name",
+          "key": "name",
+          "type": "文本",
+          "doc": "图标显示名，不写是 &7奖励",
+          "aliases": [
+            "名称"
+          ],
+          "required": false
+        },
+        {
+          "path": "chests.<宝箱ID>.options[].lore",
+          "key": "lore",
+          "type": "列表",
+          "doc": "图标说明文字（一行一条）",
+          "aliases": [
+            "描述"
+          ],
+          "required": false
+        },
+        {
+          "path": "chests.<宝箱ID>.options[].reward",
+          "key": "reward",
+          "type": "文本",
+          "doc": "选了这个槽位发哪个奖励 —— 必须是 rewards.yml 里的名字，写错加载期会报",
+          "aliases": [
+            "奖励"
+          ],
+          "required": true
         }
       ]
     },

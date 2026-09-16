@@ -162,6 +162,23 @@ const REF_FLAT_FILES = {
   'monsters.yml': '怪物组:\n  wave_1:\n    刷新时机:\n      type: AUTO_START\n    monsters:\n      - id: Zombie\n        location: \'0,64,0\'\n',
 };
 
+/**
+ * 外层键全用「另一种写法」的副本：`obstacles:` / `怪物组:` / `zones:`。
+ *
+ * 插件对每个容器都有多种写法，全都是同一个容器；编辑器若按字面量比路径，
+ * 用别名写的文件**整棵子树**都会匹配不上 —— 实测 obstacles.yml 写成 `obstacles:` 时，
+ * 障碍物里 7 个键一个都补不出来，悬停也没有。
+ */
+const REF_ALIAS_DIR = join(mkdtempSync(join(tmpdir(), 'ld-alias-')), 'dungeons', 'aliasdungeon');
+
+const REF_ALIAS_FILES = {
+  'config.yml': "dungeon:\n  name: '&e别名写法副本'\nworld:\n  template: voidgen\n",
+  'zones.yml': "zones:\n  安全区:\n    名称: '&e安全区'\n    范围: '-2,62,8 ~ 3,64,10'\n",
+  'obstacles.yml': "obstacles:\n  出生点屏障:\n    区域: 安全区\n    材质: barrier\n    开启时候: |-\n      action.sound('@all', 'BLOCK_IRON_DOOR_CLOSE')\n",
+  'monsters.yml': "怪物组:\n  wave_1:\n    spawn_timing:\n      type: AUTO_START\n    monsters:\n      - id: Zombie\n        location: '0,64,0'\n",
+  'rewards.yml': '奖励:\n  通关奖励:\n    经验: 10\n',
+};
+
 function writeRefFixture() {
   try {
     mkdirSync(REF_DIR, { recursive: true });
@@ -174,6 +191,11 @@ function writeRefFixture() {
     mkdirSync(REF_FLAT_DIR, { recursive: true });
     for (const [name, text] of Object.entries(REF_FLAT_FILES)) {
       writeFileSync(join(REF_FLAT_DIR, name), text, 'utf8');
+    }
+    // 第三种写法：外层键用别名/英文（`obstacles:` / `怪物组:` / `zones:`）
+    mkdirSync(REF_ALIAS_DIR, { recursive: true });
+    for (const [name, text] of Object.entries(REF_ALIAS_FILES)) {
+      writeFileSync(join(REF_ALIAS_DIR, name), text, 'utf8');
     }
   } catch {
     /* 写不出来时相关用例会失败并给出空白结果，比静默跳过更容易发现 */
@@ -200,6 +222,9 @@ function buildWorkspace() {
   }
   for (const [name, text] of Object.entries(REF_FLAT_FILES)) {
     files.push({ uri: `file://${REF_FLAT_DIR}/${name}`, text });
+  }
+  for (const [name, text] of Object.entries(REF_ALIAS_FILES)) {
+    files.push({ uri: `file://${REF_ALIAS_DIR}/${name}`, text });
   }
   return files;
 }
@@ -1116,8 +1141,8 @@ function labelDump(items) {
   const config = JSON.parse(readFileSync('data/config-files.json', 'utf8'));
   check('action API 方法数 >= 60', action.methods.length >= 60, `实际 ${action.methods.length}`);
   check('dungeon API 方法数 >= 45', dungeon.methods.length >= 45, `实际 ${dungeon.methods.length}`);
-  check('配置文件覆盖 10 个文件', config.files.length === 10, `实际 ${config.files.length}`);
-  check('配置节点数 >= 150', config.files.reduce((n, f) => n + f.nodes.length, 0) >= 150, '');
+  check('配置文件覆盖 11 个文件', config.files.length === 11, `实际 ${config.files.length}`);
+  check('配置节点数 >= 180', config.files.reduce((n, f) => n + f.nodes.length, 0) >= 180, '');
   check('生命周期钩子 7 个', config.scriptHooks.length === 7, `实际 ${config.scriptHooks.length}`);
   check('中文条件关键词 >= 14', config.conditions.keywords.length >= 14, `实际 ${config.conditions.keywords.length}`);
 
@@ -1361,6 +1386,147 @@ function labelDump(items) {
     closeDoc(uri);
     await new Promise((r) => setTimeout(r, 80));
   }
+}
+
+// ---------- 用例 27：外层键写别名/英文写法时，整棵子树照样能补全与悬停 ----------
+// 插件对每个容器都有多种写法（障碍物/obstacles、怪物组/groups、区域/zones…），
+// 编辑器若按字面量比路径，用别名写的文件会**整棵子树**匹配不上：子键补全空白、
+// 悬停没有、值枚举也不出来。实测就是这么坏的（obstacles.yml 写成 `obstacles:` 时
+// 障碍物里 7 个键一个都补不出来）。
+{
+  const zonesKids = openDoc('zones.yml', 'zones:\n  安全区:\n    \n', REF_ALIAS_DIR);
+  await new Promise((r) => setTimeout(r, 200));
+  const zk = labels(await completions(zonesKids, 2, 4));
+  check('zones: 写法下子键补全给出「范围」', zk.includes('范围'), zk.join(','));
+  closeDoc(zonesKids);
+  await new Promise((r) => setTimeout(r, 80));
+
+  const obsKids = openDoc('obstacles.yml', 'obstacles:\n  门:\n    \n', REF_ALIAS_DIR);
+  await new Promise((r) => setTimeout(r, 200));
+  const ok = labels(await completions(obsKids, 2, 4));
+  check('obstacles: 写法下子键补全给出「开启时」', ok.includes('开启时'), ok.join(','));
+  check('obstacles: 写法下子键补全给出「材质」', ok.includes('材质'), ok.join(','));
+  closeDoc(obsKids);
+  await new Promise((r) => setTimeout(r, 80));
+
+  const monKids = openDoc('monsters.yml', '怪物组:\n  wave_1:\n    \n', REF_ALIAS_DIR);
+  await new Promise((r) => setTimeout(r, 200));
+  const mk = labels(await completions(monKids, 2, 4));
+  check('怪物组: 写法（中文别名）下子键补全给出「spawn_timing」', mk.includes('spawn_timing'), mk.join(','));
+  closeDoc(monKids);
+  await new Promise((r) => setTimeout(r, 80));
+
+  // 悬停：容器键与子键都要有说明（原先根键查不到、子键显示的是上一级的说明）
+  const hov = openDoc('obstacles.yml', REF_ALIAS_FILES['obstacles.yml'], REF_ALIAS_DIR);
+  await new Promise((r) => setTimeout(r, 200));
+  const hRoot = await hover(hov, 0, 3);
+  const hRootText = String(hRoot?.contents?.value ?? '');
+  check('悬停 obstacles: 给出障碍物容器说明', /障碍物/.test(hRootText), hRootText.slice(0, 120));
+  const hSub = await hover(hov, 3, 4);
+  const hSubText = String(hSub?.contents?.value ?? '');
+  check('悬停 材质: 给出材质说明', /材质/.test(hSubText), hSubText.slice(0, 120));
+  closeDoc(hov);
+  await new Promise((r) => setTimeout(r, 80));
+}
+
+// ---------- 用例 28：列表项里的键（插件示例与真实副本都这么写） ----------
+// `monsters:` 下面 `- id: Zombie` 这种「`- ` 与键同缩进」的写法是主路径。原先
+// 列表项内联的键会被当成同一项后续行的父级，`location:` 那几行的父路径变成
+// `怪物组.wave_1.id` —— 补全给出的是怪物组一级的键，诊断还会把它们判成「插件不读的键」。
+{
+  // 两种列表写法都要测：插件自己的示例与线上真实副本用的是后者（`- ` 与键同缩进），
+  // 前者（缩进一级）当时却是自检里唯一覆盖到的，于是「宿主键被误弹」那类改动测不出来。
+  const styles = [
+    ['缩进一级', '怪物组:\n  wave_1:\n    monsters:\n      - id: Zombie\n        \n', 4, 8],
+    ['与键同缩进', '怪物组:\n  wave_1:\n    monsters:\n    - id: Zombie\n      \n', 4, 6],
+  ];
+  for (const [what, text, line, col] of styles) {
+    const uri = openDoc('monsters.yml', text, REF_DIR);
+    await new Promise((r) => setTimeout(r, 200));
+    const got = labels(await completions(uri, line, col));
+    check(`列表项（${what}）第二行补全给出「location」`, got.includes('location'), got.join(','));
+    check(`列表项（${what}）第二行补全给出「point」`, got.includes('point'), got.join(','));
+    check(`列表项（${what}）不再给出怪物组一级的键`, !got.includes('刷新时机') && !got.includes('on_start'), got.join(','));
+    closeDoc(uri);
+    await new Promise((r) => setTimeout(r, 80));
+  }
+}
+
+// ---------- 用例 29：插件根本不读的键要报出来（写错只会被静默忽略） ----------
+// 插件的解析器一律「按名字取键，取不到用默认值」，键名写错既不报错也不生效。
+// 实测：障碍物里写 `开启时候:`（只认 开启时/on_delete/删除时），那行声音一次都不放。
+{
+  const bad = openDoc('obstacles.yml', '障碍物:\n  门:\n    区域: 战斗区\n    开启时候: |-\n      action.sound(\'@all\', \'BLOCK_IRON_DOOR_CLOSE\')\n', REF_DIR);
+  const diags = await client.waitFor(() => {
+    const d = client.diagnosticsFor(bad);
+    return d.some((x) => x.code === 'unknown-key') ? d : undefined;
+  });
+  const hit = (diags ?? []).find((x) => x.code === 'unknown-key');
+  check('「开启时候」被报成 unknown-key', Boolean(hit), JSON.stringify(diags ?? []).slice(0, 300));
+  check('unknown-key 会给出最接近的键「开启时」', /开启时/.test(hit?.message ?? ''), hit?.message ?? '');
+  closeDoc(bad);
+  await new Promise((r) => setTimeout(r, 80));
+
+  // 正对照：正确的键不能报
+  const good = openDoc('obstacles.yml', '障碍物:\n  门:\n    区域: 战斗区\n    开启时: |-\n      action.sound(\'@all\', \'BLOCK_IRON_DOOR_CLOSE\')\n', REF_DIR);
+  await new Promise((r) => setTimeout(r, 350));
+  const goodKeys = client.diagnosticsFor(good).filter((d) => d.code === 'unknown-key');
+  check('写对的「开启时」不报 unknown-key', goodKeys.length === 0, JSON.stringify(goodKeys).slice(0, 250));
+  closeDoc(good);
+  await new Promise((r) => setTimeout(r, 80));
+
+  // 误报压力测试：动态命名的层级（名字随便写的地方）一个都不能报
+  const guards = [
+    ['monsters.yml', '怪物组:\n  我随便起的组名:\n    刷新时机:\n      type: AUTO_START\n', '怪物组名'],
+    ['config.yml', 'dungeon:\n  name: x\nworld:\n  template: voidgen\n  world_rules:\n    任意游戏规则: false\n', 'world_rules 的规则名'],
+    ['rewards.yml', '奖励:\n  我随便起的奖励:\n    经验: 10\n', '奖励名'],
+    ['tasks.yml', 'tasks:\n  我随便起的任务:\n    type: 定时\n    times:\n      300: |-\n        action.message(\'@all\', \'x\');\n', '任务名与时间点'],
+  ];
+  for (const [file, text, what] of guards) {
+    const uri = openDoc(file, text, REF_DIR);
+    await new Promise((r) => setTimeout(r, 350));
+    const got = client.diagnosticsFor(uri).filter((d) => d.code === 'unknown-key');
+    check(`动态命名的层级（${what}）不报 unknown-key`, got.length === 0, JSON.stringify(got).slice(0, 300));
+    closeDoc(uri);
+    await new Promise((r) => setTimeout(r, 80));
+  }
+}
+
+// ---------- 用例 30：chest_rewards.yml（宝箱奖励 UI） ----------
+// 这个文件扩展一直没收录，等于「文件被同步进语言服务、却一个字都补不出来」。
+{
+  const text = 'chests:\n  通关宝箱:\n    \n';
+  const uri = openDoc('chest_rewards.yml', text, REF_DIR);
+  await new Promise((r) => setTimeout(r, 200));
+  const got = labels(await completions(uri, 2, 4));
+  check('宝箱层补全给出「options」', got.includes('options'), got.join(','));
+  check('宝箱层补全给出「rows」', got.includes('rows'), got.join(','));
+  closeDoc(uri);
+  await new Promise((r) => setTimeout(r, 80));
+
+  const item = openDoc('chest_rewards.yml', 'chests:\n  通关宝箱:\n    options:\n      - slot: 0\n        \n', REF_DIR);
+  await new Promise((r) => setTimeout(r, 200));
+  const itemKeys = labels(await completions(item, 4, 8));
+  check('选项里补全给出「icon」与「reward」', itemKeys.includes('icon') && itemKeys.includes('reward'), itemKeys.join(','));
+  closeDoc(item);
+  await new Promise((r) => setTimeout(r, 80));
+
+  // 选项的 reward 是 rewards.yml 的名字（值位置补全 + 引用校验）
+  const val = openDoc('chest_rewards.yml', 'chests:\n  通关宝箱:\n    options:\n      - reward: \n', REF_DIR);
+  await new Promise((r) => setTimeout(r, 250));
+  const gotVal = labels(await completions(val, 3, '      - reward: '.length));
+  check('reward 的值补全列出 rewards.yml 里的「通关奖励」', gotVal.includes('通关奖励'), gotVal.join(','));
+  closeDoc(val);
+  await new Promise((r) => setTimeout(r, 80));
+
+  const bad = openDoc('chest_rewards.yml', 'chests:\n  通关宝箱:\n    options:\n      - reward: 查无此奖\n', REF_DIR);
+  const diags = await client.waitFor(() => {
+    const d = client.diagnosticsFor(bad);
+    return d.some((x) => x.code === 'unknown-reference') ? d : undefined;
+  });
+  check('宝箱奖励写错时报 unknown-reference', Boolean(diags?.some((x) => /奖励「查无此奖」/.test(x.message))), JSON.stringify(diags ?? []).slice(0, 300));
+  closeDoc(bad);
+  await new Promise((r) => setTimeout(r, 80));
 }
 
 // ---------- 收尾 ----------

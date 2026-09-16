@@ -3,24 +3,71 @@
  *
  * 这里刻意不放任何状态，便于被 context / completion / diagnostics 三个模块共用。
  */
-export { CONFIG_FILE_BY_NAME, CONFIG_DATA, type ConfigNode } from './api-model';
+import { CONFIG_FILE_BY_NAME, CONFIG_DATA, type ConfigNode } from './api-model';
+
+export { CONFIG_FILE_BY_NAME, CONFIG_DATA };
+export type { ConfigNode };
 
 const PLACEHOLDER = /^<.+>$/;
 
 /**
- * 判断一个「数据里的路径模板」是否匹配「编辑器里的实际路径」。
- * 模板段 `<组ID>` / `[]` 视为通配一段。
+ * 每个文件里「一种写法 → 数据里的规范写法」。
+ *
+ * <p>插件对同一个位置普遍有多种写法（`障碍物` / `obstacles`、`关闭时` / `on_create` /
+ * `创建时`），数据里只记一种为规范名。**只做字面量比较的匹配会把别名写法整个判成不匹配** ——
+ * 表现是「用别名写的文件，那一层往下全都没有补全与悬停」：实测 obstacles.yml 写成
+ * `obstacles:` 时，障碍物里的 7 个键一个都补不出来；monsters.yml 写成 `怪物组:`、
+ * zones.yml 写成 `zones:` 同样全空。所以匹配前先把实际路径按这张表归一化。
  */
-export function nodePathMatchesSafe(pattern: string, concrete: string): boolean {
+const SPELLING_CACHE = new Map<string, Map<string, string>>();
+
+/** 该文件的「写法 → 规范名」表。 */
+export function canonicalSpellings(file: string): Map<string, string> {
+  const cached = SPELLING_CACHE.get(file);
+  if (cached) return cached;
+
+  const map = new Map<string, string>();
+  const cfg = CONFIG_FILE_BY_NAME.get(file);
+  if (cfg) {
+    const pathSegments = new Set<string>();
+    for (const n of cfg.nodes) for (const s of splitPath(n.path)) pathSegments.add(s);
+
+    // 1) 容器别名（containerAliases）：一组写法互相等价，规范名取「数据路径里真用到的那个」
+    for (const list of Object.values(cfg.containerAliases ?? {})) {
+      if (!list.length) continue;
+      const canonical = list.find((s) => pathSegments.has(s)) ?? list[0];
+      for (const s of list) map.set(s, canonical);
+    }
+    // 2) 节点自己的别名
+    for (const n of cfg.nodes) for (const a of n.aliases ?? []) if (a) map.set(a, n.key);
+    // 3) 节点主键永远指向自己（最后写，压过别名层：`区域` 既是容器名也是某个子键时以主键为准）
+    for (const n of cfg.nodes) if (n.key && !n.key.includes('<')) map.set(n.key, n.key);
+  }
+  SPELLING_CACHE.set(file, map);
+  return map;
+}
+
+/**
+ * 判断一个「数据里的路径模板」是否匹配（某个文件里）「编辑器的实际路径」。
+ *
+ * <p>模板段 `<组ID>` / `[]` 视为通配一段；其余段按 {@link canonicalSpellings} 归一化后比较，
+ * 所以 `obstacles.出生点屏障.区域` 与数据里的 `障碍物.<障碍物ID>.区域` 是匹配的。
+ * 给不出文件（拿不到数据）时退化为纯字面量比较。
+ */
+export function nodePathMatches(file: string, pattern: string, concrete: string): boolean {
   if (isRootPath(pattern) || isRootPath(concrete)) {
     return isRootPath(pattern) && isRootPath(concrete);
   }
   const p = pattern.split('.').map((s) => s.replace(/\[\]$/, ''));
-  const c = concrete.split('.').filter((s) => s !== '');
+  const c = concrete.split('.').map((s) => s.replace(/\[\]$/, '')).filter((s) => s !== '');
   if (p.length !== c.length) return false;
+  const canon = file ? canonicalSpellings(file) : null;
   for (let i = 0; i < p.length; i++) {
-    if (p[i] === c[i]) continue;
-    if (PLACEHOLDER.test(p[i]) || p[i] === '[]') continue;
+    const patternSeg = p[i];
+    const concreteSeg = c[i];
+    if (patternSeg === concreteSeg) continue;
+    if (PLACEHOLDER.test(patternSeg) || patternSeg === '[]') continue;
+    if (canon && (canon.get(concreteSeg) ?? concreteSeg) === patternSeg) continue;
     return false;
   }
   return true;

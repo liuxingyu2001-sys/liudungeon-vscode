@@ -225,6 +225,22 @@
     ],
     "description": "生命周期脚本钩子 —— 最小可用模板"
   },
+  "ld-chest_rewardsyml": {
+    "prefix": "ld-chest_rewardsyml",
+    "body": [
+      "chests:",
+      "  通关宝箱:",
+      "    title: '&6选一个奖励'",
+      "    rows: 3",
+      "    mode: single",
+      "    options:",
+      "      - slot: 11",
+      "        icon: DIAMOND",
+      "        name: '&b钻石'",
+      "        reward: 钻石奖励"
+    ],
+    "description": "宝箱奖励 UI —— 最小可用模板"
+  },
   "ld-functionsjs": {
     "prefix": "ld-functionsjs",
     "body": [

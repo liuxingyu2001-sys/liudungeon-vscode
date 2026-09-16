@@ -92,8 +92,16 @@ export function provideHover(input: HoverInput): Hover | null {
   if (!isYaml) return null;
 
   // 5) YAML 键名
+  //
+  // 光标**落在键名上**时 analyze 的 currentKey 是空的（它是为「值位置」设计的），
+  // 于是这里只能拿父路径去查节点，结果是：根键（obstacles、world、enable…）查不到 →
+  // 没有悬停；子键查到的是**上一级**的说明 → 悬停 `区域:` 显示的是它所在的障碍物是什么。
+  // 所以先把光标下的那个键补进路径查一次，查不到再退回原来的父路径。
   const ctx = analyze(input.text, input.line, input.character);
-  const node = nodeAt(name, ctx);
+  const onOwnKey = ctx.lineKey !== null && ctx.lineKey === word.word;
+  const node = onOwnKey
+    ? nodeAt(name, { ...ctx, currentKey: word.word })
+    : nodeAt(name, ctx);
   if (node) {
     const md = renderNode(name, node);
     return { contents: { kind: MarkupKind.Markdown, value: md }, range };

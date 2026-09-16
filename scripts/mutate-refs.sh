@@ -6,6 +6,8 @@
 # 注意：这些文件**带着未提交的正常改动**，所以还原必须用「变异前先备份到 tmp」，
 # 绝不能 git checkout —— 那会把本轮的真实修改一起抹掉（第一次跑就踩了）。
 # 每处变异都会断言「替换数符合预期」，避免一个静默没改成的变异被误判成「断言没牙」。
+# 目前 14 处：索引层 3、引用类型单一出处 2、诊断 3、路径匹配/列表项 2、悬停 1、
+# 别名归一化 1、数据文件 2（containerAliases 的键、chest_rewards 的整份数据）。
 #
 # 「变红」的判定也必须看**测试摘要行**，不能只看退出码：日志文件建不出来、
 # node 起不来、npm 脚本改名…… 都会让退出码非 0，只看退出码就会把"根本没跑起来"
@@ -13,7 +15,8 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."   # 仓库根
 
-FILES=(data/config-files.json src/server/index-store.ts src/server/diagnostics.ts src/server/references.ts)
+FILES=(data/config-files.json src/server/index-store.ts src/server/diagnostics.ts src/server/references.ts \
+       src/server/yaml-shared.ts src/server/yaml-context.ts src/server/hover.ts)
 BAK=$(mktemp -d)
 LOG="$BAK/mut.log"
 trap 'rm -rf "$BAK"' EXIT
@@ -112,6 +115,44 @@ mutate src/server/references.ts \
     "  const kinds: RefKind[] = ALL_REF_KINDS;" \
     "  const kinds: RefKind[] = ['groups', 'zones', 'rewards', 'stages', 'interacts', 'tasks', 'points'];"
 run_case "M8 symbolAt 硬编码 kind 清单（障碍物能补全但跳不过去）"
+restore
+
+mutate src/server/yaml-shared.ts \
+    "    if (canon && (canon.get(concreteSeg) ?? concreteSeg) === patternSeg) continue;" \
+    "    if (canon && concreteSeg === patternSeg) continue;"
+run_case "M9 容器别名不归一化（用 obstacles: / 怪物组: 写的文件整棵子树没有补全）"
+restore
+
+mutate src/server/yaml-context.ts \
+    "    const keep = info.isListItem ? top.indent <= info.indent : top.indent < info.indent;" \
+    "    const keep = top.indent < info.indent;"
+run_case "M10 列表项不留宿主键/序列框（- id: 下面几行的父路径错一层）"
+restore
+
+mutate src/server/diagnostics.ts \
+    "  const cfg = CONFIG_FILE_BY_NAME.get(fileName);
+  if (!cfg) return out;" \
+    "  const cfg = CONFIG_FILE_BY_NAME.get(fileName);
+  if (cfg || !cfg) return out;"
+run_case "M11 不检查插件读不到的键（开启时候 这类笔误静默失效）"
+restore
+
+mutate src/server/diagnostics.ts \
+    "    const m = /^\\s*(?:-\\s+)?([^\\s:#-][^:#]*?)\\s*:\\s*(.*)$/.exec(lines[i]);" \
+    "    const m = /^\\s*([^\\s:#-][^:#]*?)\\s*:\\s*(.*)$/.exec(lines[i]);"
+run_case "M12 引用校验不认列表项里的键（- reward: 通关奖励 不受校验）"
+restore
+
+mutate src/server/hover.ts \
+    "  const onOwnKey = ctx.lineKey !== null && ctx.lineKey === word.word;" \
+    "  const onOwnKey = false;"
+run_case "M13 悬停不看光标下的键（根键没说明、子键显示上一级的说明）"
+restore
+
+mutate data/config-files.json \
+    '      "file": "chest_rewards.yml",' \
+    '      "file": "chest_rewards_unused.yml",'
+run_case "M14 丢掉 chest_rewards.yml 的数据（宝箱文件一个字都补不出来）"
 restore
 
 echo "=== 还原后复跑 ==="
