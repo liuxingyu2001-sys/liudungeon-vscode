@@ -12,7 +12,7 @@
 | 能力 | 说明 |
 | --- | --- |
 | **action.* / dungeon.* 补全** | 70 个 `action.*` + 49 个 `dungeon.*` 方法，含签名、参数表、分类、可直接跑的示例 |
-| **YAML 里嵌的 JS 也能补全** | 两种写法都支持：引号字符串 `- "action.spawn_group('…')"`，以及**块标量** `on_end: \|-` 下面的多行脚本（块标量正文里补全、悬停、诊断照常生效） |
+| **YAML 里嵌的 JS 也能补全** | 脚本字段统一 **`\|-` 块**写法（`complete: \|-` 下面一行一条、行尾分号）；老配置的引号字符串 `- "action.spawn_group('…')"` 列表也照常支持。两种写法里补全、悬停、诊断都生效 |
 | **配置文件键名补全** | `config.yml` / `monsters.yml` / `stages.yml` / `zones.yml` / `interacts.yml` / `tasks.yml` / `rewards.yml` / `scripts.yml` 的 167 个键，含中文别名与枚举取值 |
 | **悬停文档** | 鼠标停在方法名、键名、`@all`、`{player.name}` 上直接看中文说明 |
 | **跳转到定义** | `trigger_group: wave_1` 里的 `wave_1`、脚本里的 `'通关奖励'` 都能跳回定义处 |
@@ -64,8 +64,10 @@ code --install-extension liudungeon-script.vsix
 
 ```yaml
 # scripts.yml —— 输入 action. 之后会列出全部 70 个动作，选中即带参数骨架
-start:
-  - "action.spawn_group('|')"     # 光标在引号里 → 直接列出 monsters.yml 里已定义的组名
+# 脚本字段的推荐写法：|- 块，一行一条语句、行尾加分号（注释用 //，不要写 YAML 的 #）
+complete: |-
+  action.title('@all', '&a&l通关！', '&7奖励已发放');
+  action.spawn_group('|');     // 光标在引号里 → 直接列出 monsters.yml 里已定义的组名
 
 # monsters.yml —— 输入 sp 就提示 spawn_timing，并给出枚举取值
 groups:
@@ -146,7 +148,7 @@ snippets/            构建时生成的 VS Code 片段
 
 ```bash
 npm run typecheck   # TS 类型检查
-npm test            # 构建 + 端到端自检（106 项断言，约 5 秒）
+npm test            # 构建 + 端到端自检（134 项断言，约 5 秒）
 npm run package     # 打成 vsix
 ```
 

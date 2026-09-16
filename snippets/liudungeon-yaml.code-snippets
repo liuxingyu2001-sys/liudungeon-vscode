@@ -2,56 +2,56 @@
   "ld-hook-init": {
     "prefix": "ld-hook-init",
     "body": [
-      "init:",
-      "  - \"action.time('night')\""
+      "init: |-",
+      "  action.time('night');"
     ],
     "description": "世界加载与世界规则应用之后、start 之前，触发者为队长（触发者：有）"
   },
   "ld-hook-start": {
     "prefix": "ld-hook-start",
     "body": [
-      "start:",
-      "  - \"action.title('@all', '&6准备开始', '&7消灭所有敌人')\""
+      "start: |-",
+      "  action.title('@all', '&6准备开始', '&7消灭所有敌人');"
     ],
     "description": "紧随 init；先跑条件，全部为真才执行脚本，触发者为队长（触发者：有）"
   },
   "ld-hook-complete": {
     "prefix": "ld-hook-complete",
     "body": [
-      "complete:",
-      "  - \"action.grant_reward('@all', '通关奖励')\""
+      "complete: |-",
+      "  action.grant_reward('@all', '通关奖励');"
     ],
-    "description": "标记通关之后触发，当前版本会被终态守卫丢弃（触发者：无）"
+    "description": "标记通关之后触发；通关脚本先跑、随后才切成终态（1.0.5 起顺序已修正）（触发者：无）"
   },
   "ld-hook-fail": {
     "prefix": "ld-hook-fail",
     "body": [
-      "fail:",
-      "  - \"action.broadcast('&c有队伍挑战失败')\""
+      "fail: |-",
+      "  action.broadcast('&c有队伍挑战失败');"
     ],
-    "description": "标记失败之后触发，当前版本同样不会执行（触发者：无）"
+    "description": "标记失败之后触发；同样是先跑脚本、再切成终态（触发者：无）"
   },
   "ld-hook-exit": {
     "prefix": "ld-hook-exit",
     "body": [
-      "exit:",
-      "  - \"action.message('@all', '&7感谢游玩，下次再来')\""
+      "exit: |-",
+      "  action.message('@all', '&7感谢游玩，下次再来');"
     ],
     "description": "玩家被传送回主世界之前触发，通关与失败路径下不执行（触发者：无）"
   },
   "ld-hook-player_death": {
     "prefix": "ld-hook-player_death",
     "body": [
-      "player_death:",
-      "  - \"action.revive('@trigger', false, 'inplace')\""
+      "player_death: |-",
+      "  action.revive('@trigger', false, 'inplace');"
     ],
     "description": "玩家倒下并转旁观者之后触发，触发者是倒下的人（触发者：有）"
   },
   "ld-hook-all_death": {
     "prefix": "ld-hook-all_death",
     "body": [
-      "all_death:",
-      "  - \"action.fail('全队阵亡')\""
+      "all_death: |-",
+      "  action.fail('全队阵亡');"
     ],
     "description": "全员均为死亡状态时只触发一次；脚本跑完后若仍无活人，插件会自动 fail 并退出（脚本里 action.revive('@all') 可拦截）（触发者：无）"
   },
@@ -155,19 +155,19 @@
       "  countdown:",
       "    type: 定时",
       "    times:",
-      "      300:",
-      "        - \"action.message('@all', '&e还剩 5 分钟！')\"",
+      "      300: |-",
+      "        action.message('@all', '&e还剩 5 分钟！');",
       "  buff_timer:",
       "    type: loop",
       "    interval: 60",
-      "    script:",
-      "      - \"action.apply_potion('@all', 'SPEED', '10s', 0)\"",
+      "    script: |-",
+      "      action.apply_potion('@all', 'SPEED', '10s', 0);",
       "  wave_done:",
       "    type: event",
       "    trigger: wave_complete",
       "    trigger_target: wave_1",
-      "    script:",
-      "      - \"action.message('@all', '&a第一波已完成')\""
+      "    script: |-",
+      "      action.message('@all', '&a第一波已完成');"
     ],
     "description": "定时/循环/事件任务 —— 最小可用模板"
   },
@@ -197,18 +197,18 @@
   "ld-scriptsyml": {
     "prefix": "ld-scriptsyml",
     "body": [
-      "init:",
-      "  - \"action.time('night')\"",
+      "init: |-",
+      "  action.time('night');",
       "start:",
       "  条件:",
       "    - 在线玩家数 >= 1",
-      "  脚本:",
-      "    - \"action.title('@all', '&6&l示例副本', '&7消灭所有敌人')\"",
-      "    - \"action.spawn_group('wave_1')\"",
-      "complete:",
-      "  - \"action.grant_reward('@all', '通关奖励')\"",
-      "fail:",
-      "  - \"action.title('@all', '&c挑战失败', '&7再接再厉')\""
+      "  脚本: |-",
+      "    action.title('@all', '&6&l示例副本', '&7消灭所有敌人');",
+      "    action.spawn_group('wave_1');",
+      "complete: |-",
+      "  action.grant_reward('@all', '通关奖励');",
+      "fail: |-",
+      "  action.title('@all', '&c挑战失败', '&7再接再厉');"
     ],
     "description": "生命周期脚本钩子 —— 最小可用模板"
   },
@@ -257,16 +257,16 @@
   "ld-message": {
     "prefix": "ld-message",
     "body": [
-      "- \"action.message('@all', '&e${1:文本}')\""
+      "action.message('@all', '&e${1:文本}');"
     ],
-    "description": "给全队发消息的一行脚本"
+    "description": "给全队发消息的一行脚本（写进 |- 块里）"
   },
   "ld-script-block": {
     "prefix": "ld-script",
     "body": [
-      "${1:start}:",
-      "  - \"action.message('@all', '&e${2:开始}')\""
+      "${1:start}: |-",
+      "  action.message('@all', '&e${2:开始}');"
     ],
-    "description": "钩子 + 一行脚本"
+    "description": "钩子 + 一行脚本（|- 块写法）"
   }
 }

@@ -937,6 +937,91 @@ function labelDump(items) {
   closeDoc(duri);
 }
 
+// ---------- 用例 20：脚本字段的默认排版是 |- 块（1.1.1 起的统一约定） ----------
+{
+  // 钩子的补全 / 悬停示例都必须是块写法
+  const uri = openDoc('scripts.yml', 'com\n');
+  const items = await completions(uri, 0, 3);
+  const hook = items.find((i) => i.label === 'complete');
+  const newText = String(hook?.textEdit?.newText ?? '');
+  check('钩子补全插入的是 |- 块', newText.startsWith('complete: |-'), newText);
+  check('钩子补全块里带引号参数与分号',
+    newText.includes("action.message('@all'") && /;\}/.test(newText), newText);
+  check('钩子补全不再插入列表写法', !newText.includes('- "'), newText);
+
+  const doc = String(hook?.documentation?.value ?? '');
+  check('钩子文档里不含列表写法', !doc.includes('- "'), doc.slice(0, 200));
+  check('钩子文档不再写着「会被终态守卫丢弃」', !/丢弃|不会执行/.test(doc), doc.slice(0, 200));
+
+  const huri = openDoc('scripts.yml', 'complete: |-\n  action.grant_reward(\'@all\', \'通关奖励\');\n');
+  const h = await hover(huri, 0, 4);
+  const hv = h?.contents?.value ?? '';
+  check('钩子悬停能给出说明', hv.includes('complete'), hv.slice(0, 120));
+  closeDoc(huri);
+  closeDoc(uri);
+
+  // monsters.yml 的脚本节点（on_end 等）走 valueTemplate
+  const muri = openDoc('monsters.yml', 'groups:\n  wave_1:\n    on_\n');
+  const node = (await completions(muri, 2, '    on_'.length)).find((i) => i.label === 'on_end');
+  const nodeText = String(node?.textEdit?.newText ?? '');
+  check('on_end 的骨架是 |- 块', /on_end: \|-\n\s+\$\{\d+:action\./.test(nodeText), nodeText);
+  check('on_end 骨架里是带引号且带分号的语句',
+    nodeText.includes("action.message('@all'") && /;\}/.test(nodeText), nodeText);
+  closeDoc(muri);
+
+  // 生成的 VS Code 片段（snippets/*.code-snippets）与补全同源
+  const yamlSnips = JSON.parse(readFileSync('snippets/liudungeon-yaml.code-snippets', 'utf8'));
+  const hookSnip = yamlSnips['ld-hook-complete'];
+  check('ld-hook-complete 生成的是 |- 块',
+    Array.isArray(hookSnip?.body) && hookSnip.body[0] === 'complete: |-', JSON.stringify(hookSnip?.body ?? []));
+  const hookLine = String(hookSnip?.body?.[1] ?? '');
+  check('ld-hook-complete 的语句带分号且无外层引号',
+    hookLine.includes("action.grant_reward('@all'") && hookLine.trimEnd().endsWith(';') && !hookLine.includes('"'),
+    hookLine);
+  const msgSnip = yamlSnips['ld-message'];
+  check('ld-message 片段是块里的一行（不是列表项）',
+    Array.isArray(msgSnip?.body) && !msgSnip.body[0].startsWith('- ') && msgSnip.body[0].includes("action.message('@all'"),
+    JSON.stringify(msgSnip?.body ?? []));
+}
+
+// ---------- 用例 21：|- 块里的两种排版坑要报出来 ----------
+{
+  // 整行被引号包住 = 字符串字面量，什么都不做（从列表写法改成块写法时最容易剩下的一层引号）
+  const quoted = openDoc('scripts.yml', 'complete: |-\n  "action.title(\'@all\', \'&a通关\');"\n');
+  const qd = await client.waitFor(() => {
+    const d = client.diagnosticsFor(quoted);
+    return d.some((x) => x.code === 'block-quoted-line') ? d : undefined;
+  });
+  check('|- 块里整行被引号包住会被标出来', Boolean(qd), JSON.stringify(qd ?? []).slice(0, 300));
+  closeDoc(quoted);
+
+  // 行尾 # 注释 = JS 语法错误（# 是私有字段语法），整段脚本被引擎静默跳过
+  const hash = openDoc('scripts.yml', 'complete: |-\n  action.title(\'@all\', \'&a通关\')            # ← 标题\n');
+  const hd = await client.waitFor(() => {
+    const d = client.diagnosticsFor(hash);
+    return d.some((x) => x.code === 'block-hash-comment') ? d : undefined;
+  });
+  check('|- 块里的 # 注释会被标为语法错误', Boolean(hd), JSON.stringify(hd ?? []).slice(0, 300));
+  closeDoc(hash);
+
+  // 反例：列表写法里的 # 是合法的 YAML 注释，不能误报
+  const list = openDoc('scripts.yml', 'complete:\n  - "action.title(\'@all\', \'&a通关\')"   # ← YAML 注释，合法\n');
+  await new Promise((r) => setTimeout(r, 250));
+  check('列表写法里的 # 注释不误报',
+    !client.diagnosticsFor(list).some((d) => d.code === 'block-hash-comment'),
+    JSON.stringify(client.diagnosticsFor(list)).slice(0, 250));
+  closeDoc(list);
+
+  // 反例：字符串里的 # 颜色值不算注释
+  const color = openDoc('monsters.yml',
+    'groups:\n  wave_1:\n    on_start: |-\n      action.message(\'@all\', \'&7颜色 #FF0000 不是注释\')\n');
+  await new Promise((r) => setTimeout(r, 250));
+  check('字符串里的 # 不误报',
+    !client.diagnosticsFor(color).some((d) => d.code === 'block-hash-comment'),
+    JSON.stringify(client.diagnosticsFor(color)).slice(0, 250));
+  closeDoc(color);
+}
+
 // ---------- 用例 18：数据完整性（补全数据与插件源码对齐） ----------
 {
   const action = JSON.parse(readFileSync('data/action-methods.json', 'utf8'));

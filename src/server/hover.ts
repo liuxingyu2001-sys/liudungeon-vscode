@@ -13,6 +13,7 @@ import {
   PLACEHOLDERS,
   SELECTORS,
   TIME_FORMATS,
+  scriptBlockLines,
   type ApiMethod,
 } from './api-model';
 import { IndexStore, REF_LABEL, type RefKind } from './index-store';
@@ -111,8 +112,7 @@ export function provideHover(input: HoverInput): Hover | null {
         `触发者：${hook.hasTrigger ? '有（player / trigger 可用）' : '无（player 不存在）'}`,
         '',
         '```yaml',
-        `${hook.name}:`,
-        `  - "${hook.example.replace(/"/g, '\\"')}"`,
+        ...scriptBlockLines(hook.name, hook.example),
         '```',
         dead ? `\n> ⚠ ${dead}` : '',
       ];

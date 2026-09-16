@@ -23,6 +23,7 @@ import {
   GLOBAL_OBJECTS,
   SELECTORS,
   TIME_FORMATS,
+  scriptBlockLines,
   type ApiMethod,
   type ConfigNode,
 } from './api-model';
@@ -288,8 +289,7 @@ function hookItem(
     `触发者：${hasTrigger ? '有（player / trigger 可用）' : '无（player 不存在，别直接引用）'}`,
     '',
     '```yaml',
-    `${name}:`,
-    `  - "${example.replace(/"/g, '\\"')}"`,
+    ...scriptBlockLines(name, example),
     '```',
   ];
   if (dead) md.push(`\n> ⚠ ${dead}`);
@@ -298,7 +298,7 @@ function hookItem(
     kind: CompletionItemKind.Field,
     detail: dead ? '⚠ 当前版本不会执行' : hasTrigger ? '有 player' : '无 player',
     documentation: { kind: MarkupKind.Markdown, value: md.join('\n') },
-    textEdit: TextEdit.replace(range, `${name}:\n  - "\${1:action.message('@all', '&e文本')}"`),
+    textEdit: TextEdit.replace(range, `${name}: |-\n  \${1:action.message('@all', '&e文本');}`),
     insertTextFormat: InsertTextFormat.Snippet,
     sortText: dead ? `z${name}` : `a${name}`,
   };
@@ -344,7 +344,7 @@ function valueTemplate(node: ConfigNode): string {
     case '坐标':
       return `${node.key}: '\${1:0,64,0}'`;
     case '脚本':
-      return `${node.key}:\n  - "\${1:action.message('@all', '&e你好')}"`;
+      return `${node.key}: |-\n  \${1:action.message('@all', '&e你好');}`;
     case '条件':
       return `${node.key}:\n  - \${1:dungeon.getTotalAliveMonsters() <= 0}`;
     default:

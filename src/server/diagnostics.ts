@@ -8,7 +8,7 @@
  *   4. 文本占位符写错（{player_name} 这类不会替换，原样显示）
  *   5. function 作用域里引用 undefined 的怪物组 / 区域 / 奖励 / 点位 / 交互点 / 阶段
  *   6. scripts.yml 里未知的钩子名（写了不会执行）
- *   7. complete / fail 钩子在当前版本不会执行
+ *   7. 脚本字段的排版（`|-` 块里不要写 YAML 的 `#`、整行被引号包住 = 什么都不做）
  *   8. 在有触发者的钩子里引用 __ 不存在的 __ player →
  *   9. 用了 dungeon.spawn（运行时读的是 world.spawn，写了等于没写）
  *  10. 同一文件里重复定义名字（YAML 后者覆盖前者）
@@ -107,6 +107,13 @@ interface Region {
   end: number;
   /** 该区域是否属于 scripts.yml 的某个钩子（用于 player 可用性判断）。 */
   hook?: string;
+  /** 值是块标量（`键: |-` 下面的多行脚本）—— 块里是纯 JS，YAML 的规则全不适用。 */
+  blockScalar?: boolean;
+}
+
+/** 键/钩子这一行的值是不是块标量。 */
+function isBlockScalarKeyLine(line: string): boolean {
+  return /:\s*\|[-+]?\d*\s*(#.*)?$/.test(line);
 }
 
 /** 脚本键名：值里放的是 JS。 */
@@ -130,7 +137,7 @@ function collectScriptRanges(fileName: string, lines: string[]): Region[] {
       if (top) {
         if (current) out.push(current);
         currentHook = top[1];
-        current = { start: i, end: lines.length - 1, hook: currentHook };
+        current = { start: i, end: lines.length - 1, hook: currentHook, blockScalar: isBlockScalarKeyLine(line) };
         continue;
       }
       void CONDITION_KEY_RE;
@@ -158,7 +165,7 @@ function collectScriptRanges(fileName: string, lines: string[]): Region[] {
       if (indentOf(l) <= indent) break;
       end = j;
     }
-    out.push({ start: i, end });
+    out.push({ start: i, end, blockScalar: isBlockScalarKeyLine(line) });
     i = end;
   }
   return out;
@@ -199,6 +206,11 @@ function checkScriptRegion(
     // 引号漏写（选择器 / 颜色代码 / 中文文本）—— 插件会直接抛语法错误
     out.push(...checkQuoteMistakes(line, i));
 
+    // 块标量里的两种排版坑（YAML 的常识在这里全都不成立）
+    if (region.blockScalar) {
+      out.push(...checkBlockScalarLine(line, i));
+    }
+
     // player 不可用
     if (region.hook && !hookHasTrigger(region.hook)) {
       const m = /\b(player|trigger)\b/.exec(line);
@@ -215,6 +227,65 @@ function checkScriptRegion(
     }
   }
   return out;
+}
+
+/**
+ * `|-` 块里的排版坑：块内容是**原样 JavaScript**，YAML 的规则一条都不适用。
+ *
+ *   1. 整行被引号包住（`"action.xxx()"`）→ 一个字符串字面量：不报错，但什么都不做
+ *      —— 这是从"列表写法"改成块写法时最容易留下的一层引号；
+ *   2. 行尾的 `#` 注释 → 在 JS 里 `#` 是私有字段语法，整段脚本语法错误、
+ *      被引擎静默跳过（控制台只有一行 `Expected an operand but found error`）
+ *      —— 想写注释要用 `//`。
+ */
+function checkBlockScalarLine(line: string, lineNo: number): Diagnostic[] {
+  const out: Diagnostic[] = [];
+  const body = line.trim();
+  if (body === '' || body.startsWith('//')) return out;
+
+  const wholeQuoted = /^(?:"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')\s*;?$/.test(body);
+  if (wholeQuoted) {
+    out.push({
+      range: Range.create(lineNo, line.length - line.trimStart().length, lineNo, line.length),
+      severity: SEVERITY_WARN,
+      source: 'liudungeon',
+      message:
+        '这一行整行被引号包住，它只是一个字符串字面量：脚本不报错，但什么都不会执行。' +
+        '\n`|-` 块里不需要外层引号（那是列表写法的遗留），去掉首尾引号即可。',
+      code: 'block-quoted-line',
+    });
+  }
+
+  const hash = bareHashIndex(line);
+  if (hash >= 0) {
+    out.push({
+      range: Range.create(lineNo, hash, lineNo, hash + 1),
+      severity: SEVERITY_ERROR,
+      source: 'liudungeon',
+      message:
+        '`|-` 块里是纯 JavaScript，`#` 不是注释（`#` 在 JS 里是私有字段语法），' +
+        '整段脚本会直接语法错误、被引擎静默跳过。注释请写成 `//`。',
+      code: 'block-hash-comment',
+    });
+  }
+  return out;
+}
+
+/** 行内引号外的第一个 `#` 的位置；没有返回 -1。 */
+function bareHashIndex(line: string): number {
+  let inSingle = false;
+  let inDouble = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '\\') {
+      i++;
+      continue;
+    }
+    if (c === "'" && !inDouble) inSingle = !inSingle;
+    else if (c === '"' && !inSingle) inDouble = !inDouble;
+    else if (c === '#' && !inSingle && !inDouble) return i;
+  }
+  return -1;
 }
 
 function hookHasTrigger(hook: string): boolean {

@@ -258,3 +258,15 @@ export const DEAD_HOOKS: Map<string, string> = new Map();
 /** 所有 action.* 前缀。 */
 export const ACTION_PREFIX = 'action.';
 export const DUNGEON_PREFIX = 'dungeon.';
+
+/**
+ * 脚本字段的示例按**统一排版**渲染：`|-` 块 + 一行一条 + 行尾加分号。
+ *
+ * 为什么要有这个函数：补全、悬停、代码片段三处都要显示"这个钩子怎么写"，
+ * 以前各自拼 `键:\n  - "语句"` 的列表写法 —— 那是老写法，服主照着抄会得到
+ * 一堆要自己补引号的行。排版规则见插件文档《07-脚本开发指南》7.1.1。
+ */
+export function scriptBlockLines(key: string, example: string): string[] {
+  const stmt = example.trim().replace(/;\s*$/, '');
+  return [`${key}: |-`, `  ${stmt};`];
+}

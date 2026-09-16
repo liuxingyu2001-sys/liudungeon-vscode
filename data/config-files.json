@@ -1451,7 +1451,7 @@
           "任务"
         ]
       },
-      "example": "tasks:\n  countdown:\n    type: 定时\n    times:\n      300:\n        - \"action.message('@all', '&e还剩 5 分钟！')\"\n  buff_timer:\n    type: loop\n    interval: 60\n    script:\n      - \"action.apply_potion('@all', 'SPEED', '10s', 0)\"\n  wave_done:\n    type: event\n    trigger: wave_complete\n    trigger_target: wave_1\n    script:\n      - \"action.message('@all', '&a第一波已完成')\"\n",
+      "example": "tasks:\n  countdown:\n    type: 定时\n    times:\n      300: |-\n        action.message('@all', '&e还剩 5 分钟！');\n  buff_timer:\n    type: loop\n    interval: 60\n    script: |-\n      action.apply_potion('@all', 'SPEED', '10s', 0);\n  wave_done:\n    type: event\n    trigger: wave_complete\n    trigger_target: wave_1\n    script: |-\n      action.message('@all', '&a第一波已完成');\n",
       "nodes": [
         {
           "path": "tasks",
@@ -1794,7 +1794,7 @@
       "title": "生命周期脚本钩子",
       "summary": "在开本、通关、失败、死亡与退出等节点执行脚本",
       "containerAliases": {},
-      "example": "init:\n  - \"action.time('night')\"\nstart:\n  条件:\n    - 在线玩家数 >= 1\n  脚本:\n    - \"action.title('@all', '&6&l示例副本', '&7消灭所有敌人')\"\n    - \"action.spawn_group('wave_1')\"\ncomplete:\n  - \"action.grant_reward('@all', '通关奖励')\"\nfail:\n  - \"action.title('@all', '&c挑战失败', '&7再接再厉')\"\n",
+      "example": "init: |-\n  action.time('night');\nstart:\n  条件:\n    - 在线玩家数 >= 1\n  脚本: |-\n    action.title('@all', '&6&l示例副本', '&7消灭所有敌人');\n    action.spawn_group('wave_1');\ncomplete: |-\n  action.grant_reward('@all', '通关奖励');\nfail: |-\n  action.title('@all', '&c挑战失败', '&7再接再厉');\n",
       "nodes": [
         {
           "path": "init",
@@ -1808,7 +1808,7 @@
           "path": "start",
           "key": "start",
           "type": "脚本",
-          "doc": "开场脚本；可直接写列表，也可写成 条件 / 脚本 子段",
+          "doc": "开场脚本；写成 |- 块（一行一条、行尾分号），也可写成 条件 / 脚本 子段",
           "aliases": [],
           "required": false
         },
@@ -1836,7 +1836,7 @@
           "path": "complete",
           "key": "complete",
           "type": "脚本",
-          "doc": "标记通关之后触发；当前版本脚本会被终态守卫丢弃",
+          "doc": "标记通关之后触发；脚本先跑、随后才切成终态（1.0.5 起顺序已修正）",
           "aliases": [],
           "required": false
         },
@@ -1852,7 +1852,7 @@
           "path": "fail",
           "key": "fail",
           "type": "脚本",
-          "doc": "标记失败之后触发；当前版本同样不会执行",
+          "doc": "标记失败之后触发；同样是先跑脚本、再切成终态",
           "aliases": [],
           "required": false
         },
@@ -1870,7 +1870,7 @@
           "path": "all_death",
           "key": "all_death",
           "type": "脚本",
-          "doc": "全员均为死亡状态时只触发一次，需自己调用 fail",
+          "doc": "全员均为死亡状态时只触发一次；脚本跑完后仍无活人则自动判失败并退出",
           "aliases": [
             "all-death"
           ],
@@ -1902,13 +1902,13 @@
     },
     {
       "name": "complete",
-      "doc": "标记通关之后触发，当前版本会被终态守卫丢弃",
+      "doc": "标记通关之后触发；通关脚本先跑、随后才切成终态（1.0.5 起顺序已修正）",
       "hasTrigger": false,
       "example": "action.grant_reward('@all', '通关奖励')"
     },
     {
       "name": "fail",
-      "doc": "标记失败之后触发，当前版本同样不会执行",
+      "doc": "标记失败之后触发；同样是先跑脚本、再切成终态",
       "hasTrigger": false,
       "example": "action.broadcast('&c有队伍挑战失败')"
     },

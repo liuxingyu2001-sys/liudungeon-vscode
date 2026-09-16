@@ -259,17 +259,18 @@ async function removeLegacyWorkspaceArtifacts(): Promise<void> {
 // ==================================================================
 
 const SNIPPET_SCRIPTS = `# 生命周期脚本；只有 complete 里的发奖是"必须"的，其余是提示语
-start:
-  - "action.title('@all', '&6副本名', '&7消灭所有敌人')"
+# 写法：|- 块里一行一条语句、行尾加分号；块里是纯 JS，注释要用 //（写 YAML 的 # 会报错）
+start: |-
+  action.title('@all', '&6副本名', '&7消灭所有敌人');
 
-complete:
-  - "action.title('@all', '&a&l通关！', '&7奖励已发放')"
-  - "action.grant_reward('@all', '通关奖励')"
-  - "action.wait('3秒')"
-  - "action.exit_dungeon()"
+complete: |-
+  action.title('@all', '&a&l通关！', '&7奖励已发放');
+  action.grant_reward('@all', '通关奖励');
+  action.wait('3秒');
+  action.exit_dungeon();
 
-fail:
-  - "action.title('@all', '&c挑战失败', '&7再接再厉')"
+fail: |-
+  action.title('@all', '&c挑战失败', '&7再接再厉');
 `;
 
 const SNIPPET_MONSTERS = `groups:

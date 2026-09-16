@@ -7,7 +7,7 @@
  */
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { ACTION_METHODS, BUILTIN_FUNCTIONS, CONFIG_DATA, DUNGEON_METHODS } from '../server/api-model';
+import { ACTION_METHODS, BUILTIN_FUNCTIONS, CONFIG_DATA, DUNGEON_METHODS, scriptBlockLines } from '../server/api-model';
 import { functionSnippets, javascriptSnippets } from '../server/snippets';
 
 interface CodeSnippet {
@@ -101,7 +101,7 @@ export function buildCodeSnippets(jsPath: string, yamlPath: string): void {
   for (const hook of CONFIG_DATA.scriptHooks) {
     yaml[`ld-hook-${hook.name}`] = {
       prefix: `ld-hook-${hook.name}`,
-      body: [`${hook.name}:`, `  - "${hook.example.replace(/"/g, '\\"')}"`],
+      body: scriptBlockLines(hook.name, hook.example),
       description: `${hook.doc}（触发者：${hook.hasTrigger ? '有' : '无'}）`,
     };
   }
@@ -116,16 +116,16 @@ export function buildCodeSnippets(jsPath: string, yamlPath: string): void {
     };
   }
 
-  // 常见整段脚本写法
+  // 常见整段脚本写法（一律 |- 块：一行一条语句、行尾加分号，见插件文档 7.1.1）
   yaml['ld-message'] = {
     prefix: 'ld-message',
-    body: [`- "action.message('@all', '&e\${1:文本}')"`],
-    description: '给全队发消息的一行脚本',
+    body: [`action.message('@all', '&e\${1:文本}');`],
+    description: '给全队发消息的一行脚本（写进 |- 块里）',
   };
   yaml['ld-script-block'] = {
     prefix: 'ld-script',
-    body: ['\${1:start}:', '  - "action.message(\'@all\', \'&e\${2:开始}\')"'],
-    description: '钩子 + 一行脚本',
+    body: ['\${1:start}: |-', '  action.message(\'@all\', \'&e\${2:开始}\');'],
+    description: '钩子 + 一行脚本（|- 块写法）',
   };
 
   mkdirSync(dirname(jsPath), { recursive: true });
