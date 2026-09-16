@@ -48,15 +48,64 @@ export function canonicalSpellings(file: string): Map<string, string> {
 }
 
 /**
+ * 该文件里「可以省略不写」的容器段名（没有就返回 null）。
+ *
+ * <p>插件对 zones / stages / obstacles / interacts / tasks / chest_rewards 的解析都是
+ * 「先找容器节，找不到就把根下每个键当条目」—— <b>两种写法都合法</b>。
+ * 游戏内编辑器新建条目走的是根级写法，所以扩展必须把「少了外层容器」认成同一个位置，
+ * 否则整棵子树都不认（补全/悬停空、还会误报「插件不读的键」）。
+ */
+const OPTIONAL_CONTAINER_CACHE = new Map<string, string | null>();
+
+export function optionalContainerSegment(file: string): string | null {
+  const cached = OPTIONAL_CONTAINER_CACHE.get(file);
+  if (cached !== undefined) return cached;
+  const cfg = CONFIG_FILE_BY_NAME.get(file);
+  let hit: string | null = null;
+  if (cfg?.containerOptional) {
+    const pathSegments = new Set<string>();
+    for (const n of cfg.nodes) for (const s of splitPath(n.path)) pathSegments.add(s);
+    for (const list of Object.values(cfg.containerAliases ?? {})) {
+      const canonical = list.find((s) => pathSegments.has(s));
+      if (canonical) {
+        hit = canonical;
+        break;
+      }
+    }
+  }
+  OPTIONAL_CONTAINER_CACHE.set(file, hit);
+  return hit;
+}
+
+/**
  * 判断一个「数据里的路径模板」是否匹配（某个文件里）「编辑器的实际路径」。
  *
  * <p>模板段 `<组ID>` / `[]` 视为通配一段；其余段按 {@link canonicalSpellings} 归一化后比较，
  * 所以 `obstacles.出生点屏障.区域` 与数据里的 `障碍物.<障碍物ID>.区域` 是匹配的。
  * 给不出文件（拿不到数据）时退化为纯字面量比较。
+ *
+ * <p>容器可省略的文件（{@link optionalContainerSegment}）另外允许模板<b>少一段外层容器</b>：
+ * 数据里的 `区域.<区域ID>.范围` 也得匹配实际写的 `<区域ID>.范围`。
  */
 export function nodePathMatches(file: string, pattern: string, concrete: string): boolean {
   if (isRootPath(pattern) || isRootPath(concrete)) {
     return isRootPath(pattern) && isRootPath(concrete);
+  }
+  const optional = optionalContainerSegment(file);
+  if (optional) {
+    const segs = pattern.split('.');
+    const canon = canonicalSpellings(file);
+    const head = canon?.get(segs[0]) ?? segs[0];
+    const c0 = concrete.split('.')[0];
+    const concreteHead = canon?.get(c0) ?? c0;
+    // 只在**实际路径里没有外层容器**时才允许少这一段。
+    // 少了 `concreteHead !== optional` 这个条件会出事：容器本身（写 `tasks:` /
+    // `障碍物:` 的那一行）也会被当成"条目 ID"命中 `<任务名>`，于是容器下那一层的
+    // 键全被换成条目的字段，任务名/障碍物名反而被报成"插件不读的键"。
+    if (segs.length > 1 && head === optional && concreteHead !== optional
+        && nodePathMatches(file, segs.slice(1).join('.'), concrete)) {
+      return true;
+    }
   }
   const p = pattern.split('.').map((s) => s.replace(/\[\]$/, ''));
   const c = concrete.split('.').map((s) => s.replace(/\[\]$/, '')).filter((s) => s !== '');

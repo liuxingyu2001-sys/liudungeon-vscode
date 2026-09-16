@@ -1656,6 +1656,86 @@ function labelDump(items) {
   await new Promise((r) => setTimeout(r, 80));
 }
 
+// ---------- 用例 33：条目直接写在根上时，别把它报成「插件不读的键」 ----------
+// 真实反馈：游戏内编辑器保存出来的 zones.yml 是**根级**写法（`spawn:` 直接在最外层），
+// 而扩展把它报成「插件不读「spawn」这个键（zones.yml 这一层只有 区域）」。
+// 插件解析器其实是「先找容器节，找不到就把根下每个键当条目」（DungeonRegistry.parseZones），
+// 所以根级写法合法、编辑器写它也是对的 —— 错的是扩展的数据模型（只认容器写法）。
+// 这一组钉三件事：不误报、子键能补全悬停、容器拼错时**仍然**要报。
+{
+  const FLAT_DIR = join(mkdtempSync(join(tmpdir(), 'ld-rootzone-')), 'dungeons', 'rootzone');
+  mkdirSync(FLAT_DIR, { recursive: true });
+  writeFileSync(join(FLAT_DIR, 'config.yml'),
+    "dungeon:\n  name: '&e根级区域用'\nworld:\n  template: voidgen\n", 'utf8');
+  // 与反馈里那份一模一样：区域名就叫 spawn
+  const zoneText = "spawn:\n  名称: '&espawn'\n  范围: 2,49,-14 ~ 7,54,-7\n  默认开启: true\n";
+  writeFileSync(join(FLAT_DIR, 'zones.yml'), zoneText, 'utf8');
+
+  const uri = openDoc('zones.yml', zoneText, FLAT_DIR);
+  await new Promise((r) => setTimeout(r, 300));
+  const bad = client.diagnosticsFor(uri).filter((d) => d.code === 'unknown-key');
+  check('根级区域（spawn / 名称 / 范围 / 默认开启）不报 unknown-key',
+    bad.length === 0, JSON.stringify(bad).slice(0, 400));
+  closeDoc(uri);
+  await new Promise((r) => setTimeout(r, 80));
+
+  // 根级区域里的子键要能补全（容器可省略 → 数据里少一段「区域」仍要匹配）
+  const curi = openDoc('zones.yml', "spawn:\n  \n", FLAT_DIR);
+  await new Promise((r) => setTimeout(r, 300));
+  const kids = labels(await completions(curi, 1, 2));
+  check('根级区域下补全列出「名称」', kids.includes('名称'), kids.join(','));
+  check('根级区域下补全列出「范围」', kids.includes('范围'), kids.join(','));
+  check('根级区域下补全列出「点位」', kids.includes('点位'), kids.join(','));
+  closeDoc(curi);
+  await new Promise((r) => setTimeout(r, 80));
+
+  // 悬停也要认（数据里路径是 区域.<区域ID>.范围，实际写的是 spawn.范围）
+  const huri = openDoc('zones.yml', zoneText, FLAT_DIR);
+  const h = await hover(huri, 2, 3);
+  check('悬停根级区域里的「范围」给出文档', /范围|长方体/.test(JSON.stringify(h ?? {})),
+    JSON.stringify(h ?? {}).slice(0, 200));
+  closeDoc(huri);
+  await new Promise((r) => setTimeout(r, 80));
+
+  // 反向对照：容器名写成 zone（漏了 s）仍然要报 —— 那是真错：
+  // 插件会把 zone 当成一个区域名，而区域该有的 范围 并不在它下面
+  const typoText = "zone:\n  前厅:\n    范围: '0,60,0 ~ 1,61,1'\n";
+  writeFileSync(join(FLAT_DIR, 'zones.yml'), typoText, 'utf8');
+  const turi = openDoc('zones.yml', typoText, FLAT_DIR);
+  const tdiags = await client.waitFor(() => {
+    const d = client.diagnosticsFor(turi);
+    return d.some((x) => x.code === 'unknown-key') ? d : undefined;
+  });
+  const thit = (tdiags ?? []).find((x) => x.code === 'unknown-key');
+  check('容器名写成 zone 时，下一层的 前厅 仍报 unknown-key', Boolean(thit),
+    JSON.stringify(tdiags ?? []).slice(0, 300));
+  check('这条提示会列出这一层真正能写的键', /名称|范围/.test(thit?.message ?? ''), thit?.message ?? '');
+  closeDoc(turi);
+  await new Promise((r) => setTimeout(r, 80));
+
+  // 另一头：**有容器时，写在根上的条目一律不生效**（解析器取到容器就再不看根）。
+  // 这条同样是静默失败，写的人只会觉得"我这个区域怎么没反应"。
+  const mixText = "区域:\n  前厅:\n    范围: '0,60,0 ~ 1,61,1'\n战斗区:\n  范围: '0,60,0 ~ 9,69,9'\n";
+  const muri = openDoc('zones.yml', mixText, FLAT_DIR);
+  const mdiags = await client.waitFor(() => {
+    const d = client.diagnosticsFor(muri).filter((x) => x.code === 'container-mixed');
+    return d.length ? d : undefined;
+  });
+  const mhit = (mdiags ?? [])[0];
+  check('根上那个区域被报成「有容器时不生效」', Boolean(mhit), JSON.stringify(client.diagnosticsFor(muri)).slice(0, 400));
+  check('提示点名了根上那个键与容器名', /战斗区/.test(mhit?.message ?? '') && /区域/.test(mhit?.message ?? ''), mhit?.message ?? '');
+  closeDoc(muri);
+  await new Promise((r) => setTimeout(r, 80));
+
+  // 正对照：只写根级（没有容器）时不报这条
+  const onlyRoot = openDoc('zones.yml', "前厅:\n  范围: '0,60,0 ~ 1,61,1'\n", FLAT_DIR);
+  await new Promise((r) => setTimeout(r, 300));
+  const onlyRootMixed = client.diagnosticsFor(onlyRoot).filter((x) => x.code === 'container-mixed');
+  check('没有容器时不报 container-mixed', onlyRootMixed.length === 0, JSON.stringify(onlyRootMixed).slice(0, 300));
+  closeDoc(onlyRoot);
+  await new Promise((r) => setTimeout(r, 80));
+}
+
 // ---------- 收尾 ----------
 client.notify('exit', {});
 child.kill();

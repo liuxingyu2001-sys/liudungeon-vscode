@@ -54,6 +54,15 @@ export interface ConfigFile {
   title: string;
   summary: string;
   containerAliases?: Record<string, string[]>;
+  /**
+   * 这个文件的「条目」可以直接写在根上（不带外层容器）。
+   *
+   * <p>插件解析器对 zones / stages / obstacles / interacts / tasks / chest_rewards 都是
+   * 「先找容器节，找不到就把根下每个键当条目」（{@code DungeonRegistry.parse*} 里的
+   * {@code if (raw.isEmpty()) raw = Keys.getSectionMap(yml);}），而 monsters.yml
+   * **没有**这条回退 —— 所以这个标记按文件给，不能一刀切。
+   */
+  containerOptional?: boolean;
   example: string;
   nodes: ConfigNode[];
 }

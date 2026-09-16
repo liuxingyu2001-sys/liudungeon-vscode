@@ -34,9 +34,11 @@ import { linePaths } from './yaml-context';
 import {
   CONFIG_FILE_BY_NAME,
   baseName,
+  canonicalSpellings,
   keySpellings,
   nodePathMatches,
   offsetToLine,
+  optionalContainerSegment,
   splitPath,
   type ConfigNode,
 } from './yaml-shared';
@@ -89,6 +91,7 @@ export function computeDiagnostics(input: DiagnosticsInput): Diagnostic[] {
   // ---------- 6b：插件根本不读的键（写错只会被静默忽略）----------
   if (input.options.unknownKeys) {
     out.push(...checkUnknownKeys(name, lines, scriptRanges));
+    out.push(...checkContainerMixedWithRoot(name, lines, scriptRanges));
   }
 
   // ---------- 9：dungeon 段里的 spawn（写错位置，运行时读的是 world.spawn）----------
@@ -881,6 +884,97 @@ function checkUnknownKeys(
 }
 
 /**
+ * 容器与根级条目混写：**有容器时，写在根上的条目一律不生效**。
+ *
+ * <p>插件解析器只有一句话：先找容器节，**取到了就再不看根**（{@code DungeonRegistry.parse*}
+ * 里的 {@code raw = getKeys(yml, "区域", "zones"); if (raw.isEmpty()) raw = getKeys(yml);}）。
+ * 所以「文件里既有 `区域:` 又有一批写在根上的区域」时，根上那批是**静默失效**的：
+ * 不报错、不警告，脚本按名字引用它们时才在控制台留一行"引用的区域不存在"。
+ *
+ * <p>只对「节」报警（下一行有更深缩进的键），标量键不管 —— 那种多半是引用或注释性配置，
+ * 不是"写错地方的条目"。
+ */
+function checkContainerMixedWithRoot(
+  fileName: string,
+  lines: string[],
+  scriptRanges: Region[],
+): Diagnostic[] {
+  const optional = optionalContainerSegment(fileName);
+  if (!optional) return [];
+  const out: Diagnostic[] = [];
+  const inScript = (line: number) => scriptRanges.some((r) => line >= r.start && line <= r.end);
+  const paths = linePaths(lines);
+  const canon = canonicalSpellings(fileName);
+
+  // 容器那一行（根级、且归一化后就是容器名）
+  let containerLine = -1;
+  let containerText = optional;
+  for (let i = 0; i < lines.length; i++) {
+    const hit = topLevelSection(lines, paths, i, inScript);
+    if (!hit) continue;
+    if ((canon?.get(hit.key) ?? hit.key) === optional) {
+      containerLine = i;
+      containerText = hit.key;
+      break;
+    }
+  }
+  if (containerLine < 0) return out;
+
+  // 容器里**至少得有一个"节"子键**，插件才不会回退到根：解析器收的是节（getSectionMap
+  // 只把节型子键算进 raw），一个只有标量的 `区域:` 等于空的，根上那些照样会被读。
+  const hasSectionChild = lines.some((_, j) =>
+    (paths[j]?.parent ?? '') === containerText && hasDeeperChild(lines, j));
+  if (!hasSectionChild) return out;
+
+  for (let i = 0; i < lines.length; i++) {
+    const hit = topLevelSection(lines, paths, i, inScript);
+    if (!hit || i === containerLine) continue;
+    if ((canon?.get(hit.key) ?? hit.key) === optional) continue;
+    const at = lines[i].indexOf(hit.key);
+    out.push({
+      range: Range.create(i, at, i, at + hit.key.length),
+      severity: SEVERITY_WARN,
+      source: 'liudungeon',
+      message:
+        `文件里已经有「${containerText}」这一层了：插件这时只读容器里，` +
+        `写在根节点的「${hit.key}」不会被读到。要么把它挪进「${containerText}」，` +
+        `要么把「${containerText}」这层删掉（两种写法只能留一种）。`,
+      code: 'container-mixed',
+    });
+  }
+  return out;
+}
+
+/** 这一行是不是「根级、且是节（下面有缩进更深的内容）」的键；不是返回 null。 */
+function topLevelSection(
+  lines: string[],
+  paths: { parent: string }[],
+  i: number,
+  inScript: (line: number) => boolean,
+): { key: string } | null {
+  const line = lines[i];
+  if (line.trim() === '' || /^\s*#/.test(line)) return null;
+  if ((paths[i]?.parent ?? '') !== '') return null;
+  if (inScript(i)) return null;
+  const m = /^(\s*)(?:-\s+)?(?:"([^"]+)"|'([^']+)'|([^:#]+?))\s*:(?:\s|$)/.exec(line);
+  if (!m) return null;
+  const key = (m[2] ?? m[3] ?? m[4] ?? '').trim();
+  if (!key) return null;
+  return hasDeeperChild(lines, i) ? { key } : null;
+}
+
+/** 该行下面有没有缩进更深的非空行（用来区分「节」与「标量键」）。 */
+function hasDeeperChild(lines: string[], i: number): boolean {
+  const indent = indentOf(lines[i]);
+  for (let j = i + 1; j < lines.length; j++) {
+    const l = lines[j];
+    if (l.trim() === '' || /^\s*#/.test(l)) continue;
+    return indentOf(l) > indent;
+  }
+  return false;
+}
+
+/**
  * 数据里某一层的子键；`dynamic` = 这一层有占位节点（名字随便写）。
  *
  * <p>结果按「文件 + 父路径」缓存：一个文件里绝大多数行的父路径是重复的
@@ -899,7 +993,11 @@ function dataChildren(
 
   const cfg = CONFIG_FILE_BY_NAME.get(file);
   const keys: ConfigNode[] = [];
-  let dynamic = false;
+  // 容器可省略的文件（zones / stages / obstacles / interacts / tasks / chest_rewards）：
+  // 根下写的就是条目 ID，名字由服主起 —— 是"动态命名"那一层。
+  // 不这样判的话，`zones.yml` 里直接写 `spawn:`（游戏内编辑器保存的就是这种，插件也照读）
+  // 会被报成「插件不读 spawn 这个键」，而它其实是这个副本的一个区域名。
+  let dynamic = parentPath.trim() === '' && optionalContainerSegment(file) !== null;
   for (const n of cfg?.nodes ?? []) {
     const segments = splitPath(n.path);
     if (segments.length === 0) continue;

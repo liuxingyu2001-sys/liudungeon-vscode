@@ -1115,6 +1115,7 @@
           "stages"
         ]
       },
+      "containerOptional": true,
       "example": "入口: 清怪\n清怪:\n  名称: '&e清理前厅'\n  通关条件: \"dungeon.isGroupCleared('wave_1')\"\n  超时: 300\n  开始脚本: \"action.title('@all', '&e第一阶段', '&7清理所有敌人')\"\n  下一阶段: Boss战\nBoss战:\n  通关条件: \"dungeon.isGroupCleared('boss')\"\n",
       "nodes": [
         {
@@ -1243,6 +1244,7 @@
           "zones"
         ]
       },
+      "containerOptional": true,
       "example": "战斗区:\n  名称: '&e前厅战斗区'\n  范围: '-20,60,-30 ~ 20,80,10'\n  默认开启: true\n  进入脚本: \"action.message('@trigger', '&e你进入了前厅战斗区')\"\n  点位:\n    中心: '0,64,-10'\n    落点: '0,64,0,0,0'\n",
       "nodes": [
         {
@@ -1357,6 +1359,7 @@
           "obstacles"
         ]
       },
+      "containerOptional": true,
       "example": "障碍物:\n  Boss门:\n    区域: Boss门洞\n    材质: IRON_BARS\n    默认状态: 开启\n    开启时: |-\n      action.message('@all', '&a大门已打开');\n",
       "nodes": [
         {
@@ -1458,6 +1461,7 @@
           "interacts"
         ]
       },
+      "containerOptional": true,
       "example": "interacts:\n  机关按钮:\n    type: RIGHT_CLICK_BLOCK\n    once: false\n    parameters:\n      location: '3,64,3'\n    script: \"action.setblock('0,64,5,AIR')\"\n  陷阱区域:\n    type: ENTER_REGION\n    once: false\n    parameters:\n      min: '-15,63,-15'\n      max: '-10,68,-10'\n",
       "nodes": [
         {
@@ -1635,6 +1639,7 @@
           "任务"
         ]
       },
+      "containerOptional": true,
       "example": "tasks:\n  countdown:\n    type: 定时\n    times:\n      300: |-\n        action.message('@all', '&e还剩 5 分钟！');\n  buff_timer:\n    type: loop\n    interval: 60\n    script: |-\n      action.apply_potion('@all', 'SPEED', '10s', 0);\n  wave_done:\n    type: event\n    trigger: wave_complete\n    trigger_target: wave_1\n    script: |-\n      action.message('@all', '&a第一波已完成');\n",
       "nodes": [
         {
@@ -2067,6 +2072,7 @@
       "title": "宝箱奖励 UI",
       "summary": "用箱子界面让玩家自己挑奖励（每个槽位指向 rewards.yml 里的一个奖励名）",
       "containerAliases": {},
+      "containerOptional": true,
       "example": "chests:\n  通关宝箱:\n    title: '&6选一个奖励'\n    rows: 3\n    mode: single\n    options:\n      - slot: 11\n        icon: DIAMOND\n        name: '&b钻石'\n        reward: 钻石奖励\n",
       "nodes": [
         {
