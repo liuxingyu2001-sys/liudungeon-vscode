@@ -5,7 +5,7 @@
       "title": "副本主配置",
       "summary": "副本唯一必需的文件：基础信息、世界、进入要求、限制与复活等总开关",
       "containerAliases": {},
-      "example": "dungeon:\n  name: '&6示例副本'\n  difficulty: 普通\nworld:\n  template: voidgen\n  spawn: '0,65,0,0,0'\n  world_rules:\n    time: night\n    keep_inventory: true\nrequirements:\n  min_players: 1\n  max_players: 4\ntime:\n  limit: 1800\n  timeout_action: FAIL\n",
+      "example": "priority: 10\ndungeon:\n  name: '&6示例副本'\n  difficulty: 普通\nworld:\n  template: voidgen\n  spawn: '0,65,0,0,0'\n  world_rules:\n    time: night\n    keep_inventory: true\nrequirements:\n  min_players: 1\n  max_players: 4\ntime:\n  limit: 1800\n  timeout_action: FAIL\n",
       "nodes": [
         {
           "path": "enable",
@@ -26,6 +26,17 @@
           "aliases": [
             "hidden",
             "隐藏"
+          ],
+          "required": false
+        },
+        {
+          "path": "priority",
+          "key": "priority",
+          "type": "整数",
+          "doc": "副本在列表里的排序优先级：数字越小越靠前（GUI 地牢菜单 / /ld list / 指令补全）。不写 = 10。相同优先级的副本按 ID 排序（不区分大小写），所以不配也有稳定顺序。只影响显示顺序，与能不能进、进入条件、实例上限都无关",
+          "aliases": [
+            "优先级",
+            "排序"
           ],
           "required": false
         },
@@ -671,7 +682,7 @@
           "path": "revive.item.consume-message",
           "key": "consume-message",
           "type": "文本",
-          "doc": "消耗复活道具时的提示文案，{item} 会替换成道具名；不写 = 用插件默认提示",
+          "doc": "扣除复活道具时给玩家的一句提示，{item} 替换成道具名（display-name 或材质名）。不写 = 静默扣，什么提示都不发 —— 道具是从背包直接删的，区分得开「没配」与「配了一句默认话」",
           "aliases": [
             "consume_message",
             "消耗提示"

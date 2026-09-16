@@ -6,8 +6,8 @@
 # 注意：这些文件**带着未提交的正常改动**，所以还原必须用「变异前先备份到 tmp」，
 # 绝不能 git checkout —— 那会把本轮的真实修改一起抹掉（第一次跑就踩了）。
 # 每处变异都会断言「替换数符合预期」，避免一个静默没改成的变异被误判成「断言没牙」。
-# 目前 14 处：索引层 3、引用类型单一出处 2、诊断 3、路径匹配/列表项 2、悬停 1、
-# 别名归一化 1、数据文件 2（containerAliases 的键、chest_rewards 的整份数据）。
+# 目前 15 处：索引层 3、引用类型单一出处 2、诊断 3、路径匹配/列表项 2、悬停 1、
+# 别名归一化 1、数据文件 3（containerAliases 的键、chest_rewards 的整份数据、顶层 priority）。
 #
 # 「变红」的判定也必须看**测试摘要行**，不能只看退出码：日志文件建不出来、
 # node 起不来、npm 脚本改名…… 都会让退出码非 0，只看退出码就会把"根本没跑起来"
@@ -153,6 +153,17 @@ mutate data/config-files.json \
     '      "file": "chest_rewards.yml",' \
     '      "file": "chest_rewards_unused.yml",'
 run_case "M14 丢掉 chest_rewards.yml 的数据（宝箱文件一个字都补不出来）"
+restore
+
+# M15：顶层 priority 的**键名**改掉（插件 1.4.4 新增）。
+# 危害不是"少一条补全"，而是把合法的顶层键报成「插件不读的键」——
+# 照文档配了 priority 的服主会把它删掉，于是"把主推副本排第一"静默失效。
+# 只改 path 不够：unknown-key 是按**键名**匹配的，path 变了键名还在，
+# 于是只有悬停会失效（第一次就是这么写的，实测只红 1 条）。必须连键名一起改。
+mutate data/config-files.json \
+    $'          "path": "priority",\n          "key": "priority",' \
+    $'          "path": "priority",\n          "key": "priority_unused",'
+run_case "M15 顶层 priority 的键名没了（照文档配的排序优先级被报成插件不读的键）"
 restore
 
 echo "=== 还原后复跑 ==="

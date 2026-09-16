@@ -58,6 +58,7 @@
   "ld-configyml": {
     "prefix": "ld-configyml",
     "body": [
+      "priority: 10",
       "dungeon:",
       "  name: '&6示例副本'",
       "  difficulty: 普通",

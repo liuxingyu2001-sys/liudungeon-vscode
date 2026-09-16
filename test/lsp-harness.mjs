@@ -1598,6 +1598,64 @@ function labelDump(items) {
   await new Promise((r) => setTimeout(r, 80));
 }
 
+// ---------- 用例 32：跟随插件新增的顶层键 priority（列表排序优先级） ----------
+// 与用例 31 同一个道理，但这一条更值得单独盯：priority 是**顶层**键，
+// 而顶层是所有 YAML 文件里最容易被"整体失效"的一层（用例 16g 就是顶层键补全
+// 曾经全挂的回归）。插件 1.4.4 新增它之后，不认它的后果是报告诉服主
+// "插件不读这个键" —— 而照文档配了 priority 的服主会把它删掉，
+// 于是"我把主推副本排到第一个"这件事静默失效，且没有任何别的迹象。
+// 另外它的别名是纯中文（优先级 / 排序），中文键名的通路也要走一遍。
+{
+  // 1) 补全：顶层输入 pri 要能补出 priority
+  const uri = openDoc('config.yml', 'pri\n');
+  const items = await completions(uri, 0, 3);
+  const prio = items.find((i) => i.label === 'priority');
+  check('config.yml 顶层能补出 priority', Boolean(prio), labelDump(items));
+  const doc = JSON.stringify(prio?.documentation ?? {});
+  // 文档必须说清方向与默认值 —— 这两点是这个键唯一的"用法"，
+  // 只说"排序优先级"等于没说（"越小越靠前"猜错的人一定会有）
+  check('priority 的文档说清数字越小越靠前', /越小越靠前/.test(doc), doc.slice(0, 200));
+  check('priority 的文档给出默认值 10', /默认\s*10|=\s*10/.test(doc), doc.slice(0, 200));
+  closeDoc(uri);
+  await new Promise((r) => setTimeout(r, 80));
+
+  // 2) 悬停键名
+  const hov = openDoc('config.yml', 'priority: 1\n');
+  const h = await hover(hov, 0, 3);
+  check('悬停 priority 给出文档', /靠前|优先级/.test(JSON.stringify(h ?? {})), JSON.stringify(h ?? {}).slice(0, 200));
+  closeDoc(hov);
+  await new Promise((r) => setTimeout(r, 80));
+
+  // 3) 正对照：英/中两种写法 + 与 enable/hide 同层，都不许报 unknown-key
+  const goodText = "enable: true\nhide: false\npriority: 1\n";
+  const good = openDoc('config.yml', goodText);
+  await new Promise((r) => setTimeout(r, 300));
+  const goodKeys = client.diagnosticsFor(good).filter((d) => d.code === 'unknown-key');
+  check('priority / 优先级 / 排序 都不报 unknown-key', goodKeys.length === 0, JSON.stringify(goodKeys).slice(0, 300));
+  closeDoc(good);
+  await new Promise((r) => setTimeout(r, 80));
+
+  const cnText = "启用: true\n隐藏: false\n优先级: 1\n排序: 2\n";
+  const cn = openDoc('config.yml', cnText);
+  await new Promise((r) => setTimeout(r, 300));
+  const cnKeys = client.diagnosticsFor(cn).filter((d) => d.code === 'unknown-key');
+  check('中文别名（优先级 / 排序）不报 unknown-key', cnKeys.length === 0, JSON.stringify(cnKeys).slice(0, 300));
+  closeDoc(cn);
+  await new Promise((r) => setTimeout(r, 80));
+
+  // 4) 反向对照：拼错还是要报，且要给出最接近的键
+  const typo = openDoc('config.yml', 'priorty: 1\n');
+  const typoDiags = await client.waitFor(() => {
+    const d = client.diagnosticsFor(typo);
+    return d.some((x) => x.code === 'unknown-key') ? d : undefined;
+  });
+  const typoHit = (typoDiags ?? []).find((x) => x.code === 'unknown-key');
+  check('把 priority 写成 priorty 报 unknown-key', Boolean(typoHit), JSON.stringify(typoDiags ?? []).slice(0, 300));
+  check('unknown-key 提示里给出最接近的键 priority', /\bpriority\b/.test(typoHit?.message ?? ''), typoHit?.message ?? '');
+  closeDoc(typo);
+  await new Promise((r) => setTimeout(r, 80));
+}
+
 // ---------- 收尾 ----------
 client.notify('exit', {});
 child.kill();
