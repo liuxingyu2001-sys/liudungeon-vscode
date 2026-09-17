@@ -1825,6 +1825,22 @@
       "doc": "触发者血量（四舍五入）"
     },
     {
+      "value": "{player.x}",
+      "doc": "触发者所在的方块 X 坐标（整数），配 {player.y}/{player.z} 用"
+    },
+    {
+      "value": "{player.y}",
+      "doc": "触发者所在的方块 Y 坐标（整数）"
+    },
+    {
+      "value": "{player.z}",
+      "doc": "触发者所在的方块 Z 坐标（整数）"
+    },
+    {
+      "value": "{player.pos}",
+      "doc": "触发者的精确坐标 x,y,z（1 位小数），本身就是一个合法位置引用"
+    },
+    {
       "value": "{dungeon.time}",
       "doc": "副本已运行秒数"
     },

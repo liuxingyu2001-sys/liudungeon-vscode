@@ -1839,6 +1839,55 @@ function labelDump(items) {
   await new Promise((r) => setTimeout(r, 80));
 }
 
+// ---------- 用例 33：hologram 的占位符（{player.x} 这一组） ----------
+// 插件 1.5.3 起 hologram 的文本与位置参数都做占位符替换（"在玩家死亡地点挂字"就靠它）。
+// 两件事都要盯住：① 合法占位符不能被报成"不会被替换"；② 写错的名字要给出建议。
+// ① 查的是 data/action-methods.json 那份名单，② 查的是 code-actions.ts 里那份 ——
+// 两份名单是分开维护的，只改一份就会出现"不报错但也修不了"的半吊子状态。
+{
+  // 1) 合法：hologram 行上的 {player.name} / {player.x} / {player.pos} 都不报
+  const ok = openDoc('scripts.yml',
+    'player_death: |-\n'
+    + "  action.hologram('&c{player.name} 倒在这里', '{player.x},{player.y},{player.z}', 1.2, '60s', 1.0);\n"
+    + "  action.hologram('&7精确坐标', '{player.pos}', 1.0, '30s', 1.0);\n");
+  await new Promise((r) => setTimeout(r, 350));
+  const okDiags = client.diagnosticsFor(ok).filter((d) => d.code === 'placeholder');
+  check('hologram 行上的 {player.x}/{player.pos} 不报占位符问题', okDiags.length === 0, JSON.stringify(okDiags).slice(0, 300));
+  closeDoc(ok);
+  await new Promise((r) => setTimeout(r, 80));
+
+  // 2) 写错：hologram 行的 {player.posx} 要报，并且建议里给 {player.pos}
+  const bad = openDoc('scripts.yml',
+    'player_death: |-\n'
+    + "  action.hologram('&c{player.posx} 倒在这里', '{player.x},{player.y},{player.z}', 1.2, '60s');\n");
+  const badDiags = await client.waitFor(() => {
+    const d = client.diagnosticsFor(bad).filter((x) => x.code === 'placeholder');
+    return d.length > 0 ? d : undefined;
+  });
+  check('hologram 行上的错占位符被报出来', Boolean(badDiags), JSON.stringify(client.diagnosticsFor(bad)).slice(0, 300));
+  check('提示里点名了 {player.pos}', /\{player\.pos\}/.test(badDiags?.[0]?.message ?? ''), badDiags?.[0]?.message ?? '');
+  // 快速修复的那份名单（code-actions.ts）与诊断那份是分开维护的，所以这里直接跑一次
+  // codeAction：只改一份的话「不报错但也修不了」，光看诊断看不出来
+  const fixes = await request('textDocument/codeAction', {
+    textDocument: { uri: bad },
+    range: badDiags?.[0]?.range ?? { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } },
+    context: { diagnostics: badDiags ?? [] },
+  });
+  // 按标题找（codeAction 返回里不一定带我们自己的 code 字段）
+  const fix = (fixes ?? []).find((a) => (a.title ?? '').includes('{player.pos}'));
+  check('给出「改成 {player.pos}」的快速修复', /\{player\.pos\}/.test(fix?.title ?? ''), JSON.stringify((fixes ?? []).map((a) => a.title)));
+  check('修复内容就是 {player.pos}', fix?.edit?.changes?.[bad]?.[0]?.newText === '{player.pos}', JSON.stringify(fix ?? {}));
+  closeDoc(bad);
+  await new Promise((r) => setTimeout(r, 80));
+
+  // 3) 悬停/补全数据里也要有这一组（否则用户根本不知道有它）
+  const cfg = JSON.parse(readFileSync('data/action-methods.json', 'utf8'));
+  const values = (cfg.placeholders ?? []).map((p) => p.value);
+  for (const v of ['{player.x}', '{player.y}', '{player.z}', '{player.pos}']) {
+    check(`data/action-methods.json 收录了 ${v}`, values.includes(v), values.join(','));
+  }
+}
+
 // ---------- 收尾 ----------
 client.notify('exit', {});
 child.kill();

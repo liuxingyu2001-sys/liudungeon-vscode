@@ -561,9 +561,15 @@ const ZONE_PLACEHOLDERS = new Set([
   '{来源区域}',
 ]);
 
-/** 文本占位符检查：只在出现 action.message/title/actionbar/broadcast 的行上做。 */
+/**
+ * 文本占位符检查：只在会做替换的那几个动作上做。
+ *
+ * <p>{@code hologram} 也要算进来 —— 插件的 {@code ActionApi.applyPlaceholders} 现在同样
+ * 作用在它的**文本与位置参数**上（写 {@code '{player.x},{player.y},{player.z}'} 就是
+ * "在玩家死亡地点挂字"），漏了它的话：写错占位符不提示，写对了反而可能被别的检查骚扰。
+ */
 function checkPlaceholders(line: string, lineNo: number): Diagnostic[] {
-  if (!/\baction\s*\.\s*(message|title|actionbar|broadcast)\s*\(/.test(line)) return [];
+  if (!/\baction\s*\.\s*(message|title|actionbar|broadcast|hologram)\s*\(/.test(line)) return [];
   const out: Diagnostic[] = [];
   const re = /\{([A-Za-z_][\w.]*)\}/g;
   let m: RegExpExecArray | null;
@@ -577,7 +583,7 @@ function checkPlaceholders(line: string, lineNo: number): Diagnostic[] {
         range: Range.create(lineNo, m.index, lineNo, m.index + m[0].length),
         severity: SEVERITY_INFO,
         source: 'liudungeon',
-        message: `占位符 ${m[0]} 不会被替换，会原样显示给玩家。可用：{player.name} {player.level} {player.health} {dungeon.time} {dungeon.players} {dungeon.name} {total_kills} {var:名字} {random:1-100}`,
+        message: `占位符 ${m[0]} 不会被替换，会原样显示给玩家。可用：{player.name} {player.level} {player.health} {player.x} {player.y} {player.z} {player.pos} {dungeon.time} {dungeon.players} {dungeon.name} {total_kills} {var:名字} {random:1-100}`,
         code: 'placeholder',
       });
     }
