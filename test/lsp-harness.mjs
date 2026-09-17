@@ -1134,6 +1134,52 @@ function labelDump(items) {
   closeDoc(color);
 }
 
+// ---------- 用例 22：action.hologram（新动作：四参重载 + 参数个数不能误报） ----------
+// 三个重载（2/3/4 参）正好撞上"参数个数按重载集合校验"这条诊断：只要数据里漏一个重载，
+// 合法的四参调用就会被标成错误 —— 而玩家看到红波浪线只会以为是自己写错了。
+{
+  const okText = "start: |-\n  action.hologram('&e提示', 'Boss房.中心', 2.0, '30s')\n";
+  const okUri = openDoc('scripts.yml', okText);
+  await new Promise((r) => setTimeout(r, 250));
+  const bad = client.diagnosticsFor(okUri).filter((x) => x.code === 'arity' || x.code === 'unknown-method');
+  check('hologram 四参调用不报错（三个重载都要在数据里）', bad.length === 0, JSON.stringify(bad).slice(0, 250));
+  closeDoc(okUri);
+
+  const noUri = openDoc('scripts.yml', "start: |-\n  action.clear_holograms()\n");
+  await new Promise((r) => setTimeout(r, 250));
+  const d2 = client.diagnosticsFor(noUri).filter((x) => x.code === 'unknown-method');
+  check('clear_holograms 零参调用被认作已实现的方法', d2.length === 0, JSON.stringify(d2).slice(0, 250));
+  closeDoc(noUri);
+
+  const fiveUri = openDoc('scripts.yml', "start: |-\n  action.hologram('t', '0,64,0', 1.0, '10s', '多写了一个')\n");
+  const five = await client.waitFor(() => {
+    const d = client.diagnosticsFor(fiveUri).filter((x) => x.code === 'arity');
+    return d.length >= 1 ? d : undefined;
+  });
+  check('hologram 五参（没有这个重载）会被报出来',
+    /hologram 没有 5 个参数的版本/.test((five ?? []).map((x) => x.message).join(' | ')),
+    (five ?? []).map((x) => x.message).join(' | '));
+  closeDoc(fiveUri);
+}
+
+// ---------- 用例 23：revive.on_ally_revive（新钩子键） ----------
+{
+  const uri = openDoc('config.yml', 'revive:\n  count: 3\n  on_ally_revive: |-\n    action.message(\'@all\', \'救起来了\')\n');
+  await new Promise((r) => setTimeout(r, 250));
+  const diags = client.diagnosticsFor(uri).filter((x) => x.code === 'unknown-key');
+  check('revive.on_ally_revive 不被当成未知键', diags.length === 0, JSON.stringify(diags).slice(0, 250));
+
+  // 同一段里把钩子名写错时仍然要报（说明这条断言不是因为"整段都不校验"才过的）
+  const badUri = openDoc('config.yml', 'revive:\n  on_ally_revive_typo: |-\n    action.message(\'@all\', \'x\')\n');
+  const bad = await client.waitFor(() => {
+    const d = client.diagnosticsFor(badUri).filter((x) => x.code === 'unknown-key');
+    return d.length >= 1 ? d : undefined;
+  });
+  check('拼错的 revive 子键照样报未知键', Boolean(bad), JSON.stringify(bad ?? []).slice(0, 250));
+  closeDoc(badUri);
+  closeDoc(uri);
+}
+
 // ---------- 用例 18：数据完整性（补全数据与插件源码对齐） ----------
 {
   const action = JSON.parse(readFileSync('data/action-methods.json', 'utf8'));

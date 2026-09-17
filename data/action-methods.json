@@ -1378,6 +1378,94 @@
       "example": "action.effect('FLAME', 'Boss房.中心', 30, 0.5)"
     },
     {
+      "name": "hologram",
+      "signature": "hologram(text, locationRef)",
+      "params": [
+        {
+          "name": "text",
+          "type": "文本",
+          "doc": "支持 & 颜色、#rrggbb 与 \\n 换行"
+        },
+        {
+          "name": "locationRef",
+          "type": "点位引用",
+          "doc": "区域.点位 / 区域名（取区域中心）/ x,y,z"
+        }
+      ],
+      "returns": "void",
+      "doc": "把一段文字浮在半空（TextDisplay），不自动消失",
+      "category": "特效",
+      "aliases": [],
+      "example": "action.hologram('&e&l机关在一楼', 'Boss房.中心')"
+    },
+    {
+      "name": "hologram",
+      "signature": "hologram(text, locationRef, size)",
+      "params": [
+        {
+          "name": "text",
+          "type": "文本",
+          "doc": "支持 & 颜色与 #rrggbb"
+        },
+        {
+          "name": "locationRef",
+          "type": "点位引用",
+          "doc": "区域.点位 / 区域名 / x,y,z"
+        },
+        {
+          "name": "size",
+          "type": "数字",
+          "doc": "整体大小倍率：1.0 = 原版，2.0 = 两倍（整块显示一起缩放，0.1~10）"
+        }
+      ],
+      "returns": "void",
+      "doc": "悬浮字并指定大小（缩的是整块显示，不是只改字高）",
+      "category": "特效",
+      "aliases": [],
+      "example": "action.hologram('&e&l机关在一楼', 'Boss房.中心', 1.5)"
+    },
+    {
+      "name": "hologram",
+      "signature": "hologram(text, locationRef, size, duration)",
+      "params": [
+        {
+          "name": "text",
+          "type": "文本",
+          "doc": "支持 & 颜色与 #rrggbb"
+        },
+        {
+          "name": "locationRef",
+          "type": "点位引用",
+          "doc": "区域.点位 / 区域名 / x,y,z"
+        },
+        {
+          "name": "size",
+          "type": "数字",
+          "doc": "整体大小倍率，0 或负数按 1.0"
+        },
+        {
+          "name": "duration",
+          "type": "时间",
+          "doc": "多久后消失：10s / 5分 / 200t；0 或 永久 = 到副本结束都不消失"
+        }
+      ],
+      "returns": "void",
+      "doc": "悬浮字并定时消失；参数顺序是 文本在前、位置在后，写反会 warning 且不生成",
+      "category": "特效",
+      "aliases": [],
+      "example": "action.hologram('&e&l即将开启', 'Boss房.落点', 2.0, '30s')"
+    },
+    {
+      "name": "clear_holograms",
+      "signature": "clear_holograms()",
+      "params": [],
+      "returns": "void",
+      "doc": "清掉本副本当前所有悬浮字（永久那些只能这样提前收；单副本上限 64 块）",
+      "category": "特效",
+      "aliases": [],
+      "example": "action.clear_holograms()"
+    },
+    {
       "name": "world_time",
       "signature": "world_time(timeRef)",
       "params": [

@@ -745,7 +745,7 @@
           "path": "revive.on_revive",
           "key": "on_revive",
           "type": "脚本",
-          "doc": "复活成功后执行，@trigger 是被复活者",
+          "doc": "复活成功后执行，@trigger 是被复活者；脚本里另有 cause（auto/item/ally/script）与 rescuer（救起者名，没人救时为空串）",
           "aliases": [
             "on-revive",
             "复活脚本"
@@ -760,6 +760,18 @@
           "aliases": [
             "on-exhausted",
             "耗尽脚本"
+          ],
+          "required": false
+        },
+        {
+          "path": "revive.on_ally_revive",
+          "key": "on_ally_revive",
+          "type": "脚本",
+          "doc": "被队友读条救起时额外执行一次（on_revive 照样先跑，两个钩子串行）；rescuer 是救起者的名字，可用来发奖励或公告",
+          "aliases": [
+            "on-ally-revive",
+            "队友救起脚本",
+            "被救起脚本"
           ],
           "required": false
         },
