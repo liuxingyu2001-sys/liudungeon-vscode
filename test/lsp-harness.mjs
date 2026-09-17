@@ -1134,7 +1134,7 @@ function labelDump(items) {
   closeDoc(color);
 }
 
-// ---------- 用例 22：action.hologram（新动作：四参重载 + 参数个数不能误报） ----------
+// ---------- 用例 22：action.hologram（新动作：2/3/4/5 参重载 + 参数个数不能误报） ----------
 // 三个重载（2/3/4 参）正好撞上"参数个数按重载集合校验"这条诊断：只要数据里漏一个重载，
 // 合法的四参调用就会被标成错误 —— 而玩家看到红波浪线只会以为是自己写错了。
 {
@@ -1142,7 +1142,7 @@ function labelDump(items) {
   const okUri = openDoc('scripts.yml', okText);
   await new Promise((r) => setTimeout(r, 250));
   const bad = client.diagnosticsFor(okUri).filter((x) => x.code === 'arity' || x.code === 'unknown-method');
-  check('hologram 四参调用不报错（三个重载都要在数据里）', bad.length === 0, JSON.stringify(bad).slice(0, 250));
+  check('hologram 四参调用不报错（重载都要在数据里）', bad.length === 0, JSON.stringify(bad).slice(0, 250));
   closeDoc(okUri);
 
   const noUri = openDoc('scripts.yml', "start: |-\n  action.clear_holograms()\n");
@@ -1151,15 +1151,23 @@ function labelDump(items) {
   check('clear_holograms 零参调用被认作已实现的方法', d2.length === 0, JSON.stringify(d2).slice(0, 250));
   closeDoc(noUri);
 
-  const fiveUri = openDoc('scripts.yml', "start: |-\n  action.hologram('t', '0,64,0', 1.0, '10s', '多写了一个')\n");
-  const five = await client.waitFor(() => {
-    const d = client.diagnosticsFor(fiveUri).filter((x) => x.code === 'arity');
+  // 五参是 Y 偏移（不再是"多写了一个"）：合法，不能报
+  const fiveText = "start: |-\n  action.hologram('t', '0,64,0', 1.0, '10s', 2.5)\n";
+  const fiveUri = openDoc('scripts.yml', fiveText);
+  await new Promise((r) => setTimeout(r, 250));
+  const fiveBad = client.diagnosticsFor(fiveUri).filter((x) => x.code === 'arity');
+  check('hologram 五参（Y 偏移重载）不报 arity', fiveBad.length === 0, JSON.stringify(fiveBad).slice(0, 250));
+  closeDoc(fiveUri);
+
+  const sixUri = openDoc('scripts.yml', "start: |-\n  action.hologram('t', '0,64,0', 1.0, '10s', 2.5, '多写了一个')\n");
+  const six = await client.waitFor(() => {
+    const d = client.diagnosticsFor(sixUri).filter((x) => x.code === 'arity');
     return d.length >= 1 ? d : undefined;
   });
-  check('hologram 五参（没有这个重载）会被报出来',
-    /hologram 没有 5 个参数的版本/.test((five ?? []).map((x) => x.message).join(' | ')),
-    (five ?? []).map((x) => x.message).join(' | '));
-  closeDoc(fiveUri);
+  check('hologram 六参（没有这个重载）会被报出来',
+    /hologram 没有 6 个参数的版本/.test((six ?? []).map((x) => x.message).join(' | ')),
+    (six ?? []).map((x) => x.message).join(' | '));
+  closeDoc(sixUri);
 }
 
 // ---------- 用例 23：revive.on_ally_revive（新钩子键） ----------

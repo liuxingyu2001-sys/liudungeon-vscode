@@ -1456,6 +1456,42 @@
       "example": "action.hologram('&e&l即将开启', 'Boss房.落点', 2.0, '30s')"
     },
     {
+      "name": "hologram",
+      "signature": "hologram(text, locationRef, size, duration, yOffset)",
+      "params": [
+        {
+          "name": "text",
+          "type": "文本",
+          "doc": "支持 & 颜色与 #rrggbb"
+        },
+        {
+          "name": "locationRef",
+          "type": "点位引用",
+          "doc": "区域.点位 / 区域名（取区域中心）/ x,y,z"
+        },
+        {
+          "name": "size",
+          "type": "数字",
+          "doc": "整体大小倍率，1.0 = 原版"
+        },
+        {
+          "name": "duration",
+          "type": "时间",
+          "doc": "多久后消失；只想写偏移时这里写 0 或 永久"
+        },
+        {
+          "name": "yOffset",
+          "type": "数字",
+          "doc": "相对落点的纵向偏移（格，正数往上抬）：区域名的落点是范围盒中心，常卡在地板里，抬 2~3 格就浮起来了；超 ±256 会钳制并 warning"
+        }
+      ],
+      "returns": "void",
+      "doc": "悬浮字 + 相对 Y 偏移（把字从地板里抬起来）；参数顺序 文本/位置/大小/时长/偏移",
+      "category": "特效",
+      "aliases": [],
+      "example": "action.hologram('&e出生点', 'spawn.出生点', 2, '3s', 2.5)"
+    },
+    {
       "name": "clear_holograms",
       "signature": "clear_holograms()",
       "params": [],
