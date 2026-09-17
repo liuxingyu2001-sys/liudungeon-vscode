@@ -938,7 +938,7 @@
           "path": "groups.<组ID>.zone",
           "key": "zone",
           "type": "文本",
-          "doc": "组默认区域；成员可用 point 引用该区域点位，没写坐标的成员就在这个区域里随机刷",
+          "doc": "组默认刷怪区域：成员用 point 时作为点位归属，没写坐标的成员就在这个区域里随机刷；成员可用自己的 zone 覆盖",
           "aliases": [
             "区域"
           ],
@@ -1008,7 +1008,7 @@
           "path": "groups.<组ID>.monsters[].location",
           "key": "location",
           "type": "坐标",
-          "doc": "绝对坐标 x,y,z；不写则不按坐标刷（有组级 zone 时在该区域内随机，否则回退出生点）",
+          "doc": "绝对坐标 x,y,z（只认坐标，不认区域名！想按区域随机刷用 zone）；不写则看 zone",
           "aliases": [
             "位置"
           ],
@@ -1018,9 +1018,19 @@
           "path": "groups.<组ID>.monsters[].point",
           "key": "point",
           "type": "文本",
-          "doc": "命名点位 区域.点位，优先于 location",
+          "doc": "命名点位 区域.点位（必须带点号），优先于 location",
           "aliases": [
             "点位"
+          ],
+          "required": false
+        },
+        {
+          "path": "groups.<组ID>.monsters[].zone",
+          "key": "zone",
+          "type": "文本",
+          "doc": "这只怪的刷怪区域（zones.yml 的区域名），覆盖组级 zone；与 location/point 二选一，写了坐标就按坐标",
+          "aliases": [
+            "区域"
           ],
           "required": false
         },
@@ -1028,7 +1038,7 @@
           "path": "groups.<组ID>.monsters[].spawn_random",
           "key": "spawn_random",
           "type": "布尔",
-          "doc": "没写 location/point 时是否在组级 zone 范围内随机取落点；默认 true，false = 挤在区域中心",
+          "doc": "没写坐标时是否在区域内随机取落点；默认 true，false = 挤在区域中心",
           "aliases": [
             "spawn-random",
             "随机刷怪",
