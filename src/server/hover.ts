@@ -19,7 +19,7 @@ import {
 } from './api-model';
 import { ALL_REF_KINDS, IndexStore, REF_LABEL } from './index-store';
 import { analyze, nodeAt } from './yaml-context';
-import { baseName, keySpellings } from './yaml-shared';
+import { baseName, keySpellings, schemaKeyFor, schemaLabel } from './yaml-shared';
 
 export interface HoverInput {
   filePath: string;
@@ -31,6 +31,8 @@ export interface HoverInput {
 
 export function provideHover(input: HoverInput): Hover | null {
   const name = baseName(input.filePath);
+  // 键名数据的键：两份 config.yml 靠它区分（副本配置 vs 插件主配置）
+  const schema = schemaKeyFor(input.filePath, input.index);
   const lines = input.text.split(/\r?\n/);
   const line = lines[input.line] ?? '';
   const isYaml = /\.(ya?ml)$/.test(name);
@@ -119,15 +121,15 @@ export function provideHover(input: HoverInput): Hover | null {
   const ctx = analyze(input.text, input.line, input.character);
   const onOwnKey = ctx.lineKey !== null && ctx.lineKey === word.word;
   const node = onOwnKey
-    ? nodeAt(name, { ...ctx, currentKey: word.word })
-    : nodeAt(name, ctx);
+    ? nodeAt(schema, { ...ctx, currentKey: word.word })
+    : nodeAt(schema, ctx);
   if (node) {
-    const md = renderNode(name, node);
+    const md = renderNode(schemaLabel(schema), node);
     return { contents: { kind: MarkupKind.Markdown, value: md }, range };
   }
 
   // 6) 钩子名（scripts.yml 顶层）
-  if (name === 'scripts.yml') {
+  if (schema === 'scripts.yml') {
     const hook = CONFIG_DATA.scriptHooks.find((h) => h.name === word.word);
     if (hook) {
       const dead = DEAD_HOOKS.get(hook.name);
@@ -188,9 +190,9 @@ function renderMethod(object: string, method: ApiMethod): string {
   return lines.join('\n');
 }
 
-function renderNode(fileName: string, node: ReturnType<typeof nodeAt> & object): string {
+function renderNode(label: string, node: ReturnType<typeof nodeAt> & object): string {
   const spellings = keySpellings(node);
-  const lines = [`**${node.key}** · ${fileName}`, '', node.doc];
+  const lines = [`**${node.key}** · ${label}`, '', node.doc];
   if (node.type) lines.push('', `类型：\`${node.type}\``);
   if (node.values?.length) lines.push(`取值：${node.values.map((v) => `\`${v}\``).join(' / ')}`);
   if (spellings.length > 1) lines.push('', `同义写法：${spellings.slice(1).join(' / ')}`);

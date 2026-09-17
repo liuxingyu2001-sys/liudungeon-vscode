@@ -11,9 +11,10 @@
 
 | 能力 | 说明 |
 | --- | --- |
-| **action.* / dungeon.* 补全** | 84 个 `action.*` + 51 个 `dungeon.*` 方法，含签名、参数表、分类、可直接跑的示例 |
+| **action.* / dungeon.* 补全** | 95 条 `action.*` 签名（含重载与别名）+ 51 个 `dungeon.*` 方法，含签名、参数表、分类、可直接跑的示例。结算用的统计方法（`action.stats()` / `stats_report()` / `stat_value()` / `stat_total()` / `stats_summary()`）也在里面 |
 | **YAML 里嵌的 JS 也能补全** | 脚本字段统一 **`\|-` 块**写法（`complete: \|-` 下面一行一条、行尾分号）；老配置的引号字符串 `- "action.spawn_group('…')"` 列表也照常支持。两种写法里补全、悬停、诊断都生效 |
-| **配置文件键名补全** | `config.yml` / `monsters.yml` / `stages.yml` / `zones.yml` / `obstacles.yml` / `interacts.yml` / `tasks.yml` / `rewards.yml` / `chest_rewards.yml` / `scripts.yml` / `functions.js` 的 202 个键，含中文别名与枚举取值。**外层键写别名也认**：`obstacles:` / `怪物组:` / `zones:` 与 `障碍物:` / `groups:` / `区域:` 等价（按插件源码的别名表归一化）；**外层容器也可以整个不写** —— 区域 / 阶段 / 障碍物 / 交互点 / 任务 / 宝箱直接写在根节点（游戏内编辑器保存出来的就是这种，插件解析器没有容器时会回退到根级；`monsters.yml` 是例外，怪物组必须写在容器里） |
+| **配置文件键名补全** | 副本目录里 11 个文件（`config.yml` / `monsters.yml` / `stages.yml` / `zones.yml` / `obstacles.yml` / `interacts.yml` / `tasks.yml` / `rewards.yml` / `chest_rewards.yml` / `scripts.yml` / `functions.js`）的 202 个键，含中文别名与枚举取值。**外层键写别名也认**：`obstacles:` / `怪物组:` / `zones:` 与 `障碍物:` / `groups:` / `区域:` 等价（按插件源码的别名表归一化）；**外层容器也可以整个不写** —— 区域 / 阶段 / 障碍物 / 交互点 / 任务 / 宝箱直接写在根节点（游戏内编辑器保存出来的就是这种，插件解析器没有容器时会回退到根级；`monsters.yml` 是例外，怪物组必须写在容器里） |
+| **插件主配置也认** | `plugins/liudungeon/config.yml` 是**另一个同名文件**：讲的是 `debug` / `server-id` / `database` / `cross-server` / `statistics` 这些插件级开关（92 个键，中文说明直接取自插件自己的 config.yml 注释）。它与副本目录里的 `config.yml` 键名毫无交集，编辑器按路径与目录内容区分这两份：副本目录必须有内容文件（`monsters.yml` 之类），插件根与源码资源目录则靠 `plugin.yml` 认出来。**跨服段（`cross-server.redis.*` / `start-delay` / 直连地址）与统计段都在里面**，写错 `statistic:` 这种键名会直接报出来 |
 | **位置引用写法** | 悬停 `locationRef` 类参数时会写明三种写法：`区域.点位` / **裸区域名**（取区域中心）/ `x,y,z`。注意"取区域中心"是**范围盒几何中心** —— 用游戏内编辑器建的还会自带一个 `点位.中心`（`zones.yml` 里能直接看到，见插件第十二章 12.5.2），想精确到某一格就写 `区域.中心` |
 | **名字补全（副本里已定义的名字）** | 参数位置直接列出本副本的定义：`action.spawn_group('…')` 给怪物组、`enable_zone` 给区域、`teleport_point` 给点位、`create_obstacle` 给障碍物、`goto_stage` 给阶段、`grant_reward` 给奖励；YAML 里 `区域:` / `触发组:` / `点位:` 这类键（中英文键名都算）同样给名字 |
 | **悬停文档** | 鼠标停在方法名、**键名（含根键与子键）**、`@all`、`{player.name}` 上直接看中文说明 |
@@ -67,7 +68,7 @@ code --install-extension liudungeon-script.vsix
 ### 三个能直接感受到的差别
 
 ```yaml
-# scripts.yml —— 输入 action. 之后会列出全部 84 个动作，选中即带参数骨架
+# scripts.yml —— 输入 action. 之后会列出全部 95 条动作签名，选中即带参数骨架
 # 脚本字段的推荐写法：|- 块，一行一条语句、行尾加分号（注释用 //，不要写 YAML 的 #）
 complete: |-
   action.title('@all', '&a&l通关！', '&7奖励已发放');
@@ -100,7 +101,7 @@ function 检查(d) {
 | `时间写法 "3秒钟" 解析失败会静默变成 0` | 只认 `3s` / `3秒` / `5m` / `5分` / `2h` / `100t` / `500ms` / 纯数字 |
 | `钩子名不是 scripts.yml 的钩子` | 拼错的钩子不会执行，也不报错。**中文钩子名同样报**（插件只认 `init`/`start`/`complete`/`fail`/`exit`/`player_death`/`all_death`；写「开始:」看起来很像对的，实际整段脚本一次都不跑） |
 | `怪物组 / 区域 / 障碍物 / 交互点 / 阶段 / 奖励 / 点位「x」不存在` | 同副本目录里找不到定义。脚本参数（`action.enable_zone('前厅')`）、YAML 键（`区域: 前厅`、`zone: 前厅`）与**列表项里的键**（宝箱 `- reward: 通关奖励`）都查 |
-| `插件不读「开启时候」这个键` | 插件的解析器一律「按名字取键、取不到用默认值」：键名写错既不报错也不生效。会给出最接近的正确键名 |
+| `插件不读「开启时候」这个键` | 插件的解析器一律「按名字取键、取不到用默认值」：键名写错既不报错也不生效。会给出最接近的正确键名。副本文件与**插件主配置**都查（主配置里写 `statistic:` 而不是 `statistics:` 同样报） |
 | `条件里有插件不认识的中文词「小于等于」` | 条件里的中文由插件**替换成 JS** 再求值，表以外的词在 JS 里是合法标识符 —— 语法校验查不出来，条件恒为 false，表现是「这波怪永远不出来，日志只说启动条件未满足」。会列出可用的中文词 |
 | `全角符号 ≤ 不是运算符` | 中文条件只认 ASCII 的 `<=` / `>=` / `==`；全角写法整条变语法错误（同样被当成 false）。诊断里直接给出该写的那一个 |
 | `spawn 写在 dungeon 段里不会生效` | 运行时读的是 `world.spawn` |
@@ -144,9 +145,11 @@ src/server/          语言服务（补全 / 悬停 / 跳转 / 诊断）
   api-model.ts       把 data/*.json 规整成可用结构
   snippets.ts        片段定义
 data/                从插件源码与文档提取的参考数据
-  action-methods.json / dungeon-methods.json / config-files.json
+  action-methods.json / dungeon-methods.json / config-files.json / plugin-config.json
 test/lsp-harness.mjs 端到端自检（真跑一个 LSP 服务）
 scripts/mutate-refs.sh 变异测试：把这次的修复逐个改回坏写法，确认自检真的会红
+scripts/gen-plugin-config.mjs  生成 data/plugin-config.json（键清单与 PluginConfig.java 对账）
+scripts/sync-docs.mjs          把插件仓库的 12 篇用户文档整篇复制进 docs/
 snippets/            构建时生成的 VS Code 片段
 ```
 
@@ -156,22 +159,28 @@ snippets/            构建时生成的 VS Code 片段
 
 ```bash
 npm run typecheck   # TS 类型检查
-npm test            # 构建 + 端到端自检（287 项断言，约 10 秒）+ 校验内置文档与插件仓库同步
+npm test            # 构建 + 端到端自检（333 项断言）+ 校验内置文档、主配置数据与插件仓库同步
 bash scripts/mutate-refs.sh   # 变异测试：把关键修复逐个改回坏写法，确认自检真的会红
 npm run package     # 打成 vsix
 ```
 
 自检脚本会：真启动语言服务、发真实 LSP 报文、并用插件仓库里 `src/main/resources/example/`
 的真实配置做「不许有误报」的回归。它还会核对 ActionApi.java / DungeonApi.java 的每个
-public 方法都在补全数据里，防止插件升级后扩展悄悄过期。
+public 方法都在补全数据里、PluginConfig.java 读的每个键都在主配置数据里（枚举取值与
+Java 的 enum 逐项对齐），防止插件升级后扩展悄悄过期。
 
 「名字补全」与「引用校验」另有一份 tmp 下现造的副本目录（`test/lsp-harness.mjs` 里的
 `REF_FILES`）：插件自带的 example/ 里 `zones.yml` / `stages.yml` / `interacts.yml` 全是
 注释示例，一个区域、一个阶段都没定义 —— 只靠它测，这几类名字全空也不会有人发现。
 
-`npm test` 的最后一步是 `scripts/sync-docs.mjs --check`：内置的 12 篇用户文档是从插件仓库
-`docs/05-使用说明/` **整篇复制**过来的（这是扩展里"打开文档"命令指向的内容），
-插件侧改了文档而扩展没同步，自检会直接报「内容过期」，跑 `npm run sync:docs` 即可。
+`npm test` 的最后两步是两份「与插件仓库对账」的检查：
+
+- `scripts/sync-docs.mjs --check`：内置的 12 篇用户文档是从插件仓库 `docs/05-使用说明/`
+  **整篇复制**过来的（这是扩展里"打开文档"命令指向的内容），插件侧改了文档而扩展没同步，
+  自检会直接报「内容过期」，跑 `npm run sync:docs` 即可。
+- `scripts/gen-plugin-config.mjs --check`：主配置的键名数据从插件的 `resources/config.yml`
+  与 `PluginConfig.java` 生成（**注释即文档**，所以说明永远是作者自己写的那句），
+  插件加了新键而扩展没跟上会直接失败，跑 `npm run sync:plugin-config` 重新生成。
 
 如果插件仓库不在 `/home/liu/plugins/liudungeon`，用环境变量指定：
 
@@ -186,6 +195,9 @@ LD_PLUGIN_DIR=/path/to/liudungeon npm test
 - 键名补全按「路径模板 + 缩进」匹配，**不做完整 YAML AST**：极端缩进（用 Tab、或同一映射里
   缩进忽深忽浅）可能提示不准，但不会误报错误。
 - `player.*` 只补全常用 Bukkit 成员，不做完整 Bukkit API 补全（那不是本扩展的目标）。
+- 同名 `config.yml` 的区分靠「路径形状 + 目录内容」：副本目录必须有内容文件（`monsters.yml`
+  之类）才算副本，插件根与源码资源目录靠 `plugin.yml` 认出。把副本目录直接建在名叫
+  `liudungeon` 的文件夹里、又不放任何内容文件时，会被当成主配置。
 - 诊断里「钩子永远不会执行」这张表在 `src/server/api-model.ts` 的 `DEAD_HOOKS` 里，当前为空：
   `complete` / `fail` 被终态守卫静默丢弃的问题已在插件 1.0.5 修掉（先跑脚本、再 `setState`）。
   以后若再发现同类问题，往这个表里加一条即可，补全与悬停会自动标注。

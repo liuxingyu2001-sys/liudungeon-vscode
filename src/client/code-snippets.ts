@@ -7,7 +7,7 @@
  */
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { ACTION_METHODS, BUILTIN_FUNCTIONS, CONFIG_DATA, DUNGEON_METHODS, scriptBlockLines } from '../server/api-model';
+import { ACTION_METHODS, ALL_CONFIG_FILES, BUILTIN_FUNCTIONS, CONFIG_DATA, DUNGEON_METHODS, scriptBlockLines } from '../server/api-model';
 import { functionSnippets, javascriptSnippets } from '../server/snippets';
 
 interface CodeSnippet {
@@ -70,6 +70,7 @@ export function buildCodeSnippets(jsPath: string, yamlPath: string): void {
     'action.heal',
     'action.command',
     'action.player_command',
+    'action.stats',
     'action.goto_stage',
     'action.restart_stage',
     'action.complete_stage',
@@ -106,7 +107,11 @@ export function buildCodeSnippets(jsPath: string, yamlPath: string): void {
     };
   }
 
-  for (const file of CONFIG_DATA.files) {
+  // 每份配置数据都给一个「最小可用模板」片段。
+  // 用 ALL_CONFIG_FILES 而不是 CONFIG_DATA.files：插件**主配置**
+  // （plugins/liudungeon/config.yml）也得有自己的前缀（ld-pluginconfigyml）——
+  // 否则在它里面只有 ld-configyml 可打，一敲就是一份**副本**配置的模板，插进去全是不生效的键。
+  for (const file of ALL_CONFIG_FILES) {
     if (!file.example) continue;
     const key = file.file.replace(/\W/g, '');
     yaml[`ld-${key}`] = {

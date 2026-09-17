@@ -400,6 +400,13 @@
     ],
     "description": "player_command(selector, command) — 以玩家身份执行命令，走 performCommand 因而受权限限制"
   },
+  "ld-stats": {
+    "prefix": "ld-stats",
+    "body": [
+      "action.stats('@all', '输出')"
+    ],
+    "description": "stats(selector, metric) — 把本场战斗统计发给选择器命中的玩家：每人一行、按数值从高到低，一眼看出本场 MVP。数据取自内存里的实时统计，不查数据库（落库是异步的，此刻未必已经写完）"
+  },
   "ld-goto_stage": {
     "prefix": "ld-goto_stage",
     "body": [

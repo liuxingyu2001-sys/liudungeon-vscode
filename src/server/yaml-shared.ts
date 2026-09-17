@@ -3,12 +3,94 @@
  *
  * 这里刻意不放任何状态，便于被 context / completion / diagnostics 三个模块共用。
  */
-import { CONFIG_FILE_BY_NAME, CONFIG_DATA, type ConfigNode } from './api-model';
+import { CONFIG_FILE_BY_NAME, CONFIG_DATA, PLUGIN_CONFIG_DATA, type ConfigNode } from './api-model';
 
 export { CONFIG_FILE_BY_NAME, CONFIG_DATA };
 export type { ConfigNode };
 
 const PLACEHOLDER = /^<.+>$/;
+
+/**
+ * 插件主配置在键名数据里的**合成名**。
+ *
+ * <p>`plugins/liudungeon/config.yml` 与副本目录里的 `config.yml` 同名，但键名毫无交集
+ * （前者是 database / cross-server / statistics，后者是 enable / world / requirements）。
+ * 数据里必须用两个不同的键，而 basename 只有一个 —— 于是给主配置起了这个合成名，
+ * 由 {@link schemaKeyFor} 按路径判定。它永远不会与真实文件名撞上。
+ */
+export const PLUGIN_CONFIG_SCHEMA = PLUGIN_CONFIG_DATA.file;
+
+/** 给人看的名字（补全详情的 `${文件} · 类型`、悬停标题）。 */
+export function schemaLabel(schemaKey: string): string {
+  return schemaKey === PLUGIN_CONFIG_SCHEMA ? '插件主配置' : schemaKey;
+}
+
+/**
+ * 目录判定器：由 {@link import('./index-store').IndexStore} 实现。
+ *
+ * <p>这里只声明需要的那两个方法（而不是 import IndexStore）—— index-store 反过来依赖
+ * 本模块，直接互相 import 会成环。
+ */
+export interface DirClassifier {
+  /** 工作区快照里见过这个目录吗。 */
+  knowsDir(dir: string): boolean;
+  /** 这个目录被索引认成副本目录了吗（含有 config.yml，且不是插件根）。 */
+  isDungeonDir(dir: string): boolean;
+}
+
+/**
+ * 这份文件该用哪一份键名数据。
+ *
+ * <p>除 `config.yml` 之外全部就是 basename（monsters.yml → monsters.yml）。
+ * 只有 `config.yml` 需要判断：
+ * <ul>
+ *   <li>目录在索引里 → 以索引为准：**被认成副本目录的**才是副本配置，其余（插件根
+ *       `plugins/liudungeon/`、插件源码里的 `src/main/resources/`）都是主配置。</li>
+ *   <li>目录不在索引里（单开的文件、还没同步进工作区）→ 退回按路径形状判断：
+ *       目录名 `liudungeon` 且不在 `dungeons/` 之下，就是插件根。</li>
+ * </ul>
+ *
+ * <p>判错的代价不对称，所以两边都判：把主配置当成副本配置 → 顶层补全给的是副本的键，
+ * 还会把 server-id / cross-server / statistics 报成「插件不读的键」（实测 22 条误报）；
+ * 把副本配置当成主配置 → 那一个副本的 config.yml 没有补全与键名诊断。
+ */
+export function schemaKeyFor(filePath: string, index?: DirClassifier): string {
+  const base = baseName(filePath);
+  if (base !== 'config.yml') return base;
+  const dir = dirOf(filePath);
+  if (index?.knowsDir(dir)) {
+    return index.isDungeonDir(dir) ? base : PLUGIN_CONFIG_SCHEMA;
+  }
+  return looksLikePluginRoot(filePath) ? PLUGIN_CONFIG_SCHEMA : base;
+}
+
+/** 路径形状判断：`.../liudungeon/config.yml`（且不在 dungeons/ 之下）。 */
+function looksLikePluginRoot(filePath: string): boolean {
+  const p = filePath.replace(/\\/g, '/');
+  const i = p.lastIndexOf('/');
+  if (i <= 0) return false;
+  const dir = p.slice(0, i);
+  if (baseName(dir) !== 'liudungeon') return false;
+  return !/(^|\/)dungeons\//.test(dir + '/');
+}
+
+/**
+ * 副本目录里出现这些文件，就说明它是**副本目录**而不是插件根 ——
+ * 插件根下只有 config.yml / gui.yml / data.db 与 dungeons、maps 两个子目录。
+ * 给 {@link import('./index-store').IndexStore} 判定插件根兜底用。
+ */
+export const DUNGEON_CONTENT_FILES: readonly string[] = [
+  'monsters.yml',
+  'zones.yml',
+  'stages.yml',
+  'interacts.yml',
+  'obstacles.yml',
+  'tasks.yml',
+  'rewards.yml',
+  'chest_rewards.yml',
+  'scripts.yml',
+  'functions.js',
+];
 
 /**
  * 每个文件里「一种写法 → 数据里的规范写法」。
@@ -160,11 +242,16 @@ export function splitPath(path: string): string[] {
     .filter((s) => s !== '');
 }
 
-/** 该文件的所属副本里的其它文件列表（供诊断提示）。 */
+/**
+ * 这个文件名是副本配置目录里的文件吗（插件真的会读的那些）。
+ *
+ * <p>原来这里是一串硬编码的文件名，漏了 `obstacles.yml` —— 于是任何"按文件名放行"的
+ * 地方都会静默跳过障碍物文件。改成从键名数据反推：数据里有哪几份文件，就是哪几份
+ * （`gui.yml` 单独列出，它由 GuiConfig 读，不在 CONFIG_DATA 里）。
+ */
 export function isDungeonFileName(name: string): boolean {
-  return /^(config|monsters|scripts|rewards|zones|interacts|tasks|stages|chest_rewards|gui)\.ya?ml$/.test(
-    name,
-  ) || name === 'functions.js';
+  if (name === 'gui.yml') return true;
+  return name !== PLUGIN_CONFIG_SCHEMA && CONFIG_FILE_BY_NAME.has(name);
 }
 
 /** 取路径末段（跨平台）。 */

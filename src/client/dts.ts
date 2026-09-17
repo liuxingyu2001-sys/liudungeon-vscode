@@ -116,6 +116,10 @@ function tsType(type: string, paramName: string): string {
 
 function tsReturn(returns: string): string {
   if (/void/.test(returns)) return 'void';
+  // Java 数组（stats_report 的 String[]）：GraalJS 里能直接 length + 下标取值，
+  // 所以声明成 string[]。漏了这一条会落进下面的兜底分支变成 string，
+  // 于是 `lines[0]` 在 functions.js 里被标成"类型错误"。
+  if (/\[\]$/.test(returns.trim())) return 'string[]';
   if (/\bint\b|long|秒数|数量|次数|人数|数$/.test(returns)) return 'number';
   if (/^boolean|是否/.test(returns)) return 'boolean';
   if (/ArrayList|List|列表/.test(returns)) return 'JavaList<string>';

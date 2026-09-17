@@ -9,6 +9,7 @@ import { parseDocument, isMap, YAMLMap, YAMLSeq, Scalar } from 'yaml';
 import {
   CONFIG_FILE_BY_NAME,
   CONFIG_DATA,
+  DUNGEON_CONTENT_FILES,
   baseName,
   dirOf,
 } from './yaml-shared';
@@ -82,11 +83,14 @@ export class IndexStore {
   private byDir = new Map<string, DungeonIndex>();
   /** 文件路径 → 所属副本目录。 */
   private fileToDir = new Map<string, string>();
+  /** 快照里出现过的全部目录（含没被当成副本的那些）。 */
+  private seenDirs = new Set<string>();
 
   /** 用一批文件重建索引（files 是绝对路径 + 文本）。 */
   rebuild(files: Array<{ path: string; text: string }>): void {
     this.byDir.clear();
     this.fileToDir.clear();
+    this.seenDirs.clear();
 
     // 先按目录分组
     const dirs = new Map<string, Array<{ path: string; text: string }>>();
@@ -100,8 +104,14 @@ export class IndexStore {
 
     for (const [dir, group] of dirs) {
       const names = new Set(group.map((f) => baseName(f.path)));
+      this.seenDirs.add(dir);
       // 副本目录的判定：目录里必须有 config.yml
       if (!names.has('config.yml')) continue;
+      // 但插件根（plugins/liudungeon）里也有一个 config.yml —— 那是**插件主配置**，
+      // 不是副本。不排掉它会有两个后果：① 索引里多出一个名叫 liudungeon 的空副本；
+      // ② 主配置被当成副本配置（顶层补全给出 enable/world，server-id 与
+      // cross-server 被报成「插件不读的键」）。判定见 isPluginRoot()。
+      if (isPluginRoot(dir, names)) continue;
 
       const defs: Record<RefKind, Def[]> = {
         groups: [],
@@ -150,6 +160,16 @@ export class IndexStore {
     return this.fileToDir.get(filePath);
   }
 
+  /** 工作区快照里见过这个目录吗（{@link DirClassifier}）。 */
+  knowsDir(dir: string): boolean {
+    return this.seenDirs.has(dir);
+  }
+
+  /** 这个目录被认成副本目录了吗（{@link DirClassifier}）。 */
+  isDungeonDir(dir: string): boolean {
+    return this.byDir.has(dir);
+  }
+
   /** 取某个文件所属副本的索引（含该文件的最新文本）。 */
   forFile(filePath: string): DungeonIndex | undefined {
     const dir = this.fileToDir.get(filePath);
@@ -176,6 +196,30 @@ export class IndexStore {
   has(kind: RefKind, dir: string, name: string): boolean {
     return (this.byDir.get(dir)?.defs[kind] ?? []).some((d) => d.name === name);
   }
+}
+
+/**
+ * 这个含 config.yml 的目录**不是副本目录**吗（是插件根 / 插件源码的资源目录）。
+ *
+ * <p>两道判定，命中任一即成立：
+ * <ol>
+ *   <li>目录里有 `plugin.yml`：那是插件源码的资源目录（`src/main/resources/`）——
+ *       副本目录里不可能有它。仓库本身就带一份 config.yml（插件的**主配置**），
+ *       在源码仓库里打开工程时，认错会让主配置拿到副本的键名表、并报出 22 条假警告。</li>
+ *   <li>路径形状 + 内容：目录名是 `liudungeon`、不在 `dungeons/` 之下，且里面没有副本
+ *       内容文件（monsters.yml / zones.yml / scripts.yml …）。服务器上的插件数据目录就是
+ *       这种：`plugins/liudungeon/` 下只有 config.yml、gui.yml、data.db 与两个子目录。
+ *       副本目录长这样 `plugins/liudungeon/dungeons/<副本ID>/` —— 即使副本 ID 恰好叫
+ *       liudungeon，路径里也有 `/dungeons/`，会被这一条排掉；有人把副本目录直接放在
+ *       名叫 liudungeon 的文件夹里时，内容那半条会把它救回来。</li>
+ * </ol>
+ */
+function isPluginRoot(dir: string, names: Set<string>): boolean {
+  if (names.has('plugin.yml')) return true;
+  if (baseName(dir) !== 'liudungeon') return false;
+  const norm = dir.replace(/\\/g, '/');
+  if (/(^|\/)dungeons\//.test(norm + '/')) return false;
+  return !DUNGEON_CONTENT_FILES.some((f) => names.has(f));
 }
 
 /**

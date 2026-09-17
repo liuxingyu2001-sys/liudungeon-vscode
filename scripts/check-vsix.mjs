@@ -109,7 +109,10 @@ for (const raw of entries) {
 // 3. 该有的东西必须在（packaging 漏了 bundle = 扩展装了打不开）
 const must = ['extension/package.json', 'extension/out/client/extension.js',
     'extension/out/server/server.js', 'extension/data/action-methods.json',
-    'extension/data/dungeon-methods.json', 'extension/data/config-files.json'];
+    'extension/data/dungeon-methods.json', 'extension/data/config-files.json',
+    // 主配置的键名数据（另一份同名 config.yml）—— 漏打包的话，
+    // 用户装上的扩展打开 plugins/liudungeon/config.yml 就是一个字都不会补全。
+    'extension/data/plugin-config.json'];
 for (const m of must) {
     if (!entries.includes(m)) problems.push(`缺少必需文件: ${m}`);
 }

@@ -37,6 +37,8 @@ import {
   CONFIG_FILE_BY_NAME,
   baseName,
   canonicalSpellings,
+  schemaKeyFor,
+  schemaLabel,
   keySpellings,
   nodePathMatches,
   offsetToLine,
@@ -68,7 +70,11 @@ const SELECTOR_LIKE = /^['"]@/;
 
 export function computeDiagnostics(input: DiagnosticsInput): Diagnostic[] {
   const out: Diagnostic[] = [];
-  const name = baseName(input.filePath);
+  // 这里要的是「用哪一份键名数据」而不是 basename：`config.yml` 有两份同名文件
+  // （副本目录里的那份与 plugins/liudungeon/config.yml），键名毫无交集。
+  // 用 basename 的后果是主配置走副本的键名表 —— 顶层补全给出 enable/world，
+  // 并把 server-id / cross-server / statistics 全报成「插件不读的键」。
+  const name = schemaKeyFor(input.filePath, input.index);
   const lines = input.text.split(/\r?\n/);
   const dir = input.index.dirForFile(input.filePath);
   const self = input.index.forFile(input.filePath);
@@ -1041,7 +1047,7 @@ function checkUnknownKeys(
       severity: SEVERITY_WARN,
       source: 'liudungeon',
       message:
-        `插件不读「${key}」这个键（${fileName} 这一层只有 ` +
+        `插件不读「${key}」这个键（${schemaLabel(fileName)} 这一层只有 ` +
         `${keys.map((n) => n.key).join(' / ')}）：键名对不上时解析器取默认值，` +
         `既不报错也不生效。` + (near ? `是不是想写「${near}」？` : ''),
       code: 'unknown-key',

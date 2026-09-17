@@ -28,6 +28,7 @@ import { URI } from 'vscode-uri';
 import { provideCompletions } from './completion';
 import { computeDiagnostics, type DiagnosticsOptions } from './diagnostics';
 import { IndexStore, baseName, REF_LABEL, type RefKind } from './index-store';
+import { isDungeonFileName } from './yaml-shared';
 import { provideHover } from './hover';
 import { provideCodeActions } from './code-actions';
 import {
@@ -436,7 +437,12 @@ async function validate(doc: TextDocument): Promise<void> {
   const filePath = uriToPath(doc.uri);
   const name = baseName(filePath);
   const inDungeonDir = /\/(dungeons|liudungeon)\//.test(filePath);
-  const isCandidate = /\.(ya?ml|js|lds)$/.test(name) && (inDungeonDir || index.dirForFile(filePath) !== undefined);
+  // 只管插件真的会读的文件名。放宽成"副本目录下所有 yml"会顺手分析 plugin.yml、
+  // 之类跟副本无关的文件（工作区同步 plugin.yml 是为了判定主配置，不是为了分析它），
+  // 那些文件在这套键名数据里查不到、只会白跑一遍。
+  const isCandidate =
+    isDungeonFileName(name)
+    && (inDungeonDir || index.dirForFile(filePath) !== undefined);
   if (!diagnosticsEnabled || !isCandidate) {
     connection.sendDiagnostics({ uri: doc.uri, diagnostics: [] });
     return;

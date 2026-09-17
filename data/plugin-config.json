@@ -1,0 +1,759 @@
+{
+  "file": "plugin-config.yml",
+  "title": "插件主配置",
+  "summary": "plugins/liudungeon/config.yml —— 插件级开关：调试、本服标识、数据库、跨服组队、脚本引擎、统计与排行榜等",
+  "example": "debug: false\nserver-id: 'server-1'\ndatabase:\n  type: SQLITE\ncross-server:\n  enabled: true\n  start-delay: 3\nstatistics:\n  enabled: true\n",
+  "nodes": [
+    {
+      "path": "debug",
+      "key": "debug",
+      "type": "布尔",
+      "doc": "调试模式：在控制台打印详细流程日志（排障时开，平时关）。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "server-id",
+      "key": "server-id",
+      "type": "文本",
+      "doc": "⚠ 它就是【这台服在代理里的名字】，不是随便起的标识：\n  Velocity → velocity.toml 的 [servers] 段的键名（如 lob / zy / 99）\n  BungeeCord → config.yml 的 servers: 段的键名\n跨服传送靠这个名字定位目标服，所以必须与代理里的登记名【逐字一致】，\n且各服互不相同。对不上时代理会把玩家踢下线（Unable to connect you to <名字>）。\n留空或不写时插件会回退到 server-name（Paper 的 server.properties/paper 配置），\n再不行才用随机值，并在启动横幅里告警。\n\n← 改成你在代理里登记的名字，如 'lob' / 'zy' / '99'",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "database",
+      "key": "database",
+      "type": "映射",
+      "doc": "数据库：保存玩家统计、冷却、每日次数、保底计数\n\n类型：YAML（单文件，零配置） / SQLITE（本地库，推荐） / MYSQL（多服共享）",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "database.type",
+      "key": "type",
+      "type": "文本",
+      "doc": "数据库类型：`YAML`（单文件、零配置，适合试玩）/ `SQLITE`（本地库，推荐）/ `MYSQL`（多服共享 —— 跨服统计、跨服排行榜要靠它）。写不认识的值会**静默回落成 SQLITE**。",
+      "values": [
+        "YAML",
+        "SQLITE",
+        "MYSQL"
+      ],
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "database.mysql",
+      "key": "mysql",
+      "type": "映射",
+      "doc": "MySQL 连接参数（`database.type` 为 MYSQL 时生效）。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "database.mysql.host",
+      "key": "host",
+      "type": "文本",
+      "doc": "MySQL 主机名或 IP。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "database.mysql.port",
+      "key": "port",
+      "type": "数字",
+      "doc": "MySQL 端口，默认 3306。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "database.mysql.database",
+      "key": "database",
+      "type": "文本",
+      "doc": "MySQL 库名（需要提前建好，插件只建表不建库）。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "database.mysql.username",
+      "key": "username",
+      "type": "文本",
+      "doc": "MySQL 用户名。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "database.mysql.password",
+      "key": "password",
+      "type": "文本",
+      "doc": "MySQL 密码；没有密码留空字符串 ''。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "database.mysql.table-prefix",
+      "key": "table-prefix",
+      "type": "文本",
+      "doc": "表名前缀，多套服共用一个库时用它隔离（只保留字母数字与下划线）。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "database.mysql.pool-size",
+      "key": "pool-size",
+      "type": "数字",
+      "doc": "连接池大小，至少 2。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "database.sqlite",
+      "key": "sqlite",
+      "type": "映射",
+      "doc": "SQLite 参数（`database.type` 为 SQLITE 时生效）。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "database.sqlite.file",
+      "key": "file",
+      "type": "文本",
+      "doc": "SQLite 数据库文件名，落在 plugins/liudungeon/ 下。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "database.auto-migrate",
+      "key": "auto-migrate",
+      "type": "布尔",
+      "doc": "启动时自动建表 / 补列。关掉它就要自己维护表结构。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "world",
+      "key": "world",
+      "type": "映射",
+      "doc": "副本世界\n\n地图模板统一放在 plugins/liudungeon/maps/<模板名>/ 下。\n用 /ld template import <地图名> 导入（支持服务器根目录下的世界，\n以及 /mv import 导入后的地图），用 /ld template list 查看。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "world.concurrent-limit",
+      "key": "concurrent-limit",
+      "type": "数字",
+      "doc": "同时最多创建几个副本世界，超出的排队并提示位次，0 = 不限\n多人同时开本时防止磁盘 I/O 打满",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "world.queue-timeout",
+      "key": "queue-timeout",
+      "type": "数字",
+      "doc": "开本排队超时（秒），超时后取消并退还费用",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "world.preload-spawn-chunks",
+      "key": "preload-spawn-chunks",
+      "type": "布尔",
+      "doc": "实例世界建好后是否立刻预加载出生点周围区块（减少进本首帧卡顿）。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "world.preload-radius",
+      "key": "preload-radius",
+      "type": "数字",
+      "doc": "预加载半径（区块数），0 = 不预加载；上限 8。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "world.cleanup-orphans-on-start",
+      "key": "cleanup-orphans-on-start",
+      "type": "布尔",
+      "doc": "服务器重启 / 异常退出后，启动时自动清理残留的实例世界目录。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "edit",
+      "key": "edit",
+      "type": "映射",
+      "doc": "编辑模式（/ld edit enter 打开的那个编辑世界）",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "edit.view-distance",
+      "key": "view-distance",
+      "type": "数字",
+      "doc": "编辑世界的视距（区块），0 = 跟随服务端设置；只影响编辑会话。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "dungeon",
+      "key": "dungeon",
+      "type": "映射",
+      "doc": "副本通用设置：实例兜底超时、防逃逸、掉线重连、每日次数重置时刻、是否只有队长能开本。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "dungeon.instance-timeout",
+      "key": "instance-timeout",
+      "type": "数字",
+      "doc": "实例清理的兜底超时（秒）：玩家全掉线、实例卡死等异常情况下何时强制回收。正常完成的副本立即清理，不等这个时间。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "dungeon.anti-escape",
+      "key": "anti-escape",
+      "type": "映射",
+      "doc": "防逃逸：拦截末影珍珠、紫颂果、传送门等逃出副本的手段",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "dungeon.anti-escape.enabled",
+      "key": "enabled",
+      "type": "布尔",
+      "doc": "是否拦截逃出副本的手段（末影珍珠、紫颂果、传送门）。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "dungeon.anti-escape.mode",
+      "key": "mode",
+      "type": "文本",
+      "doc": "BLOCK 取消传送并留在原地 / TELEPORT_BACK 拉回出生点 / FAIL 允许离开但判定副本失败",
+      "values": [
+        "BLOCK",
+        "TELEPORT_BACK",
+        "FAIL"
+      ],
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "dungeon.reconnect",
+      "key": "reconnect",
+      "type": "映射",
+      "doc": "掉线保护：掉线后保留副本位置等待重连的秒数，0 = 不启用",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "dungeon.reconnect.timeout",
+      "key": "timeout",
+      "type": "数字",
+      "doc": "掉线后保留副本位置等待重连的秒数，0 = 不启用（掉线即视为离开）。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "dungeon.daily-reset",
+      "key": "daily-reset",
+      "type": "文本",
+      "doc": "每日进入次数的重置时刻（HH:mm，按服务器时区）。上限在各副本 config.yml 的 requirements.daily_limit 里配。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "dungeon.leader-only-enter",
+      "key": "leader-only-enter",
+      "type": "布尔",
+      "doc": "是否要求只有队长能发起进入。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "party",
+      "key": "party",
+      "type": "映射",
+      "doc": "队伍：人数上限、邀请有效期与冷却、离线自动解散、队名规则与邀请正文。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "party.max-size",
+      "key": "max-size",
+      "type": "数字",
+      "doc": "一个队伍最多几个人。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "party.invite-timeout",
+      "key": "invite-timeout",
+      "type": "数字",
+      "doc": "邀请有效期（秒），过期后点击接受按钮无效。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "party.invite-cooldown",
+      "key": "invite-cooldown",
+      "type": "数字",
+      "doc": "同一对「邀请人 → 被邀请人」的邀请冷却（秒）。\n邀请消息是直接发给被邀请人的，没有冷却时连点「邀请玩家」菜单（或重复敲\n/ld party invite）就是把别人的聊天栏刷满同一条消息。默认 30 秒内只发一条，\n冷却期内的重复点击只给邀请人自己一条提示，且提示本身也节流，不再打扰被邀请人。\n0 = 不启用（恢复\"点几次就发几条\"）。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "party.offline-disband-minutes",
+      "key": "offline-disband-minutes",
+      "type": "数字",
+      "doc": "全员离线这么多分钟后自动解散队伍（防止弃游队伍连同仓库永久驻留内存）。0 = 不启用。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "party.name",
+      "key": "name",
+      "type": "映射",
+      "doc": "队名规则。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "party.name.max-length",
+      "key": "max-length",
+      "type": "数字",
+      "doc": "队名最大长度。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "party.name.allow-color",
+      "key": "allow-color",
+      "type": "布尔",
+      "doc": "队名是否允许 & 颜色代码。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "party.invite-message",
+      "key": "invite-message",
+      "type": "文本",
+      "doc": "被邀请人收到的邀请正文\n占位符：{inviter} 邀请人 / {party} 队名 / {seconds} 有效期秒数",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "party.invite-buttons",
+      "key": "invite-buttons",
+      "type": "映射",
+      "doc": "邀请消息末尾两个可点击按钮的文字（点一下即接受/拒绝，不用手打指令）",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "party.invite-buttons.accept",
+      "key": "accept",
+      "type": "文本",
+      "doc": "邀请消息末尾「接受」按钮的文字（可点击，不用手打指令）。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "party.invite-buttons.reject",
+      "key": "reject",
+      "type": "文本",
+      "doc": "邀请消息末尾「拒绝」按钮的文字。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "cross-server",
+      "key": "cross-server",
+      "type": "映射",
+      "doc": "跨服组队与跨服邀请（Redis）\n\n解决的问题：队长在 A 服、朋友在 B 服。没有这一段时，A 服的 /ld party invite\n只能找到 A 服的在线玩家（Bukkit.getPlayerExact 本来就是本服查询），\n跨服组队根本无从谈起。\n\n实现方式：队伍与邀请写进 Redis（各服读写同一份 keyspace），\n配合 Pub/Sub 把邀请实时推给\"被邀请人所在的那台服\"。\n传送走 Paper 原生的 Player#transfer(host, port)，【不需要】代理端装插件。\n\n⚠ Redis 连不上时插件不会崩：自动退回\"仅本服\"模式（与升级前行为完全一致），\n  并在启动横幅与 /ld status 里标明。enabled 默认 true 只是\"尝试连接\"，\n  连不上不会有任何副作用。\n\n脚本引擎（GraalJS）",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "cross-server.enabled",
+      "key": "enabled",
+      "type": "布尔",
+      "doc": "总开关。`true` 只是「尝试连接」：Redis 连不上会自动退回**仅本服**模式（与没有这个功能时行为完全一致），并在启动横幅与 `/ld status` 里标明，不会有任何副作用。`false` = 连都不连。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "cross-server.redis",
+      "key": "redis",
+      "type": "映射",
+      "doc": "Redis 连接参数。同一代理下的各服要指向**同一个** Redis，并保持 `channel` 一致，否则互相看不见。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "cross-server.redis.host",
+      "key": "host",
+      "type": "文本",
+      "doc": "Redis 主机名或 IP。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "cross-server.redis.port",
+      "key": "port",
+      "type": "数字",
+      "doc": "Redis 端口，默认 6379。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "cross-server.redis.password",
+      "key": "password",
+      "type": "文本",
+      "doc": "没有密码就留空字符串",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "cross-server.redis.database",
+      "key": "database",
+      "type": "数字",
+      "doc": "Redis 的逻辑库编号（0~15）",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "cross-server.redis.pool-size",
+      "key": "pool-size",
+      "type": "数字",
+      "doc": "Redis 连接池大小。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "cross-server.redis.timeout-ms",
+      "key": "timeout-ms",
+      "type": "数字",
+      "doc": "连接与命令超时（毫秒）。跨服是\"能连上就快\"的功能，\n超时给太长会让开本卡在等 Redis 上，宁可快速失败退回本服模式。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "cross-server.redis.channel",
+      "key": "channel",
+      "type": "文本",
+      "doc": "Pub/Sub 频道名。同一代理下各服必须写成一样的（不同代理环境可以改它隔离）",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "cross-server.start-delay",
+      "key": "start-delay",
+      "type": "数字",
+      "doc": "队长发起进本后，等多少秒才真正开始（克隆世界 + 传送）。\n为什么需要它：跨服队员接受邀请后，客户端要经历\"接受 → 代理调度 → B 服保存数据\n→ 传送 → A 服登录\"整整一串流程，几秒内人还没到位；队长那边若立刻开本，\n队员落位时副本已经跑起来了（甚至门口那波怪已经被队友打完）。\n这段时间里队长可以用 /ld enter cancel 取消，倒计时结束前不会动任何东西。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "script",
+      "key": "script",
+      "type": "映射",
+      "doc": "脚本引擎（GraalJS）设置。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "script.enabled",
+      "key": "enabled",
+      "type": "布尔",
+      "doc": "是否启用脚本引擎。关掉后 scripts.yml 与怪物组脚本一律不执行 —— 副本还能开，只是没有任何流程逻辑。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "script.execution-timeout-ms",
+      "key": "execution-timeout-ms",
+      "type": "数字",
+      "doc": "单次脚本执行的最长时间（毫秒），用于折算语句上限以中断死循环。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "script.max-actions-per-second",
+      "key": "max-actions-per-second",
+      "type": "数字",
+      "doc": "单个副本实例内每秒允许执行的动作数上限，超出则丢弃并告警。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "script.sandbox",
+      "key": "sandbox",
+      "type": "布尔",
+      "doc": "沙箱模式：\n  false（默认）= 完整模式。脚本可自由调用本插件注入的 action / dungeon / player 等对象，\n                 写法与 QueDP 一致，服主写脚本最省事。\n  true          = 沙箱模式。只允许调用带 @HostAccess.Export 注解的方法，\n                 适合把脚本编辑权限开放给玩家（如玩家自建副本）的场景。\n无论哪种模式，脚本都无法 new 任意 Java 类（allowHostClassLookup 恒为 false）。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "script.on-error",
+      "key": "on-error",
+      "type": "文本",
+      "doc": "脚本出错时的处理：LOG 记录并继续 / FAIL_DUNGEON 判定副本失败 / DISABLE 停用该脚本",
+      "values": [
+        "LOG",
+        "FAIL_DUNGEON",
+        "DISABLE"
+      ],
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "performance",
+      "key": "performance",
+      "type": "映射",
+      "doc": "性能保护：每个实例世界的实体上限与单次刷怪的拆分阈值。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "performance.entity-limit",
+      "key": "entity-limit",
+      "type": "数字",
+      "doc": "每个副本世界的实体总数上限，超过上限的怪物生成请求会被跳过。注意它统计的是**世界内全部实体**（含地图自带的画 / 盔甲架 / 生物），用现成地图时要按实际实体数上调。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "performance.spawn-split-threshold",
+      "key": "spawn-split-threshold",
+      "type": "数字",
+      "doc": "单次生成超过该数量时自动拆分到多个 tick（避免一 tick 刷几百只怪）。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "leaderboard",
+      "key": "leaderboard",
+      "type": "映射",
+      "doc": "排行榜设置：开关、每页条数、数据保留天数、参与排名的名次数。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "leaderboard.enabled",
+      "key": "enabled",
+      "type": "布尔",
+      "doc": "是否启用排行榜（`/ld leaderboard` 与 GUI 里的排行榜页）。关掉后统计照常记录，只是不看排行。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "leaderboard.entries-per-page",
+      "key": "entries-per-page",
+      "type": "数字",
+      "doc": "排行榜每页显示几条。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "leaderboard.retention-days",
+      "key": "retention-days",
+      "type": "数字",
+      "doc": "数据保留天数，0 = 永久",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "leaderboard.max-entries",
+      "key": "max-entries",
+      "type": "数字",
+      "doc": "前多少名参与排名",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "statistics",
+      "key": "statistics",
+      "type": "映射",
+      "doc": "统计与数据记录设置。数据落在数据库的 combat_event / instance_session / reward_ledger / economy_daily 四张表里。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "statistics.enabled",
+      "key": "enabled",
+      "type": "布尔",
+      "doc": "是否记录与展示统计。关掉后这几张表不再写入，`/ld stats` 与排行榜会是空的。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "statistics.auto-show",
+      "key": "auto-show",
+      "type": "布尔",
+      "doc": "副本结束后自动向参与者显示统计",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "statistics.track-damage",
+      "key": "track-damage",
+      "type": "布尔",
+      "doc": "记录战斗明细（输出伤害）到数据库的 combat_event 表。\n关掉它不影响副本内的实时统计与场次记录，只是不留每个玩家的伤害明细。\n高频事件有聚合缓冲，一伤一写的情况不存在，正常服开着没有性能问题。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "statistics.track-healing",
+      "key": "track-healing",
+      "type": "布尔",
+      "doc": "记录治疗明细。默认关：治疗事件比伤害稀疏，但多数服并不关心这一列。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "statistics.display-duration",
+      "key": "display-duration",
+      "type": "数字",
+      "doc": "副本结束后统计面板在屏幕上停留的秒数。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "statistics.flush-interval",
+      "key": "flush-interval",
+      "type": "数字",
+      "doc": "战斗明细的批量落库间隔（秒）。明细先在内存里聚合，攒够一批一次性写库 ——\n逐条 INSERT 会让一场 20 分钟的副本产生上万次写操作。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "statistics.max-events-per-instance",
+      "key": "max-events-per-instance",
+      "type": "数字",
+      "doc": "单场副本最多记录多少条战斗明细（按 玩家×类型 聚合后依然超限时截断）。\n上限存在的意义：防止某个刷怪量异常的副本把 combat_event 表撑爆。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "stamina",
+      "key": "stamina",
+      "type": "映射",
+      "doc": "体力系统：限制进本次数的经济手段",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "stamina.enabled",
+      "key": "enabled",
+      "type": "布尔",
+      "doc": "是否启用体力系统 —— 当前版本**未实现**，配了也不生效（副本 config.yml 的 requirements.stamina_cost 同样）。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "stamina.max-stamina",
+      "key": "max-stamina",
+      "type": "数字",
+      "doc": "体力上限。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "stamina.recovery-rate",
+      "key": "recovery-rate",
+      "type": "数字",
+      "doc": "每次恢复多少点体力。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "stamina.recovery-interval",
+      "key": "recovery-interval",
+      "type": "数字",
+      "doc": "每多少秒恢复一次体力。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "self-test",
+      "key": "self-test",
+      "type": "映射",
+      "doc": "自检（部署后验证地基用，生产环境请保持关闭）\n\n开启后会在服务器启动后自动执行一次核心链路验证：\n  模板克隆 → 世界加载 → 世界规则注入 → 脚本执行 → 怪物生成 → 击杀推进 → 世界销毁\n结果直接打印到控制台，用于确认插件在没有玩家在线时也能正常工作。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "self-test.enabled",
+      "key": "enabled",
+      "type": "布尔",
+      "doc": "是否在启动后自动跑一次核心链路自检（模板克隆 → 世界加载 → 脚本执行 → 刷怪 → 击杀推进 → 世界销毁），结果直接打印到控制台。生产环境保持关闭。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "self-test.delay-seconds",
+      "key": "delay-seconds",
+      "type": "数字",
+      "doc": "服务器启动后延迟多少秒执行自检（等世界与插件完全就绪）。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "messages",
+      "key": "messages",
+      "type": "映射",
+      "doc": "插件消息设置。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "messages.prefix",
+      "key": "prefix",
+      "type": "文本",
+      "doc": "插件消息前缀（支持 & 颜色代码），用在 broadcast 与各类提示前。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "server-name",
+      "key": "server-name",
+      "type": "文本",
+      "doc": "跨服组队用的本服标识的**回退值**：只有 server-id 留空时才读它（Paper 的服务器名）。正常情况下请直接配 server-id，别写这个 —— 它每台服都不同，写成同一个值会让跨服邀请定位错服务器。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "cross-server.servers",
+      "key": "servers",
+      "type": "映射",
+      "doc": "各服的**直连地址**，通常不需要写（留空即可）：跨服传送默认走代理插件消息通道，地址由代理自己管。仅当服务器之间直连、或想绕开代理时才配。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "cross-server.servers.<服名>",
+      "key": "<服名>",
+      "type": "映射",
+      "doc": "一台目标服，键名就是它在代理里的登记名（与那台服的 server-id 一致）。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "cross-server.servers.<服名>.host",
+      "key": "host",
+      "type": "文本",
+      "doc": "那台服的主机名或 IP。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "cross-server.servers.<服名>.port",
+      "key": "port",
+      "type": "数字",
+      "doc": "那台服的**游戏端口**（不是代理端口 —— 填代理端口会变成\"连回代理再路由回来\"）。",
+      "aliases": [],
+      "required": false
+    }
+  ]
+}

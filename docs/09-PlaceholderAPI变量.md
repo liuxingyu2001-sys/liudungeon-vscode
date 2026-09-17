@@ -28,6 +28,9 @@
 | `%liudungeon_players_in_dungeon%` | 全服在副本内的在线玩家数 | `0` |
 | `%liudungeon_parties%` | 全服队伍数量 | `0` |
 | `%liudungeon_chunk_tickets%` | 当前区块票据数量 | `0` |
+| `%liudungeon_server_id%` | 本服标识（`config.yml` 的 `server-id`），排查跨服问题的第一个值 | 空串 |
+| `%liudungeon_cross_server%` | 跨服是否可用（连上 Redis 且订阅成功） | `false` |
+| `%liudungeon_cross_server_servers%` | 当前有心跳的服务器数（含本服） | `0` |
 
 ## 9.3 玩家 / 副本实例变量（需要玩家在线）
 
@@ -73,7 +76,7 @@
 `var_` 是最灵活的一个：脚本里 `setVar('房间进度', 3)`，计分板写
 `%liudungeon_var_房间进度%` 就能直接显示，**不需要改插件代码**。
 
-## 9.5 队伍变量（7 个，需要玩家在线，**不需要在副本里**）
+## 9.5 队伍变量（8 个，需要玩家在线，**不需要在副本里**）
 
 | 变量 | 含义 | 无数据时 |
 |---|---|---|
@@ -84,12 +87,41 @@
 | `%liudungeon_party_name%` | 队伍名（已去色） | 无队伍 → 空串 |
 | `%liudungeon_party_leader%` | 队长名 | 无队伍 → 空串 |
 | `%liudungeon_party_isleader%` | 自己是否队长 | 无队伍 → `false` |
+| `%liudungeon_party_crossserver%` | 队伍是否跨服（有成员在别的服上） | 无队伍或跨服未启用 → `false` |
 
 > 📌 原有的 `party_loot` / `party_exp` / `party_scope` 三个变量**已移除**。
 > 它们返回的"战利品/经验/共享范围"只是队伍对象上三个没有任何代码读取的字段，
 > 值永远不变 —— 挂在计分板上等于给玩家看一个假状态。现在请求它们会得到空串。
 
-## 9.6 写计分板的实用建议
+## 9.6 统计变量（需要玩家在线，**不需要在副本里**）
+
+统计变量全部读**内存缓存**（懒加载 + 30 秒 TTL），**不会查数据库** ——
+它们会被计分板每 tick 拉取，同步查库等于把数据库当计时器用。
+代价是数字最多滞后 30 秒，对"通关次数"这类累计值完全可以接受。
+
+| 变量 | 含义 | 无数据时 |
+|---|---|---|
+| `%liudungeon_stats_runs%` | 参与场次（累计） | 空串 |
+| `%liudungeon_stats_clears%` | 通关次数 | 空串 |
+| `%liudungeon_stats_fails%` | 失败场次 | 空串 |
+| `%liudungeon_stats_clear_rate%` | 通关率（整数百分比，如 `75`） | 空串 |
+| `%liudungeon_stats_playtime%` | 总时长（秒） | 空串 |
+| `%liudungeon_stats_playtime_clock%` | 总时长 `mm:ss` | 空串 |
+| `%liudungeon_stats_best_time%` | 最快通关 `mm:ss` | 无通关记录 → 空串 |
+| `%liudungeon_stats_avg_time%` | 平均用时 `mm:ss` | 空串 |
+| `%liudungeon_stats_kills%` | 总击杀 | 空串 |
+| `%liudungeon_stats_deaths%` | 总死亡 | 空串 |
+| `%liudungeon_stats_damage%` | 总输出（取整） | 空串 |
+| `%liudungeon_stats_healing%` | 总治疗（取整） | 空串 |
+
+> ⚠ **首次请求返回空串，不是 `0`** —— 那一刻后台正在查库。
+> 这与副本内变量的约定一致：显示 `0` 会被当成"真的打了 0 次"，空串至少不撒谎。
+> 想避免计分板出现一瞬间的空白，可以在玩家上线后延迟几秒再显示这一行。
+
+> 📌 这些变量的数据来自 1.7.0 起才真正落库的 `instance_session` / `combat_event`。
+> **升级前的历史场次补不回来** —— 那时候没有任何写入点。
+
+## 9.7 写计分板的实用建议
 
 - 想显示「只在副本内才出现的一行」，直接写 `%liudungeon_stage_name%`，
   副本外它天然是空白，不需要额外判断。

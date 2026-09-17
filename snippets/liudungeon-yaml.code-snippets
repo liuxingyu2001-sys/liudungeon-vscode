@@ -286,6 +286,21 @@
     ],
     "description": "JavaScript 函数库 —— 最小可用模板"
   },
+  "ld-pluginconfigyml": {
+    "prefix": "ld-pluginconfigyml",
+    "body": [
+      "debug: false",
+      "server-id: 'server-1'",
+      "database:",
+      "  type: SQLITE",
+      "cross-server:",
+      "  enabled: true",
+      "  start-delay: 3",
+      "statistics:",
+      "  enabled: true"
+    ],
+    "description": "插件主配置 —— 最小可用模板"
+  },
   "ld-message": {
     "prefix": "ld-message",
     "body": [

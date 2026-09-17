@@ -179,6 +179,57 @@ const REF_ALIAS_FILES = {
   'rewards.yml': '奖励:\n  通关奖励:\n    经验: 10\n',
 };
 
+/**
+ * 插件**主配置**的夹具：`plugins/liudungeon/config.yml`。
+ *
+ * 它与副本目录里的 `config.yml` 同名，但讲的是 database / cross-server / statistics
+ * 这些**插件级**开关。这两份文件一度被当成同一份：打开主配置时顶层补全给出的是
+ * 副本的键（enable / requirements…），而且把 server-id、cross-server、statistics
+ * 全报成「插件不读的键」—— 实测 22 条假警告。所以夹具直接用**插件仓库里那份真文件**，
+ * 逐字验证它一条诊断都不许有。
+ */
+const MAIN_CFG_DIR = join(mkdtempSync(join(tmpdir(), 'ld-maincfg-')), 'plugins', 'liudungeon');
+
+/** 插件**源码**里的同一个文件：`src/main/resources/config.yml`（仓库里就是主配置）。 */
+const MAIN_SRC_DIR = join(
+  mkdtempSync(join(tmpdir(), 'ld-maincfg-src-')), 'liudungeon', 'src', 'main', 'resources',
+);
+
+// 主配置夹具直接用**插件仓库里那份真文件**：与插件源码对账是这个自检的前提，
+// 读不到就明确说清楚（跟 sync-docs.mjs 一样），而不是让后面几十条断言在空内容上"通过"。
+let MAIN_CFG_TEXT;
+try {
+  MAIN_CFG_TEXT = readFileSync(join(PLUGIN_DIR, 'src/main/resources/config.yml'), 'utf8');
+} catch {
+  console.error('找不到插件主配置: ' + join(PLUGIN_DIR, 'src/main/resources/config.yml'));
+  console.error('设 LD_PLUGIN_DIR 指向插件仓库（含 src/main/resources/config.yml）。');
+  process.exit(2);
+}
+
+/**
+ * 服务器上的插件数据目录：`plugins/liudungeon/`。
+ *
+ * <p>刻意**不放 plugin.yml**（真实的服务端目录里没有它，plugin.yml 在 jar 里）——
+ * 这一份考的是「路径形状 + 目录内容」那条判定：目录名叫 liudungeon、不在 dungeons/ 下、
+ * 里面也没有任何副本内容文件。放上 plugin.yml 就会变成在考另一条判定，
+ * 「内容判定失效」这个变异会静默溜过去（变异测试第一次跑就是这样全绿的）。
+ */
+const MAIN_CFG_FILES = {
+  'config.yml': MAIN_CFG_TEXT,
+  'gui.yml': "settings:\n  filler-material: GRAY_STAINED_GLASS_PANE\n",
+};
+
+/**
+ * 源码资源目录那份：目录名是 `resources`，路径形状与"插件根"完全不像，
+ * 唯一的线索就是**同目录有 plugin.yml**。少了这条线索，打开插件仓库时
+ * src/main/resources/config.yml 会被当成某个副本的配置。
+ */
+const MAIN_SRC_FILES = {
+  'config.yml': MAIN_CFG_TEXT,
+  'plugin.yml': "name: liudungeon\nmain: com.liu.liudungeon.LiuDungeonPlugin\n",
+  'gui.yml': "settings:\n  filler-material: GRAY_STAINED_GLASS_PANE\n",
+};
+
 function writeRefFixture() {
   try {
     mkdirSync(REF_DIR, { recursive: true });
@@ -196,6 +247,16 @@ function writeRefFixture() {
     mkdirSync(REF_ALIAS_DIR, { recursive: true });
     for (const [name, text] of Object.entries(REF_ALIAS_FILES)) {
       writeFileSync(join(REF_ALIAS_DIR, name), text, 'utf8');
+    }
+    // 第四种：插件主配置（plugins/liudungeon/，另一个同名 config.yml）
+    mkdirSync(MAIN_CFG_DIR, { recursive: true });
+    for (const [name, text] of Object.entries(MAIN_CFG_FILES)) {
+      writeFileSync(join(MAIN_CFG_DIR, name), text, 'utf8');
+    }
+    // 第五种：插件源码资源目录（src/main/resources/，靠 plugin.yml 认出来）
+    mkdirSync(MAIN_SRC_DIR, { recursive: true });
+    for (const [name, text] of Object.entries(MAIN_SRC_FILES)) {
+      writeFileSync(join(MAIN_SRC_DIR, name), text, 'utf8');
     }
   } catch {
     /* 写不出来时相关用例会失败并给出空白结果，比静默跳过更容易发现 */
@@ -225,6 +286,12 @@ function buildWorkspace() {
   }
   for (const [name, text] of Object.entries(REF_ALIAS_FILES)) {
     files.push({ uri: `file://${REF_ALIAS_DIR}/${name}`, text });
+  }
+  for (const [name, text] of Object.entries(MAIN_CFG_FILES)) {
+    files.push({ uri: `file://${MAIN_CFG_DIR}/${name}`, text });
+  }
+  for (const [name, text] of Object.entries(MAIN_SRC_FILES)) {
+    files.push({ uri: `file://${MAIN_SRC_DIR}/${name}`, text });
   }
   return files;
 }
@@ -1222,6 +1289,48 @@ function labelDump(items) {
   const dataDNames = new Set(dungeon.methods.map((m) => m.name));
   const missingD = [...javaDNames].filter((n) => !dataDNames.has(n) && n !== 'toString');
   check('DungeonApi.java 的所有 public 方法都在补全数据里', missingD.length === 0, `缺少：${missingD.join(', ')}`);
+
+  // ---- 插件主配置（plugins/liudungeon/config.yml）：与 PluginConfig.java 逐键核对 ----
+  // 这份是**另一份同名文件**，数据单独放 data/plugin-config.json，用合成名 'plugin-config.yml'
+  // 做键（真名 config.yml 已被副本那份占用，见 schemaKeyFor）。
+  const pluginCfg = JSON.parse(readFileSync('data/plugin-config.json', 'utf8'));
+  check('主配置数据用合成名做键', pluginCfg.file === 'plugin-config.yml', pluginCfg.file);
+  const cfgPaths = pluginCfg.nodes.map((n) => n.path);
+  check('主配置数据没有重复的键路径', new Set(cfgPaths).size === cfgPaths.length, '');
+  check('主配置的每个键都有说明', pluginCfg.nodes.every((n) => (n.doc ?? '').trim().length > 0),
+    pluginCfg.nodes.filter((n) => !(n.doc ?? '').trim()).map((n) => n.path).join(', '));
+
+  const javaCfg = readFileSync(
+    join(PLUGIN_DIR, 'src/main/java/com/liu/liudungeon/config/PluginConfig.java'),
+    'utf8',
+  );
+  const javaCfgKeys = new Set(
+    [...javaCfg.matchAll(/\.get(?:String|Int|Long|Double|Boolean|StringList|List|ConfigurationSection)\("([^"]+)"/g)]
+      .map((m) => m[1]),
+  );
+  const pathSet = new Set(cfgPaths);
+  // 段式读法（getConfigurationSection("cross-server.servers") + section.getString(id + ".host")）
+  // 在数据里写作 cross-server.servers.<服名>.host，所以允许"多一层通配段"的匹配。
+  const missingCfg = [...javaCfgKeys].filter(
+    (k) => !pathSet.has(k) && !cfgPaths.some((p) => p.startsWith(`${k}.<`)),
+  );
+  check('PluginConfig.java 读的每个键都在主配置数据里', missingCfg.length === 0, `缺少：${missingCfg.join(', ')}`);
+
+  // 枚举取值必须与 Java 的 enum 对齐：插件是 valueOf(toUpperCase())，写错静默回落，
+  // 所以补全列表错了等于教人写错。
+  for (const [path, enumName] of [
+    ['database.type', 'DatabaseType'],
+    ['dungeon.anti-escape.mode', 'AntiEscapeMode'],
+    ['script.on-error', 'ScriptErrorAction'],
+  ]) {
+    const body = new RegExp(`enum\\s+${enumName}\\s*\\{([\\s\\S]*?);`).exec(javaCfg)?.[1] ?? '';
+    const javaValues = body.split(',').map((v) => v.trim()).filter((v) => /^[A-Z][A-Z0-9_]*$/.test(v));
+    const dataValues = pluginCfg.nodes.find((n) => n.path === path)?.values ?? [];
+    check(`${path} 的取值与 ${enumName} 对齐`,
+      javaValues.length > 0 && javaValues.length === dataValues.length
+        && javaValues.every((v) => dataValues.includes(v)),
+      `Java=[${javaValues.join(',')}] 数据=[${dataValues.join(',')}]`);
+  }
 }
 
 // ---------- 用例 19：类型声明文件可生成且语法正确 ----------
@@ -1967,6 +2076,120 @@ function labelDump(items) {
   const exCn = client.diagnosticsFor(exampleUri).filter((d) => String(d.code).startsWith('condition-'));
   check('插件自带示例的 condition 不误报', exCn.length === 0, JSON.stringify(exCn).slice(0, 300));
   closeDoc(exampleUri);
+}
+
+// ---------- 用例 34：插件主配置（另一个同名 config.yml） ----------
+// `plugins/liudungeon/config.yml` 与副本目录里的 config.yml 同名，但键名毫无交集：
+// 前者是 debug / server-id / database / cross-server / statistics，后者是 enable / world /
+// requirements。编辑器按 basename 认文件，所以这里必须靠**路径与目录内容**区分，
+// 判错的代价前面写过：主配置会被套上副本的键名表，并报出 22 条「插件不读的键」假警告。
+{
+  const mainUri = `file://${MAIN_CFG_DIR}/config.yml`;
+
+  // 1) 真文件一条诊断都不许有（这一条就是当初那 22 条假警告的反向断言）
+  client.notify('textDocument/didOpen', {
+    textDocument: { uri: mainUri, languageId: 'yaml', version: 1, text: MAIN_CFG_FILES['config.yml'] },
+  });
+  openUris.push(mainUri);
+  await new Promise((r) => setTimeout(r, 400));
+  const mainDiags = client.diagnosticsFor(mainUri);
+  check('插件主配置的键一条都不报（含 server-id / cross-server / statistics）',
+    mainDiags.length === 0, JSON.stringify(mainDiags).slice(0, 400));
+  check('主配置里没有「插件不读的键」误报',
+    !mainDiags.some((d) => d.code === 'unknown-key'),
+    JSON.stringify(mainDiags.filter((d) => d.code === 'unknown-key')).slice(0, 300));
+
+  // 2) 顶层键补全给的是**主配置**的键，不是副本的键
+  const top = labels(await completions(mainUri, 0, 0));
+  for (const k of ['server-id', 'database', 'cross-server', 'statistics', 'leaderboard', 'party']) {
+    check(`主配置顶层补全含「${k}」`, top.includes(k), top.join(','));
+  }
+  for (const k of ['enable', 'hide', 'priority', 'requirements', 'blacklist', 'revive', 'sweep', 'instance']) {
+    check(`主配置顶层补全不含副本的「${k}」`, !top.includes(k), top.join(','));
+  }
+
+  // 3) 子层补全：cross-server.redis 与直连地址段
+  const redisUri = openDoc('config.yml', 'cross-server:\n  redis:\n    \n', MAIN_CFG_DIR);
+  await new Promise((r) => setTimeout(r, 250));
+  const redisKeys = labels(await completions(redisUri, 2, 4));
+  for (const k of ['host', 'port', 'password', 'database', 'pool-size', 'timeout-ms', 'channel']) {
+    check(`cross-server.redis 补全含「${k}」`, redisKeys.includes(k), redisKeys.join(','));
+  }
+  closeDoc(redisUri);
+  await new Promise((r) => setTimeout(r, 80));
+
+  // 直连地址段（config.yml 里整段是注释，插件仍然读它）
+  const srvUri = openDoc('config.yml', 'cross-server:\n  servers:\n    zy:\n      \n', MAIN_CFG_DIR);
+  await new Promise((r) => setTimeout(r, 250));
+  const srvKeys = labels(await completions(srvUri, 3, 6));
+  check('cross-server.servers.<服名> 补全含 host', srvKeys.includes('host'), srvKeys.join(','));
+  check('cross-server.servers.<服名> 补全含 port', srvKeys.includes('port'), srvKeys.join(','));
+  closeDoc(srvUri);
+  await new Promise((r) => setTimeout(r, 80));
+
+  // 4) 枚举取值（插件用 valueOf 解析，写错是静默回落）
+  const typeUri = openDoc('config.yml', 'database:\n  type: \n', MAIN_CFG_DIR);
+  await new Promise((r) => setTimeout(r, 250));
+  const typeVals = labels(await completions(typeUri, 1, 8));
+  for (const v of ['SQLITE', 'MYSQL', 'YAML']) {
+    check(`database.type 取值补全含「${v}」`, typeVals.includes(v), typeVals.join(','));
+  }
+  closeDoc(typeUri);
+  await new Promise((r) => setTimeout(r, 80));
+
+  // 5) 键名写错要报，并给出正确写法（这是主配置最值钱的一条：写错静默取默认值）
+  const typoUri = openDoc('config.yml', 'statistic:\n  enabled: true\n', MAIN_CFG_DIR);
+  const typo = await client.waitFor(() => {
+    const d = client.diagnosticsFor(typoUri).filter((x) => x.code === 'unknown-key');
+    return d.length ? d : undefined;
+  });
+  check('主配置里写错 statistic 会报 unknown-key', Boolean(typo), JSON.stringify(client.diagnosticsFor(typoUri)).slice(0, 300));
+  check('报错里建议改成 statistics', /statistics/.test(typo?.[0]?.message ?? ''), typo?.[0]?.message ?? '');
+  check('报错里点名的是「插件主配置」而不是文件名', /插件主配置/.test(typo?.[0]?.message ?? ''), typo?.[0]?.message ?? '');
+  closeDoc(typoUri);
+  await new Promise((r) => setTimeout(r, 80));
+
+  // 6) 悬停：标题写「插件主配置」，正文是作者写在 config.yml 里的说明
+  const hovUri = openDoc('config.yml', "server-id: 'lob'\n", MAIN_CFG_DIR);
+  await new Promise((r) => setTimeout(r, 250));
+  const hv = await hover(hovUri, 0, 4);
+  const hvText = hv?.contents?.value ?? '';
+  check('server-id 悬停标题是「插件主配置」', /插件主配置/.test(hvText), hvText.slice(0, 120));
+  check('server-id 悬停说明它与代理登记名的关系', /代理/.test(hvText), hvText.slice(0, 200));
+  closeDoc(hovUri);
+  await new Promise((r) => setTimeout(r, 80));
+
+  // 7) 反向：副本目录里的 config.yml 仍然按副本配置处理（别改坏主路径）
+  const dgUri = openDoc('config.yml', 'nosuchkey: true\n', REF_DIR);
+  await new Promise((r) => setTimeout(r, 300));
+  const dgKeys = labels(await completions(dgUri, 0, 0));
+  check('副本 config.yml 顶层补全仍是副本的键（含 enable）', dgKeys.includes('enable'), dgKeys.join(','));
+  check('副本 config.yml 顶层补全不含主配置的键（cross-server）', !dgKeys.includes('cross-server'), dgKeys.join(','));
+  const dgDiag = await client.waitFor(() => {
+    const d = client.diagnosticsFor(dgUri).filter((x) => x.code === 'unknown-key');
+    return d.length ? d : undefined;
+  });
+  check('副本 config.yml 写无关键仍按副本键名报出来（说明没被当成主配置）',
+    Boolean(dgDiag), JSON.stringify(client.diagnosticsFor(dgUri)).slice(0, 300));
+  closeDoc(dgUri);
+  await new Promise((r) => setTimeout(r, 80));
+
+  // 8) 源码资源目录那份（目录名叫 resources，只有 plugin.yml 能说明它不是副本目录）
+  const srcUri = `file://${MAIN_SRC_DIR}/config.yml`;
+  client.notify('textDocument/didOpen', {
+    textDocument: { uri: srcUri, languageId: 'yaml', version: 1, text: MAIN_CFG_FILES['config.yml'] },
+  });
+  openUris.push(srcUri);
+  await new Promise((r) => setTimeout(r, 400));
+  const srcDiags = client.diagnosticsFor(srcUri);
+  check('插件源码里的 src/main/resources/config.yml 也按主配置处理（靠同目录的 plugin.yml）',
+    srcDiags.length === 0, JSON.stringify(srcDiags).slice(0, 400));
+  const srcTop = labels(await completions(srcUri, 0, 0));
+  check('源码资源目录的主配置顶层补全含 server-id', srcTop.includes('server-id'), srcTop.join(','));
+  check('源码资源目录的主配置顶层补全不含副本的 enable', !srcTop.includes('enable'), srcTop.join(','));
+  closeDoc(srcUri);
+
+  closeDoc(mainUri);
 }
 
 // ---------- 收尾 ----------

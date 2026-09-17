@@ -774,6 +774,106 @@
       "example": "action.reward('通关奖励')"
     },
     {
+      "name": "stats",
+      "signature": "stats(selector, metric)",
+      "params": [
+        {
+          "name": "selector",
+          "type": "选择器",
+          "doc": "目标玩家选择器"
+        },
+        {
+          "name": "metric",
+          "type": "指标",
+          "doc": "只看一项：输出 / 承受 / 治疗 / 击杀 / 死亡（中英文都认；留空 = 全部）"
+        }
+      ],
+      "returns": "void",
+      "doc": "把本场战斗统计发给选择器命中的玩家：每人一行、按数值从高到低，一眼看出本场 MVP。数据取自内存里的实时统计，不查数据库（落库是异步的，此刻未必已经写完）",
+      "category": "统计 / 结算",
+      "aliases": [],
+      "example": "action.stats('@all', '输出')"
+    },
+    {
+      "name": "stats",
+      "signature": "stats(selector)",
+      "params": [
+        {
+          "name": "selector",
+          "type": "选择器",
+          "doc": "目标玩家选择器"
+        }
+      ],
+      "returns": "void",
+      "doc": "输出全部统计项（输出 / 承受 / 治疗 / 击杀 / 死亡），结束语里最常用的那一句",
+      "category": "统计 / 结算",
+      "aliases": [],
+      "example": "action.stats('@all')"
+    },
+    {
+      "name": "stat_value",
+      "signature": "stat_value(selector, metric)",
+      "params": [
+        {
+          "name": "selector",
+          "type": "选择器",
+          "doc": "目标玩家选择器；命中多人时取合计"
+        },
+        {
+          "name": "metric",
+          "type": "指标",
+          "doc": "输出 / 承受 / 治疗 / 击杀 / 死亡"
+        }
+      ],
+      "returns": "double（数值；选择器解析不到人、或指标名不认识时返回 0）",
+      "doc": "取某位玩家的某个数值，供脚本自己拼消息。指标写错只是返回 0 而不抛异常 —— 结算代码不会因为一个字写错整段中断",
+      "category": "统计 / 结算",
+      "aliases": [],
+      "example": "action.message('@all', '你本场输出 ' + action.stat_value('@trigger', '输出'))"
+    },
+    {
+      "name": "stat_total",
+      "signature": "stat_total(metric)",
+      "params": [
+        {
+          "name": "metric",
+          "type": "指标",
+          "doc": "输出 / 承受 / 治疗 / 击杀 / 死亡"
+        }
+      ],
+      "returns": "double（全队合计）",
+      "doc": "本场全队合计（不分玩家），适合写进全队公告或悬浮字",
+      "category": "统计 / 结算",
+      "aliases": [],
+      "example": "action.message('@all', '全队共击杀 ' + action.stat_total('击杀') + ' 只怪物')"
+    },
+    {
+      "name": "stats_report",
+      "signature": "stats_report(metric)",
+      "params": [
+        {
+          "name": "metric",
+          "type": "指标",
+          "doc": "只看一项；留空 = 全部（指标名不认识时也按全部处理）"
+        }
+      ],
+      "returns": "String[]（每行一条，可直接逐行 action.message）",
+      "doc": "本场完整报告（多行），内容与 action.stats() 发出去的一样 —— 想自己控制排版时用它（写进悬浮字、存进变量、只发给队长）",
+      "category": "统计 / 结算",
+      "aliases": [],
+      "example": "var lines = action.stats_report('输出')"
+    },
+    {
+      "name": "stats_summary",
+      "signature": "stats_summary()",
+      "params": [],
+      "returns": "String（单行摘要：用时 / 击杀 / 存活怪）",
+      "doc": "一行摘要，适合塞进一句话的结束语",
+      "category": "统计 / 结算",
+      "aliases": [],
+      "example": "action.message('@all', '副本结束：' + action.stats_summary())"
+    },
+    {
       "name": "teleport",
       "signature": "teleport(selector, locationRef)",
       "params": [

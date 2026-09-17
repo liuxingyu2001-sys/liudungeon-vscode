@@ -21,9 +21,17 @@ let client: LanguageClient | undefined;
 /** 只在这些目录下接管 yml（副本配置目录）。 */
 const DUNGEON_GLOB = '**/{dungeons,liudungeon}/**/*.{yml,yaml}';
 
-/** 工作区里需要同步给语言服务的文件（与插件读取的文件名一致）。 */
+/**
+ * 工作区里需要同步给语言服务的文件（与插件读取的文件名一致）。
+ *
+ * <p>`plugin.yml` 也是要的：它不是给用户配的，而是**判定的关键** ——
+ * 插件源码里的 `src/main/resources/` 同时含有 config.yml 与 plugin.yml，
+ * 那份 config.yml 是插件**主配置**（database / cross-server / statistics），
+ * 不是副本配置。语言服务靠"同目录有 plugin.yml"把这两种同名文件区分开
+ * （副本目录里不可能有 plugin.yml）。少了它，打开插件仓库时主配置会拿到副本的键名表。
+ */
 const FILE_GLOB =
-  '**/{dungeons,liudungeon}/{**/config.yml,**/monsters.yml,**/scripts.yml,**/rewards.yml,**/zones.yml,**/obstacles.yml,**/interacts.yml,**/tasks.yml,**/stages.yml,**/chest_rewards.yml,**/gui.yml,**/functions.js}';
+  '**/{dungeons,liudungeon}/{**/config.yml,**/monsters.yml,**/scripts.yml,**/rewards.yml,**/zones.yml,**/obstacles.yml,**/interacts.yml,**/tasks.yml,**/stages.yml,**/chest_rewards.yml,**/gui.yml,**/plugin.yml,**/functions.js}';
 const FALLBACK_GLOB = '**/{config,monsters,scripts,rewards,zones,interacts,tasks,stages}.yml';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {

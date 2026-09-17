@@ -1,14 +1,16 @@
 /**
  * 数据模型：把从插件源码与文档里提取出的参考数据（data/*.json）规整成补全用的结构。
  *
- * 三份数据来源：
+ * 四份数据来源：
  *   action-methods.json   ActionApi.java  → action.* 全部方法 + 选择器 + 文本占位符
  *   dungeon-methods.json  DungeonApi.java → dungeon.* 全部只读查询方法
- *   config-files.json     各 yml 的键名、生命周期钩子、条件关键词与求值位置
+ *   config-files.json     各副本 yml 的键名、生命周期钩子、条件关键词与求值位置
+ *   plugin-config.json    plugins/liudungeon/config.yml 的键名（插件级开关，另一份同名文件）
  */
 import actionRaw from '../../data/action-methods.json';
 import dungeonRaw from '../../data/dungeon-methods.json';
 import configRaw from '../../data/config-files.json';
+import pluginConfigRaw from '../../data/plugin-config.json';
 
 export interface ApiParam {
   name: string;
@@ -92,6 +94,22 @@ export interface ConfigData {
 export const ACTION_API = actionRaw as unknown as ApiFile;
 export const DUNGEON_API = dungeonRaw as unknown as ApiFile;
 export const CONFIG_DATA = configRaw as unknown as ConfigData;
+
+/**
+ * 插件主配置（`plugins/liudungeon/config.yml`）的键名数据。
+ *
+ * <p>它和副本目录里的 `config.yml` **同名但是两份完全不同的文件**：副本那份讲 enable /
+ * world / requirements，主配置那份讲 database / cross-server / statistics。所以这里的
+ * `file` 是一个**合成名**（真名 `config.yml` 已经被副本那份占用了），由
+ * {@link import('./yaml-shared').schemaKeyFor} 按路径判定后返回。
+ *
+ * <p>数据由 `node scripts/gen-plugin-config.mjs` 从插件源码生成（注释即文档），
+ * 键清单与 `PluginConfig.java` 的读取点做双向核对。
+ */
+export const PLUGIN_CONFIG_DATA = pluginConfigRaw as unknown as ConfigFile;
+
+/** 全部配置文件的键名数据（副本的 11 份 + 插件主配置 1 份）。 */
+export const ALL_CONFIG_FILES: ConfigFile[] = [...CONFIG_DATA.files, PLUGIN_CONFIG_DATA];
 
 /** 命名的全局对象（脚本里可直接引用）。 */
 export interface GlobalObject {
@@ -235,9 +253,14 @@ export const PLACEHOLDERS: Map<string, string> = new Map(
 /** 条件关键词（中文 → JS）。 */
 export const CONDITION_KEYWORDS = CONFIG_DATA.conditions.keywords;
 
-/** 按文件名取配置说明。 */
+/**
+ * 按「键名数据的键」取配置说明（副本 11 份 + 插件主配置）。
+ *
+ * <p>键不是文件的 basename 而是 {@link import('./yaml-shared').schemaKeyFor} 的返回值：
+ * 两份 `config.yml` 靠它区分。
+ */
 export const CONFIG_FILE_BY_NAME: Map<string, ConfigFile> = new Map(
-  CONFIG_DATA.files.map((f) => [f.file, f]),
+  ALL_CONFIG_FILES.map((f) => [f.file, f]),
 );
 
 /** 生命周期钩子名集合（含连字符写法）。 */

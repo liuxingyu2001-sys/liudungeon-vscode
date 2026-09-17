@@ -30,7 +30,7 @@ import {
 import { IndexStore, RefKind, REF_LABEL } from './index-store';
 import { kindOfJsMethod } from './references';
 import { analyze, childNodes, nodeAt, type YamlContext } from './yaml-context';
-import { baseName, keySpellings, splitPath } from './yaml-shared';
+import { baseName, keySpellings, schemaKeyFor, schemaLabel, splitPath } from './yaml-shared';
 import { functionSnippets, javascriptSnippets } from './snippets';
 
 export interface CompletionInput {
@@ -118,7 +118,8 @@ export function provideCompletions(input: CompletionInput): CompletionItem[] {
 // ==================================================================
 
 function yamlCompletions(input: CompletionInput): CompletionItem[] {
-  const name = baseName(input.filePath);
+  // 键名数据的键：除两份 config.yml 之外就是 basename（见 schemaKeyFor）
+  const schema = schemaKeyFor(input.filePath, input.index);
   const ctx = analyze(input.text, input.line, input.character);
   const range = wordRange(input.line, ctx.wordStart, ctx.lineText.length);
 
@@ -133,20 +134,20 @@ function yamlCompletions(input: CompletionInput): CompletionItem[] {
 
   // 2) 值位置（`key: ` 之后）
   if (ctx.inValue) {
-    return valueCompletions(input, name, ctx, range);
+    return valueCompletions(input, schema, ctx, range);
   }
 
   // 3) 键名位置
-  return keyCompletions(input, name, ctx, range);
+  return keyCompletions(input, schema, ctx, range);
 }
 
 function valueCompletions(
   input: CompletionInput,
-  fileName: string,
+  schema: string,
   ctx: YamlContext,
   range: Range,
 ): CompletionItem[] {
-  const node = nodeAt(fileName, ctx);
+  const node = nodeAt(schema, ctx);
   const dir = input.index.dirForFile(input.filePath);
   const out: CompletionItem[] = [];
 
@@ -222,7 +223,7 @@ function valueCompletions(
 
 function keyCompletions(
   input: CompletionInput,
-  fileName: string,
+  schema: string,
   ctx: YamlContext,
   range: Range,
 ): CompletionItem[] {
@@ -230,9 +231,9 @@ function keyCompletions(
   const dir = input.index.dirForFile(input.filePath);
   const prefix = ctx.word;
 
-  for (const node of childNodes(fileName, ctx)) {
+  for (const node of childNodes(schema, ctx)) {
     if (prefix && !node.key.startsWith(prefix)) continue;
-    out.push(keyItem(fileName, node, range));
+    out.push(keyItem(schema, node, range));
   }
 
   // 容器节点下：提示“这里要写名字”
@@ -269,7 +270,7 @@ function keyCompletions(
   }
 
   // scripts.yml：顶层是固定钩子名
-  if (fileName === 'scripts.yml' && ctx.indent === 0) {
+  if (schema === 'scripts.yml' && ctx.indent === 0) {
     for (const hook of CONFIG_DATA.scriptHooks) {
       if (prefix && !hook.name.startsWith(prefix)) continue;
       out.push(hookItem(hook.name, hook.doc, hook.hasTrigger, hook.example, range));
@@ -308,7 +309,7 @@ function hookItem(
   };
 }
 
-function keyItem(fileName: string, node: ConfigNode, range: Range): CompletionItem {
+function keyItem(schema: string, node: ConfigNode, range: Range): CompletionItem {
   const spellings = keySpellings(node);
   const doc: string[] = [node.doc];
   if (node.type) doc.push('', `类型：\`${node.type}\``);
@@ -320,7 +321,7 @@ function keyItem(fileName: string, node: ConfigNode, range: Range): CompletionIt
   return {
     label: node.key,
     kind: CompletionItemKind.Property,
-    detail: `${fileName} · ${node.type}`,
+    detail: `${schemaLabel(schema)} · ${node.type}`,
     labelDetails: { description: node.doc.slice(0, 24) },
     documentation: {
       kind: MarkupKind.Markdown,
