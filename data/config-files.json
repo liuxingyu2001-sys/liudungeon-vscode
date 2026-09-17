@@ -148,6 +148,17 @@
           "required": false
         },
         {
+          "path": "world.allow_flight",
+          "key": "allow_flight",
+          "type": "布尔",
+          "doc": "是否允许玩家在副本里飞行。不写 = false = 禁止（/fly、创造模式、op 的飞行能力会在进本落位时被收掉，双击空格起飞也会被拦下；倒下等复活的旁观者悬浮不受影响）。只管玩家自己的飞行能力，鞘翅滑翔不在范围内。只认 allow_flight / 允许飞行，刻意不认反向键「禁止飞行」",
+          "aliases": [
+            "allow-flight",
+            "允许飞行"
+          ],
+          "required": false
+        },
+        {
           "path": "world.border",
           "key": "border",
           "type": "数字",

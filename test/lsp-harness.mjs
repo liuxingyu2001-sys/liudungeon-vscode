@@ -1790,6 +1790,55 @@ function labelDump(items) {
   await new Promise((r) => setTimeout(r, 80));
 }
 
+// ---------- 用例 32：world.allow_flight（副本内禁止飞行） ----------
+// 同样是"插件加了键、扩展没跟就会把合法键报成不读的键"那一类：
+// 这个键默认 false = 禁止飞行，被误报后服主把它删掉，副本里就能飞着绕过所有机关 ——
+// 而表现只是"有人通关特别快"。反向键「禁止飞行」则要**反过来**报出来：
+// 插件刻意不认它（同一个开关两种极性迟早猜错），写的人需要被提醒。
+{
+  // 1) 补全与文档：world 段下要能列出 allow_flight，且说清默认是禁止
+  const text = 'world:\n  allow_f\n';
+  const uri = openDoc('config.yml', text);
+  const items = await completions(uri, 1, '  allow_f'.length);
+  const flight = items.find((i) => i.label === 'allow_flight');
+  check('world 段下能补出 allow_flight', Boolean(flight), labelDump(items));
+  const flightDoc = JSON.stringify(flight?.documentation ?? {});
+  check('allow_flight 的文档讲清默认是禁止', /禁止/.test(flightDoc), flightDoc.slice(0, 200));
+  check('allow_flight 的文档提到双击/创造模式里的一种', /双击|创造/.test(flightDoc), flightDoc.slice(0, 200));
+  closeDoc(uri);
+  await new Promise((r) => setTimeout(r, 80));
+
+  // 2) 悬停键名
+  const hov = openDoc('config.yml', 'world:\n  allow_flight: false\n');
+  const h = await hover(hov, 1, 4);
+  check('悬停 allow_flight 给出文档', /飞行/.test(JSON.stringify(h ?? {})), JSON.stringify(h ?? {}).slice(0, 200));
+  closeDoc(hov);
+  await new Promise((r) => setTimeout(r, 80));
+
+  // 3) 正对照：英文键与中文别名都不许报 unknown-key
+  const good = openDoc('config.yml', "world:\n  template: voidgen\n  allow_flight: false\n");
+  await new Promise((r) => setTimeout(r, 300));
+  const goodKeys = client.diagnosticsFor(good).filter((d) => d.code === 'unknown-key');
+  check('allow_flight 不报 unknown-key', goodKeys.length === 0, JSON.stringify(goodKeys).slice(0, 300));
+  closeDoc(good);
+  await new Promise((r) => setTimeout(r, 80));
+
+  const cn = openDoc('config.yml', 'world:\n  允许飞行: true\n');
+  await new Promise((r) => setTimeout(r, 300));
+  const cnKeys = client.diagnosticsFor(cn).filter((d) => d.code === 'unknown-key');
+  check('中文别名「允许飞行」不报 unknown-key', cnKeys.length === 0, JSON.stringify(cnKeys).slice(0, 300));
+  closeDoc(cn);
+  await new Promise((r) => setTimeout(r, 80));
+
+  // 4) 负对照：反向键要被报出来（插件真的不读它）
+  const bad = openDoc('config.yml', 'world:\n  禁止飞行: false\n');
+  await new Promise((r) => setTimeout(r, 300));
+  const badKeys = client.diagnosticsFor(bad).filter((d) => d.code === 'unknown-key');
+  check('反向键「禁止飞行」被报成 unknown-key', badKeys.length > 0, JSON.stringify(client.diagnosticsFor(bad)).slice(0, 300));
+  closeDoc(bad);
+  await new Promise((r) => setTimeout(r, 80));
+}
+
 // ---------- 收尾 ----------
 client.notify('exit', {});
 child.kill();
