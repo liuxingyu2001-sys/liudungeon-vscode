@@ -13,7 +13,7 @@
 | --- | --- |
 | **action.* / dungeon.* 补全** | 84 个 `action.*` + 51 个 `dungeon.*` 方法，含签名、参数表、分类、可直接跑的示例 |
 | **YAML 里嵌的 JS 也能补全** | 脚本字段统一 **`\|-` 块**写法（`complete: \|-` 下面一行一条、行尾分号）；老配置的引号字符串 `- "action.spawn_group('…')"` 列表也照常支持。两种写法里补全、悬停、诊断都生效 |
-| **配置文件键名补全** | `config.yml` / `monsters.yml` / `stages.yml` / `zones.yml` / `obstacles.yml` / `interacts.yml` / `tasks.yml` / `rewards.yml` / `chest_rewards.yml` / `scripts.yml` / `functions.js` 的 196 个键，含中文别名与枚举取值。**外层键写别名也认**：`obstacles:` / `怪物组:` / `zones:` 与 `障碍物:` / `groups:` / `区域:` 等价（按插件源码的别名表归一化）；**外层容器也可以整个不写** —— 区域 / 阶段 / 障碍物 / 交互点 / 任务 / 宝箱直接写在根节点（游戏内编辑器保存出来的就是这种，插件解析器没有容器时会回退到根级；`monsters.yml` 是例外，怪物组必须写在容器里） |
+| **配置文件键名补全** | `config.yml` / `monsters.yml` / `stages.yml` / `zones.yml` / `obstacles.yml` / `interacts.yml` / `tasks.yml` / `rewards.yml` / `chest_rewards.yml` / `scripts.yml` / `functions.js` 的 202 个键，含中文别名与枚举取值。**外层键写别名也认**：`obstacles:` / `怪物组:` / `zones:` 与 `障碍物:` / `groups:` / `区域:` 等价（按插件源码的别名表归一化）；**外层容器也可以整个不写** —— 区域 / 阶段 / 障碍物 / 交互点 / 任务 / 宝箱直接写在根节点（游戏内编辑器保存出来的就是这种，插件解析器没有容器时会回退到根级；`monsters.yml` 是例外，怪物组必须写在容器里） |
 | **位置引用写法** | 悬停 `locationRef` 类参数时会写明三种写法：`区域.点位` / **裸区域名**（取区域中心）/ `x,y,z`。注意"取区域中心"是**范围盒几何中心** —— 用游戏内编辑器建的还会自带一个 `点位.中心`（`zones.yml` 里能直接看到，见插件第十二章 12.5.2），想精确到某一格就写 `区域.中心` |
 | **名字补全（副本里已定义的名字）** | 参数位置直接列出本副本的定义：`action.spawn_group('…')` 给怪物组、`enable_zone` 给区域、`teleport_point` 给点位、`create_obstacle` 给障碍物、`goto_stage` 给阶段、`grant_reward` 给奖励；YAML 里 `区域:` / `触发组:` / `点位:` 这类键（中英文键名都算）同样给名字 |
 | **悬停文档** | 鼠标停在方法名、**键名（含根键与子键）**、`@all`、`{player.name}` 上直接看中文说明 |
