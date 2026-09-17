@@ -14,6 +14,7 @@
 | **action.* / dungeon.* 补全** | 84 个 `action.*` + 51 个 `dungeon.*` 方法，含签名、参数表、分类、可直接跑的示例 |
 | **YAML 里嵌的 JS 也能补全** | 脚本字段统一 **`\|-` 块**写法（`complete: \|-` 下面一行一条、行尾分号）；老配置的引号字符串 `- "action.spawn_group('…')"` 列表也照常支持。两种写法里补全、悬停、诊断都生效 |
 | **配置文件键名补全** | `config.yml` / `monsters.yml` / `stages.yml` / `zones.yml` / `obstacles.yml` / `interacts.yml` / `tasks.yml` / `rewards.yml` / `chest_rewards.yml` / `scripts.yml` / `functions.js` 的 196 个键，含中文别名与枚举取值。**外层键写别名也认**：`obstacles:` / `怪物组:` / `zones:` 与 `障碍物:` / `groups:` / `区域:` 等价（按插件源码的别名表归一化）；**外层容器也可以整个不写** —— 区域 / 阶段 / 障碍物 / 交互点 / 任务 / 宝箱直接写在根节点（游戏内编辑器保存出来的就是这种，插件解析器没有容器时会回退到根级；`monsters.yml` 是例外，怪物组必须写在容器里） |
+| **位置引用写法** | 悬停 `locationRef` 类参数时会写明三种写法：`区域.点位` / **裸区域名**（取区域中心）/ `x,y,z`。注意"取区域中心"是**范围盒几何中心** —— 用游戏内编辑器建的还会自带一个 `点位.中心`（`zones.yml` 里能直接看到，见插件第十二章 12.5.2），想精确到某一格就写 `区域.中心` |
 | **名字补全（副本里已定义的名字）** | 参数位置直接列出本副本的定义：`action.spawn_group('…')` 给怪物组、`enable_zone` 给区域、`teleport_point` 给点位、`create_obstacle` 给障碍物、`goto_stage` 给阶段、`grant_reward` 给奖励；YAML 里 `区域:` / `触发组:` / `点位:` 这类键（中英文键名都算）同样给名字 |
 | **悬停文档** | 鼠标停在方法名、**键名（含根键与子键）**、`@all`、`{player.name}` 上直接看中文说明 |
 | **跳转到定义** | `trigger_group: wave_1` 里的 `wave_1`、脚本里的 `'通关奖励'`、`enable_zone('前厅')` 里的 `'前厅'` 都能跳回定义处 |
@@ -152,7 +153,7 @@ snippets/            构建时生成的 VS Code 片段
 
 ```bash
 npm run typecheck   # TS 类型检查
-npm test            # 构建 + 端到端自检（235 项断言，约 10 秒）
+npm test            # 构建 + 端到端自检（275 项断言，约 10 秒）+ 校验内置文档与插件仓库同步
 bash scripts/mutate-refs.sh   # 变异测试：把关键修复逐个改回坏写法，确认自检真的会红
 npm run package     # 打成 vsix
 ```
@@ -164,6 +165,10 @@ public 方法都在补全数据里，防止插件升级后扩展悄悄过期。
 「名字补全」与「引用校验」另有一份 tmp 下现造的副本目录（`test/lsp-harness.mjs` 里的
 `REF_FILES`）：插件自带的 example/ 里 `zones.yml` / `stages.yml` / `interacts.yml` 全是
 注释示例，一个区域、一个阶段都没定义 —— 只靠它测，这几类名字全空也不会有人发现。
+
+`npm test` 的最后一步是 `scripts/sync-docs.mjs --check`：内置的 12 篇用户文档是从插件仓库
+`docs/05-使用说明/` **整篇复制**过来的（这是扩展里"打开文档"命令指向的内容），
+插件侧改了文档而扩展没同步，自检会直接报「内容过期」，跑 `npm run sync:docs` 即可。
 
 如果插件仓库不在 `/home/liu/plugins/liudungeon`，用环境变量指定：
 
