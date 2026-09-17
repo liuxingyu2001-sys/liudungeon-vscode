@@ -841,7 +841,7 @@
           "波次"
         ]
       },
-      "example": "groups:\n  wave_1:\n    spawn_timing:\n      type: AUTO_START\n    monsters:\n      - id: Zombie\n        location: '0,64,-10'\n        amount: 3\n        level: 1\n  boss:\n    spawn_timing:\n      type: TRIGGERED\n    trigger_group: wave_1\n    monsters:\n      - id: Husk\n        location: '0,64,-20'\n        amount: 1\n        boss: true\n",
+      "example": "groups:\n  wave_1:\n    spawn_timing:\n      type: AUTO_START\n    zone: 战斗区            # 成员没写坐标时，在这一片范围里随机刷\n    monsters:\n      - id: Zombie\n        amount: 8           # 不写 location：散在「战斗区」里\n      - id: Skeleton\n        point: 战斗区.中心   # 写了坐标就按坐标来\n        amount: 2\n  boss:\n    spawn_timing:\n      type: TRIGGERED\n    trigger_group: wave_1\n    monsters:\n      - id: Husk\n        location: '0,64,-20'\n        amount: 1\n        boss: true\n",
       "nodes": [
         {
           "path": "groups",
@@ -938,7 +938,7 @@
           "path": "groups.<组ID>.zone",
           "key": "zone",
           "type": "文本",
-          "doc": "组默认区域，成员可用 point 引用该区域点位",
+          "doc": "组默认区域；成员可用 point 引用该区域点位，没写坐标的成员就在这个区域里随机刷",
           "aliases": [
             "区域"
           ],
@@ -1008,7 +1008,7 @@
           "path": "groups.<组ID>.monsters[].location",
           "key": "location",
           "type": "坐标",
-          "doc": "绝对坐标 x,y,z",
+          "doc": "绝对坐标 x,y,z；不写则不按坐标刷（有组级 zone 时在该区域内随机，否则回退出生点）",
           "aliases": [
             "位置"
           ],
@@ -1021,6 +1021,18 @@
           "doc": "命名点位 区域.点位，优先于 location",
           "aliases": [
             "点位"
+          ],
+          "required": false
+        },
+        {
+          "path": "groups.<组ID>.monsters[].spawn_random",
+          "key": "spawn_random",
+          "type": "布尔",
+          "doc": "没写 location/point 时是否在组级 zone 范围内随机取落点；默认 true，false = 挤在区域中心",
+          "aliases": [
+            "spawn-random",
+            "随机刷怪",
+            "随机"
           ],
           "required": false
         },
