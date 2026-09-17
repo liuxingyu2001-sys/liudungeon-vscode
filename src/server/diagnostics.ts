@@ -13,12 +13,14 @@
  *   9. 用了 dungeon.spawn（运行时读的是 world.spawn，写了等于没写）
  *  10. 同一文件里重复定义名字（YAML 后者覆盖前者）
  *  11. 引用了不存在的时间写法（3秒钟 这类会静默解析成 0）
+ *  12. 条件里的中文词不在插件的替换表里 / 用了全角运算符（条件恒为 false，怪物永远不出来）
  */
 import { Diagnostic, DiagnosticSeverity, Range } from 'vscode-languageserver';
 import { parseDocument, Scalar, YAMLMap } from 'yaml';
 import {
   ACTION_METHODS,
   ACTION_OVERLOADS,
+  CONDITION_KEYWORDS,
   CONFIG_DATA,
   DEAD_HOOKS,
   DUNGEON_METHODS,
@@ -93,6 +95,9 @@ export function computeDiagnostics(input: DiagnosticsInput): Diagnostic[] {
     out.push(...checkUnknownKeys(name, lines, scriptRanges));
     out.push(...checkContainerMixedWithRoot(name, lines, scriptRanges));
   }
+
+  // ---------- 8b：条件里的中文词 / 全角符号（写错就是恒为 false 的静默失败）----------
+  out.push(...checkConditionChinese(name, lines));
 
   // ---------- 9：dungeon 段里的 spawn（写错位置，运行时读的是 world.spawn）----------
   out.push(...checkSpawnKey(name, input.text));
@@ -830,6 +835,162 @@ function checkReferences(
   // 奖励名（rewards.yml 的顶层键）与 action.grant_reward 的交叉检查已在脚本区做
   void dir;
   return out;
+}
+
+// ==================================================================
+//  条件里的中文词（插件不认识就恒为 false）
+// ==================================================================
+
+/** 全角比较符/等号：插件的中文替换只认 ASCII 运算符，全角写法会直接语法错误。 */
+const FULLWIDTH_OPS: Record<string, string> = {
+  '≤': '<=',
+  '≥': '>=',
+  '＝': '==',
+  '＜': '<',
+  '＞': '>',
+  '＋': '+',
+  '－': '-',
+};
+
+/** 条件里的中文词按「长的在前」匹配，与 ScriptEngine.CN_KEYWORDS 的替换顺序一致。 */
+const CN_KEYWORDS_BY_LENGTH: string[] = [...CONDITION_KEYWORDS.map((k) => k.cn)].sort(
+  (a, b) => b.length - a.length,
+);
+
+/**
+ * 条件值里「插件不认识的中文词」与「全角运算符」。
+ *
+ * <p><b>为什么必须在编辑器里报</b>：这类写法在服务端是**完全静默**的 ——
+ * `怪物小于等于 5` 里的「小于等于」在 JS 里是合法标识符，语法校验查不出来，
+ * 运行期变成 `ReferenceError` → 被"按 false 处理"的策略吞掉 →
+ * 表现是「这波怪永远不出来，日志里只有一行『启动条件未满足』」。
+ * 插件 1.6.0 起 `/ld doctor`、加载期与运行期都会点名，编辑器这边提前报同样的词。
+ *
+ * <p>字符串字面量里的中文**不算**：`dungeon.getAliveMonsterCount('第一波') <= 0`
+ * 里的组名本来就是中文，那是完全合法的写法。
+ */
+function checkConditionChinese(fileName: string, lines: string[]): Diagnostic[] {
+  const out: Diagnostic[] = [];
+  const paths = linePaths(lines);
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!CONDITION_KEY_RE.test(line)) continue;
+    if (/^\s*#/.test(line)) continue;
+    if (fileName === 'scripts.yml' && (paths[i]?.parent ?? '') === '') {
+      // scripts.yml 顶层没有 condition 键（只有 start.condition 这种子键）
+      continue;
+    }
+
+    const indent = indentOf(line);
+    const segments: { text: string; line: number; at: number }[] = [];
+
+    // 1) 写在键这一行右边：`condition: 存活怪物 <= 5`
+    const inline = line.slice(line.indexOf(':') + 1);
+    if (inline.trim() !== '' && !isBlockScalarKeyLine(line)) {
+      segments.push({ text: inline, line: i, at: line.indexOf(':') + 1 });
+    }
+
+    // 2) 键下面那条 `- ...` 列表 / `|-` 块（一直读到缩进回到同级或更浅）
+    for (let j = i + 1; j < lines.length; j++) {
+      const l = lines[j];
+      if (l.trim() === '') continue;
+      if (indentOf(l) <= indent) break;
+      if (/^\s*#/.test(l)) continue;
+      const item = /^\s*-\s+(.*)$/.exec(l);
+      const body = item ? item[1] : l.trim();
+      const at = item ? l.indexOf(item[1]) : indentOf(l);
+      segments.push({ text: body, line: j, at: Math.max(at, 0) });
+    }
+
+    for (const seg of segments) {
+      out.push(...conditionSegmentDiagnostics(seg.text, seg.line, seg.at));
+    }
+  }
+  return out;
+}
+
+/** 检查一段条件文本（一行），返回它的诊断。 */
+function conditionSegmentDiagnostics(text: string, lineNo: number, baseAt: number): Diagnostic[] {
+  const out: Diagnostic[] = [];
+
+  // 字符串字面量整段挖掉（组名就是中文，不能算未识别词）；等长换成空格，位置对得上
+  const bare = stripQuoted(text);
+  const at = (idx: number) => baseAt + idx;
+
+  // 1) 全角运算符：插件只认 >= / <= / == 这类 ASCII 写法
+  for (let i = 0; i < bare.length; i++) {
+    const ascii = FULLWIDTH_OPS[bare[i]];
+    if (!ascii) continue;
+    const col = at(i);
+    out.push({
+      range: Range.create(lineNo, col, lineNo, col + 1),
+      severity: SEVERITY_ERROR,
+      source: 'liudungeon',
+      message:
+        `全角符号 \`${bare[i]}\` 不是运算符：中文条件只认 ASCII 的 ${ascii} 这一族写法。` +
+        `\n整条条件会变成语法错误被当成 false（怪物永远不出来），改成 \`${ascii}\` 即可。`,
+      code: 'condition-fullwidth',
+    });
+  }
+
+  // 2) 翻译表以外的中文词
+  let rest = bare;
+  for (const kw of CN_KEYWORDS_BY_LENGTH) rest = rest.split(kw).join(' ');
+  const unknown: { word: string; at: number }[] = [];
+  const re = /[\u3400-\u4dbf\u4e00-\u9fff]+/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(rest)) !== null) {
+    const word = m[0];
+    if (unknown.some((u) => u.word === word)) continue;
+    unknown.push({ word, at: at(m.index) });
+  }
+  if (unknown.length) {
+    const list = unknown.map((u) => `「${u.word}」`).join('、');
+    const first = unknown[0];
+    out.push({
+      range: Range.create(lineNo, first.at, lineNo, first.at + first.word.length),
+      severity: SEVERITY_WARN,
+      source: 'liudungeon',
+      message:
+        `条件里有插件不认识的中文词 ${list}：它们会被当成未定义标识符 → 条件恒为 false，` +
+        `怪物永远不出来，而日志里只说「启动条件未满足」。` +
+        `\n可用的中文词：${CONDITION_KEYWORDS.map((k) => k.cn).join(' / ')}` +
+        `\n其余请写 JS（例如 dungeon.getAliveMonsterCount('wave_1') <= 0）或 /ld doctor 复查。`,
+      code: 'condition-unknown-chinese',
+    });
+  }
+
+  return out;
+}
+
+/**
+ * 把单引号/双引号/反引号包起来的片段换成等长空格。
+ *
+ * <p>换空格而不是直接删：诊断区间要落在原文的那一列上。
+ */
+function stripQuoted(text: string): string {
+  const chars = text.split('');
+  let quote: string | null = null;
+  for (let i = 0; i < chars.length; i++) {
+    const c = chars[i];
+    if (quote) {
+      if (c === '\\') {
+        chars[i] = ' ';
+        i++;
+        if (i < chars.length) chars[i] = ' ';
+        continue;
+      }
+      if (c === quote) quote = null;
+      chars[i] = ' ';
+      continue;
+    }
+    if (c === "'" || c === '"' || c === '`') {
+      quote = c;
+      chars[i] = ' ';
+    }
+  }
+  return chars.join('');
 }
 
 // ==================================================================

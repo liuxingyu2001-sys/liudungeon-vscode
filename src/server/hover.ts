@@ -7,6 +7,7 @@ import { Hover, MarkupKind, Range } from 'vscode-languageserver';
 import {
   ACTION_METHODS,
   BUILTIN_FUNCTIONS,
+  CONDITION_KEYWORDS,
   CONFIG_DATA,
   DEAD_HOOKS,
   DUNGEON_METHODS,
@@ -52,6 +53,24 @@ export function provideHover(input: HoverInput): Hover | null {
       contents: {
         kind: MarkupKind.Markdown,
         value: `**${fn.signature}** → \`${fn.returns}\`\n\n${fn.doc}\n\n\`\`\`js\n${fn.example}\n\`\`\``,
+      },
+      range,
+    };
+  }
+
+  // 2b) 中文条件关键词（条件里写中文，引擎求值前替换成 JS）
+  const cn = CONDITION_KEYWORDS.find((k) => k.cn === word.word);
+  if (cn) {
+    return {
+      contents: {
+        kind: MarkupKind.Markdown,
+        value:
+          `**${cn.cn}** · 中文条件关键词\n\n` +
+          `求值前会被引擎替换成 \`${cn.js}\`，所以可以直接写 \`${cn.cn} <= 5\`。\n\n` +
+          '⚠ 条件必须**全部为真**才允许这一组生成；为假不会作废 —— 会挂起，之后每次有怪物死亡' +
+          '再判一次，条件成立就补刷（最多 300 次）。\n\n' +
+          '⚠ 表以外的中文词（如「小于等于」）会被当成未定义标识符 → 条件恒为 false，' +
+          '怪物永远不出来；插件只认这里列出的词，其余要写 JS。',
       },
       range,
     };

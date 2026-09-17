@@ -174,8 +174,8 @@ const CONDITION_SNIPPETS: SnippetDef[] = [
   },
   {
     label: 'cn',
-    body: '存活怪物 <= ${1:0}',
-    doc: '中文条件写法（关键词会被引擎替换成 JS）',
+    body: '存活怪物 <= ${1:5}',
+    doc: '中文条件写法：关键词会被引擎替换成 dungeon.getTotalAliveMonsters()（也可以只写英文 JS）；条件为假不会作废，会挂起重试到条件成立',
   },
   {
     label: 'and',

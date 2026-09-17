@@ -928,7 +928,7 @@
           "path": "groups.<组ID>.condition",
           "key": "condition",
           "type": "条件",
-          "doc": "组生成条件，不成立时本次不生成",
+          "doc": "组启动条件：全部为真才允许生成；不成立会挂起，之后每次有怪物死亡再判一次，条件成立即补刷（重试上限 300 次）",
           "aliases": [
             "条件"
           ],
@@ -2328,7 +2328,7 @@
       {
         "file": "monsters.yml",
         "path": "groups.<组ID>.condition",
-        "doc": "组生成条件，只在 spawn_group 调用那一刻求值一次"
+        "doc": "组启动条件：全部为真才允许生成；为假不会作废 —— 会挂起，之后每次有怪物死亡再判一次，条件成立即补刷（重试上限 300 次）"
       },
       {
         "file": "monsters.yml",
@@ -2348,7 +2348,23 @@
     ],
     "keywords": [
       {
+        "cn": "存活怪物数量",
+        "js": "dungeon.getTotalAliveMonsters()"
+      },
+      {
+        "cn": "剩余怪物数量",
+        "js": "dungeon.getTotalAliveMonsters()"
+      },
+      {
         "cn": "存活怪物数",
+        "js": "dungeon.getTotalAliveMonsters()"
+      },
+      {
+        "cn": "剩余怪物数",
+        "js": "dungeon.getTotalAliveMonsters()"
+      },
+      {
+        "cn": "怪物剩余数量",
         "js": "dungeon.getTotalAliveMonsters()"
       },
       {
@@ -2360,11 +2376,55 @@
         "js": "dungeon.getTotalAliveMonsters()"
       },
       {
+        "cn": "剩余怪",
+        "js": "dungeon.getTotalAliveMonsters()"
+      },
+      {
+        "cn": "存活怪",
+        "js": "dungeon.getTotalAliveMonsters()"
+      },
+      {
+        "cn": "怪物数量",
+        "js": "dungeon.getTotalAliveMonsters()"
+      },
+      {
+        "cn": "怪物总数",
+        "js": "dungeon.getTotalAliveMonsters()"
+      },
+      {
+        "cn": "怪物数",
+        "js": "dungeon.getTotalAliveMonsters()"
+      },
+      {
+        "cn": "存活数量",
+        "js": "dungeon.getTotalAliveMonsters()"
+      },
+      {
+        "cn": "存活数",
+        "js": "dungeon.getTotalAliveMonsters()"
+      },
+      {
+        "cn": "累计击杀",
+        "js": "dungeon.getTotalMobKills()"
+      },
+      {
+        "cn": "总击杀数量",
+        "js": "dungeon.getTotalMobKills()"
+      },
+      {
         "cn": "总击杀",
         "js": "dungeon.getTotalMobKills()"
       },
       {
+        "cn": "击杀数量",
+        "js": "dungeon.getTotalMobKills()"
+      },
+      {
         "cn": "击杀数",
+        "js": "dungeon.getTotalMobKills()"
+      },
+      {
+        "cn": "已击杀",
         "js": "dungeon.getTotalMobKills()"
       },
       {
@@ -2376,7 +2436,19 @@
         "js": "dungeon.getOnlinePlayerCount()"
       },
       {
+        "cn": "在线玩家",
+        "js": "dungeon.getOnlinePlayerCount()"
+      },
+      {
+        "cn": "队伍人数",
+        "js": "dungeon.getOnlinePlayerCount()"
+      },
+      {
         "cn": "存活玩家数",
+        "js": "dungeon.getAlivePlayerCount()"
+      },
+      {
+        "cn": "存活玩家人数",
         "js": "dungeon.getAlivePlayerCount()"
       },
       {
@@ -2384,7 +2456,15 @@
         "js": "dungeon.getAlivePlayerCount()"
       },
       {
+        "cn": "存活人数",
+        "js": "dungeon.getAlivePlayerCount()"
+      },
+      {
         "cn": "死亡玩家数",
+        "js": "dungeon.getDeadPlayerCount()"
+      },
+      {
+        "cn": "死亡玩家人数",
         "js": "dungeon.getDeadPlayerCount()"
       },
       {
@@ -2392,15 +2472,15 @@
         "js": "dungeon.getDeadPlayerCount()"
       },
       {
-        "cn": "队伍人数",
-        "js": "dungeon.getOnlinePlayerCount()"
-      },
-      {
         "cn": "运行时间",
         "js": "dungeon.getRunningTime()"
       },
       {
         "cn": "副本时间",
+        "js": "dungeon.getRunningTime()"
+      },
+      {
+        "cn": "已运行",
         "js": "dungeon.getRunningTime()"
       },
       {
@@ -2413,6 +2493,10 @@
       },
       {
         "cn": "并且",
+        "js": "&&"
+      },
+      {
+        "cn": "而且",
         "js": "&&"
       },
       {

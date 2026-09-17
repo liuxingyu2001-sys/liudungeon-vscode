@@ -2,7 +2,7 @@
   "name": "liudungeon-script",
   "displayName": "LiuDungeon 脚本与配置支持",
   "description": "为 LiuDungeon 地牢副本插件提供脚本补全、名字补全（副本里已定义的组/区域/障碍物/点位名）、键名与别名补全、悬停文档、跨文件引用校验、「插件不读的键」提醒与片段：action.* / dungeon.* API、scripts.yml 钩子、全部配置文件键名",
-  "version": "1.2.19",
+  "version": "1.2.20",
   "publisher": "liu",
   "license": "MIT",
   "author": {

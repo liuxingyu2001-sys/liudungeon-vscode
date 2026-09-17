@@ -1198,7 +1198,17 @@ function labelDump(items) {
   check('配置文件覆盖 11 个文件', config.files.length === 11, `实际 ${config.files.length}`);
   check('配置节点数 >= 180', config.files.reduce((n, f) => n + f.nodes.length, 0) >= 180, '');
   check('生命周期钩子 7 个', config.scriptHooks.length === 7, `实际 ${config.scriptHooks.length}`);
-  check('中文条件关键词 >= 14', config.conditions.keywords.length >= 14, `实际 ${config.conditions.keywords.length}`);
+  check('中文条件关键词 >= 30', config.conditions.keywords.length >= 30, `实际 ${config.conditions.keywords.length}`);
+  // 词表必须与插件 ScriptEngine.CN_KEYWORDS 对齐：漏一个词，编辑器就会把合法条件报成错的
+  const javaEngine = readFileSync(
+    join(PLUGIN_DIR, 'src/main/java/com/liu/liudungeon/script/ScriptEngine.java'),
+    'utf8',
+  );
+  const table = javaEngine.slice(javaEngine.indexOf('CN_KEYWORDS = java.util.List.of('));
+  const javaCn = new Set([...table.matchAll(/new String\[]\{"([^"]+)",/g)].map((m) => m[1]));
+  const dataCn = new Set(config.conditions.keywords.map((k) => k.cn));
+  const missingCn = [...javaCn].filter((w) => !dataCn.has(w));
+  check('ScriptEngine 的中文条件词一个都没漏', missingCn.length === 0, `缺少：${missingCn.join(', ')}`);
 
   // 与 Java 源码逐方法核对：源码里有 public 方法 → 数据里必须有
   const java = readFileSync(join(PLUGIN_DIR, 'src/main/java/com/liu/liudungeon/script/action/ActionApi.java'), 'utf8');
@@ -1886,6 +1896,77 @@ function labelDump(items) {
   for (const v of ['{player.x}', '{player.y}', '{player.z}', '{player.pos}']) {
     check(`data/action-methods.json 收录了 ${v}`, values.includes(v), values.join(','));
   }
+}
+
+// ---------- 用例 26：怪物组条件里的中文词 ----------
+// 插件 1.6.0 起：condition 是「启动条件」，为假会挂起重试、条件成立即补刷；
+// 而翻译表以外的中文词（怪物小于等于 5 里的「小于等于」在 JS 里是合法标识符）
+// 会让条件**恒为 false 且不报错** —— 这正是编辑器该提前说出来的那类静默失败。
+{
+  // 1) 合法中文条件：一个诊断都不许有
+  const ok = openDoc('monsters.yml',
+    "groups:\n  wave_2:\n    spawn_timing:\n      type: MANUAL\n    condition:\n      - 存活怪物 <= 5\n      - 击杀数 >= 30 并且 运行时间 < 600\n");
+  await new Promise((r) => setTimeout(r, 200));
+  const okCn = client.diagnosticsFor(ok).filter((d) => String(d.code).startsWith('condition-'));
+  check('合法中文条件不报诊断', okCn.length === 0, JSON.stringify(okCn).slice(0, 300));
+  closeDoc(ok);
+
+  // 2) 表以外的中文词 → 报出来，且把那个词本身圈住
+  const bad = openDoc('monsters.yml',
+    "groups:\n  wave_2:\n    condition:\n      - 怪物小于等于 5\n");
+  const got = await client.waitFor(() => {
+    const d = client.diagnosticsFor(bad).filter((x) => x.code === 'condition-unknown-chinese');
+    return d.length ? d : undefined;
+  });
+  const msg = (got ?? []).map((x) => x.message).join(' | ');
+  check('不认识的中文词被报出来', Boolean(got), msg.slice(0, 200));
+  check('诊断里点名了那个词', /小于等于/.test(msg) || /怪物小于等于/.test(msg), msg.slice(0, 200));
+  check('诊断解释了后果（恒为 false / 怪物不出来）', /恒为 false|永远不出来/.test(msg), msg.slice(0, 200));
+  check('诊断区间正好盖住那个词',
+    (got ?? []).some((x) => x.range.end.character - x.range.start.character >= 2),
+    JSON.stringify((got ?? []).map((x) => x.range)));
+  closeDoc(bad);
+
+  // 3) 全角运算符 → 更硬的一档（整条语法错误）
+  const wide = openDoc('monsters.yml',
+    "groups:\n  wave_2:\n    condition:\n      - 存活怪物 ≤ 5\n");
+  const wd = await client.waitFor(() => {
+    const d = client.diagnosticsFor(wide).filter((x) => x.code === 'condition-fullwidth');
+    return d.length ? d : undefined;
+  });
+  check('全角 ≤ 被报出来（只认 ASCII <=）', Boolean(wd),
+    JSON.stringify(client.diagnosticsFor(wide)).slice(0, 200));
+  check('全角诊断给出正确写法 <=', /<=/.test((wd ?? []).map((x) => x.message).join(' ')),
+    (wd ?? []).map((x) => x.message).join(' ').slice(0, 200));
+  closeDoc(wide);
+
+  // 4) 字符串字面量里的中文不算错（组名本来就是中文）
+  const quoted = openDoc('monsters.yml',
+    "groups:\n  wave_2:\n    condition:\n      - dungeon.getAliveMonsterCount('第一波') <= 0\n");
+  await new Promise((r) => setTimeout(r, 250));
+  const qCn = client.diagnosticsFor(quoted).filter((d) => String(d.code).startsWith('condition-'));
+  check('条件里引号内的中文组名不算未识别词', qCn.length === 0, JSON.stringify(qCn).slice(0, 300));
+  closeDoc(quoted);
+
+  // 5) 悬停中文关键词给出替换目标
+  const hov = openDoc('monsters.yml',
+    "groups:\n  wave_2:\n    condition:\n      - 存活怪物 <= 5\n");
+  const h = await hover(hov, 3, '      - 存活怪物'.length - 1);
+  const value = h?.contents?.value ?? '';
+  check('悬停中文关键词写出替换成的 JS', /getTotalAliveMonsters/.test(value), value.slice(0, 160));
+  check('悬停里说明「为假会挂起重试」', /挂起|重试/.test(value), value.slice(0, 200));
+  closeDoc(hov);
+
+  // 6) 内置示例配置与真实副本配置不许被误报（真配置里 100 个波次全写这一条）
+  const exampleUri = `file://${DUNGEON_ROOT}/monsters.yml`;
+  client.notify('textDocument/didOpen', {
+    textDocument: { uri: exampleUri, languageId: 'yaml', version: 1, text: readFileSync(join(DUNGEON_ROOT, 'monsters.yml'), 'utf8') },
+  });
+  openUris.push(exampleUri);
+  await new Promise((r) => setTimeout(r, 250));
+  const exCn = client.diagnosticsFor(exampleUri).filter((d) => String(d.code).startsWith('condition-'));
+  check('插件自带示例的 condition 不误报', exCn.length === 0, JSON.stringify(exCn).slice(0, 300));
+  closeDoc(exampleUri);
 }
 
 // ---------- 收尾 ----------

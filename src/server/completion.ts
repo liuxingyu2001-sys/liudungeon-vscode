@@ -207,7 +207,10 @@ function valueCompletions(
         detail: `中文条件关键词 → ${k.js}`,
         documentation: {
           kind: MarkupKind.Markdown,
-          value: `中文条件里可以直接写 \`${k.cn}\`，引擎求值前会替换成 \`${k.js}\`。`,
+          value:
+            `中文条件里可以直接写 \`${k.cn}\`，引擎求值前会替换成 \`${k.js}\`。` +
+            `\n\n组上的 \`condition\` 是**启动条件**：全部为真才允许生成；为假会挂起，` +
+            `之后每次有怪物死亡再判一次，条件成立即补刷（重试上限 300 次）。`,
         },
         textEdit: TextEdit.replace(range, k.cn),
       });
