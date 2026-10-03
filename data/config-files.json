@@ -2515,7 +2515,7 @@
           "path": "move.fight_seconds",
           "key": "fight_seconds",
           "type": "数字",
-          "doc": "交战多久后回到路径继续冲核心（秒）",
+          "doc": "交战时长下限（秒）：目标还在攻击范围内就继续打，脱手/倒下后回路径",
           "aliases": [
             "fight-seconds",
             "交战时长"
@@ -2662,7 +2662,7 @@
           "path": "endless_scale",
           "key": "endless_scale",
           "type": "数字",
-          "doc": "无尽模式每转一轮的数量倍率（1.25 = +25%/轮）",
+          "doc": "无尽模式每转一轮的数量倍率（1.25 = +25%/轮，按轮次作用于每条目的数量）",
           "aliases": [
             "endless-scale",
             "无尽倍率"
