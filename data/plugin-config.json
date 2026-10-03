@@ -32,7 +32,7 @@
       "path": "placeholders.dungeon-name-empty",
       "key": "dungeon-name-empty",
       "type": "文本",
-      "doc": "玩家不在副本时，%liudungeon_dungeon_name% 返回的内容；留空则返回空字符串",
+      "doc": "玩家不在副本时，%liudungeon_dungeon_name%（%liudungeon_dungeon_name_color%）返回的内容；留空则返回空字符串",
       "aliases": [],
       "required": false
     },

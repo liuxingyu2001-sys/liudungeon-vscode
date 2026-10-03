@@ -39,6 +39,7 @@
 | `%liudungeon_in_dungeon%` | 是否在副本中 | `true` / `false` |
 | `%liudungeon_dungeon%` | 当前副本定义 ID | `abyss_01` |
 | `%liudungeon_dungeon_name%` | 当前副本显示名（已去色） | `深渊回廊` |
+| `%liudungeon_dungeon_name_color%` | 同上但**保留颜色**，已转成 `§` 形式（`&a` → `§a`、`&#rrggbb` → `§x§r§r§g§g§b§b`）。不在副本时返回 `placeholders.dungeon-name-empty`（同样转色） | `§6深渊回廊` |
 | `%liudungeon_instance_id%` | 实例短 ID | `3f9a1c02` |
 | `%liudungeon_instance_status%` | 实例生命周期状态 | `进行中` / `准备中` / `已完成` / `已失败` / `已取消` / `清理中` |
 | `%liudungeon_instance_time%` | 本局已运行秒数 | `423` |
@@ -130,6 +131,9 @@
 - `%liudungeon_instance_status%` 是**实例生命周期**状态，
   和副本内的「阶段」是两套状态机，别混用。
 - 服务器级 6 个变量可以放心用在 TAB 表头、公告板里（不需要玩家上下文）。
+- 副本名要**带颜色**就用 `%liudungeon_dungeon_name_color%`（已转好 `§` 形式）；
+  反过来，只想拿纯文本（拼句子、写进命令参数）就用 `%liudungeon_dungeon_name%`。
+  两个的空态文案都来自 `placeholders.dungeon-name-empty`，进本前后不会换渲染方式。
 
 
 ---
