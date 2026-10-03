@@ -817,12 +817,83 @@ function labelDump(items) {
   closeDoc(uri2);
 }
 
+// ---------- 用例 16e：rewards.yml 输出伤害奖励门槛 ----------
+{
+  const uri = openDoc('rewards.yml', 'rewards:\n  通关奖励:\n    min_damage: 100\n    min_damage_percent: 1\n');
+  const diags = await client.waitFor(() => {
+    const d = client.diagnosticsFor(uri);
+    return d.some((x) => x.code === 'unknown-key') ? d : undefined;
+  });
+  check('奖励输出门槛英文键不报未知键',
+    !diags?.some((x) => x.code === 'unknown-key'), JSON.stringify(diags ?? []).slice(0, 300));
+  closeDoc(uri);
+
+  const cnUri = openDoc('rewards.yml', 'rewards:\n  通关奖励:\n    最低伤害: 100\n    最低伤害占比: 1\n');
+  await new Promise((r) => setTimeout(r, 250));
+  const cnDiags = client.diagnosticsFor(cnUri);
+  check('奖励输出门槛中文别名不报未知键',
+    !cnDiags.some((x) => x.code === 'unknown-key'), JSON.stringify(cnDiags).slice(0, 300));
+  closeDoc(cnUri);
+
+  const completionUri = openDoc('rewards.yml', 'rewards:\n  通关奖励:\n    min_\n');
+  const completionLabels = labels(await completions(completionUri, 2, 8));
+  check('奖励键补全包含最低输出伤害门槛', completionLabels.includes('min_damage'), completionLabels.join(','));
+  check('奖励键补全包含最低输出占比门槛', completionLabels.includes('min_damage_percent'), completionLabels.join(','));
+  closeDoc(completionUri);
+}
+
+// ---------- 用例 16f：buffs.yml 增益点 ----------
+{
+  const valid = 'buffs:\n  生命祝福:\n    location: 战斗区\n    pickup_radius: 1.6\n    once: true\n    display:\n      type: craft_engine\n      model: my_model\n    effects:\n      - REGENERATION 10s 1\n      - LIFESTEAL 15s 0.2\n';
+  const uri = openDoc('buffs.yml', valid);
+  await new Promise((r) => setTimeout(r, 250));
+  const diags = client.diagnosticsFor(uri);
+  check('增益点合法键不报未知键',
+    !diags.some((x) => x.code === 'unknown-key'), JSON.stringify(diags).slice(0, 400));
+  closeDoc(uri);
+
+  // 键补全：增益点名下面应该给 spawn / display / effects 等
+  const keysUri = openDoc('buffs.yml', 'buffs:\n  生命祝福:\n    \n');
+  const keyLabels = labels(await completions(keysUri, 2, 4));
+  check('增益点键补全含 location', keyLabels.includes('location'), keyLabels.join(','));
+  check('增益点键补全含 spawn', keyLabels.includes('spawn'), keyLabels.join(','));
+  check('增益点键补全含 display', keyLabels.includes('display'), keyLabels.join(','));
+  check('增益点键补全含 effects', keyLabels.includes('effects'), keyLabels.join(','));
+  check('增益点键补全含 pickup_radius', keyLabels.includes('pickup_radius'), keyLabels.join(','));
+  closeDoc(keysUri);
+
+  // display.type 的枚举取值
+  const typeUri = openDoc('buffs.yml', 'buffs:\n  生命祝福:\n    display:\n      type: \n');
+  const typeLabels = labels(await completions(typeUri, 3, 12));
+  check('显示方式枚举包含 item', typeLabels.includes('item'), typeLabels.join(','));
+  check('显示方式枚举包含 text', typeLabels.includes('text'), typeLabels.join(','));
+  check('显示方式枚举包含 craft_engine', typeLabels.includes('craft_engine'), typeLabels.join(','));
+  check('显示方式枚举包含 model_engine', typeLabels.includes('model_engine'), typeLabels.join(','));
+  closeDoc(typeUri);
+
+  // 拼错的键仍要报
+  const typoUri = openDoc('buffs.yml', 'buffs:\n  生命祝福:\n    pickup_radiu: 1.5\n');
+  const typo = await client.waitFor(() => {
+    const d = client.diagnosticsFor(typoUri).filter((x) => x.code === 'unknown-key');
+    return d.length >= 1 ? d : undefined;
+  });
+  check('增益点拼错的键报未知键', Boolean(typo), JSON.stringify(typo ?? []).slice(0, 300));
+  closeDoc(typoUri);
+
+  // 脚本接口：spawn_buff / clear_buffs 不能被当成不存在的方法
+  const scriptUri = openDoc('scripts.yml', "start: |-\n  action.spawn_buff('生命祝福');\n  action.clear_buffs()\n");
+  await new Promise((r) => setTimeout(r, 250));
+  const badMethods = client.diagnosticsFor(scriptUri).filter((x) => x.code === 'unknown-method');
+  check('spawn_buff / clear_buffs 被认作已实现的方法', badMethods.length === 0, JSON.stringify(badMethods).slice(0, 300));
+  closeDoc(scriptUri);
+}
+
 // ---------- 用例 17：真实示例配置没有误报 ----------
 {
   for (const uri of openUris) closeDoc(uri);
   openUris.length = 0;
   await new Promise((r) => setTimeout(r, 150));
-  for (const n of ['config.yml', 'monsters.yml', 'scripts.yml', 'rewards.yml', 'zones.yml', 'obstacles.yml', 'interacts.yml', 'tasks.yml', 'stages.yml']) {
+  for (const n of ['config.yml', 'monsters.yml', 'scripts.yml', 'rewards.yml', 'buffs.yml', 'zones.yml', 'obstacles.yml', 'interacts.yml', 'tasks.yml', 'stages.yml']) {
     let text;
     try {
       text = readFileSync(join(DUNGEON_ROOT, n), 'utf8');
@@ -1262,8 +1333,8 @@ function labelDump(items) {
   const config = JSON.parse(readFileSync('data/config-files.json', 'utf8'));
   check('action API 方法数 >= 60', action.methods.length >= 60, `实际 ${action.methods.length}`);
   check('dungeon API 方法数 >= 45', dungeon.methods.length >= 45, `实际 ${dungeon.methods.length}`);
-  check('配置文件覆盖 11 个文件', config.files.length === 11, `实际 ${config.files.length}`);
-  check('配置节点数 >= 180', config.files.reduce((n, f) => n + f.nodes.length, 0) >= 180, '');
+  check('配置文件覆盖 12 个文件', config.files.length === 12, `实际 ${config.files.length}`);
+  check('配置节点数 >= 200', config.files.reduce((n, f) => n + f.nodes.length, 0) >= 200, '');
   check('生命周期钩子 7 个', config.scriptHooks.length === 7, `实际 ${config.scriptHooks.length}`);
   check('中文条件关键词 >= 30', config.conditions.keywords.length >= 30, `实际 ${config.conditions.keywords.length}`);
   // 词表必须与插件 ScriptEngine.CN_KEYWORDS 对齐：漏一个词，编辑器就会把合法条件报成错的

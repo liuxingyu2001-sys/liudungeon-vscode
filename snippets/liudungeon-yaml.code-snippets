@@ -192,6 +192,8 @@
     "body": [
       "rewards:",
       "  通关奖励:",
+      "    min_damage: 100",
+      "    min_damage_percent: 1",
       "    items:",
       "      - type: item",
       "        id: DIAMOND",
@@ -209,6 +211,32 @@
       "      传说: { weight: 5, items: [{ type: mythic_item, id: epic_weapon, amount: 1 }] }"
     ],
     "description": "奖励 —— 最小可用模板"
+  },
+  "ld-buffsyml": {
+    "prefix": "ld-buffsyml",
+    "body": [
+      "buffs:",
+      "  生命祝福:",
+      "    location: '0,64,0'",
+      "    spawn:",
+      "      delay: 3s",
+      "      interval: 25s",
+      "      max: 2",
+      "      duration: 45s",
+      "      radius: 4",
+      "    pickup_radius: 1.6",
+      "    once: false",
+      "    message: '&a你拾取了 &f生命祝福'",
+      "    display:",
+      "      type: item",
+      "      item: GOLDEN_APPLE",
+      "      text: '&a生命祝福'",
+      "      scale: 1.2",
+      "    effects:",
+      "      - REGENERATION 10s 1",
+      "      - LIFESTEAL 15s 0.2"
+    ],
+    "description": "增益点 —— 最小可用模板"
   },
   "ld-scriptsyml": {
     "prefix": "ld-scriptsyml",

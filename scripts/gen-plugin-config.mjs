@@ -57,7 +57,11 @@ const ENUMS = {
  * 那是最权威的说明，转述只会引入偏差。
  */
 const DOC_OVERRIDES = {
-    debug: '调试模式：在控制台打印详细流程日志（排障时开，平时关）。',
+    'debug': '调试模式：在控制台打印详细流程日志（排障时开，平时关）。',
+    'backup': '自动备份保留策略：限制备份数量并清理过期备份。',
+    'backup.max-per-source': '每个来源保留的最新备份数量上限。来源按副本或模板及备份类型分别计算。',
+    'backup.max-total': 'bak/ 下自动备份的总数量上限。',
+    'backup.max-age-days': '自动备份保留天数；超过期限的旧备份会被清理，每个来源的最新一份仍会保留。',
     'database.sqlite.file': 'SQLite 数据库文件名，落在 plugins/liudungeon/ 下。',
     'database.type': '数据库类型：`YAML`（单文件、零配置，适合试玩）/ `SQLITE`（本地库，推荐）/ `MYSQL`（多服共享 —— 跨服统计、跨服排行榜要靠它）。写不认识的值会**静默回落成 SQLITE**。',
     'database.mysql': 'MySQL 连接参数（`database.type` 为 MYSQL 时生效）。',

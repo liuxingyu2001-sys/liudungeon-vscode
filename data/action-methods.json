@@ -398,6 +398,40 @@
       "example": "action.skip_group('wave_1')"
     },
     {
+      "name": "restart_group",
+      "signature": "restart_group(group)",
+      "params": [
+        {
+          "name": "group",
+          "type": "怪物组ID",
+          "doc": "怪物组名"
+        }
+      ],
+      "returns": "void",
+      "doc": "重置并重新生成一个组（completed/skipped 的组只能用这个重开）；仍在进行中或场上还有该组存活怪时会被拒绝并打 warning",
+      "category": "怪物组",
+      "aliases": [],
+      "example": "action.restart_group('斗兽_A')"
+    },
+    {
+      "name": "restart_monster_group",
+      "signature": "restart_monster_group(group)",
+      "params": [
+        {
+          "name": "group",
+          "type": "怪物组ID",
+          "doc": "怪物组名"
+        }
+      ],
+      "returns": "void",
+      "doc": "重置并重新生成怪物组的原生名，是 restart_group 的别名",
+      "category": "怪物组",
+      "aliases": [
+        "restart_group"
+      ],
+      "example": "action.restart_monster_group('斗兽_A')"
+    },
+    {
       "name": "trigger_interact",
       "signature": "trigger_interact(interactId)",
       "params": [
@@ -1600,6 +1634,32 @@
       "category": "特效",
       "aliases": [],
       "example": "action.clear_holograms()"
+    },
+    {
+      "name": "spawn_buff",
+      "signature": "spawn_buff(buffId)",
+      "params": [
+        {
+          "name": "buffId",
+          "type": "文本",
+          "doc": "buffs.yml 里的增益点名"
+        }
+      ],
+      "returns": "void",
+      "doc": "立即刷出一个增益点（不受刷新间隔限制，但仍受同时存在上限约束）",
+      "category": "特效",
+      "aliases": [],
+      "example": "action.spawn_buff('生命祝福')"
+    },
+    {
+      "name": "clear_buffs",
+      "signature": "clear_buffs()",
+      "params": [],
+      "returns": "void",
+      "doc": "清掉当前刷出来的全部增益点（不改变刷新节奏，到点还会继续刷）",
+      "category": "特效",
+      "aliases": [],
+      "example": "action.clear_buffs()"
     },
     {
       "name": "world_time",

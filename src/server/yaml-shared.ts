@@ -87,6 +87,7 @@ export const DUNGEON_CONTENT_FILES: readonly string[] = [
   'obstacles.yml',
   'tasks.yml',
   'rewards.yml',
+  'buffs.yml',
   'chest_rewards.yml',
   'scripts.yml',
   'functions.js',

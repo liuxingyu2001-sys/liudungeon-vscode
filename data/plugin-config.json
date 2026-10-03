@@ -21,6 +21,22 @@
       "required": false
     },
     {
+      "path": "placeholders",
+      "key": "placeholders",
+      "type": "映射",
+      "doc": "PlaceholderAPI 占位符",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "placeholders.dungeon-name-empty",
+      "key": "dungeon-name-empty",
+      "type": "文本",
+      "doc": "玩家不在副本时，%liudungeon_dungeon_name% 返回的内容；留空则返回空字符串",
+      "aliases": [],
+      "required": false
+    },
+    {
       "path": "database",
       "key": "database",
       "type": "映射",
@@ -154,6 +170,22 @@
       "required": false
     },
     {
+      "path": "world.load-interval-ticks",
+      "key": "load-interval-ticks",
+      "type": "数字",
+      "doc": "副本世界同步加载的最小间隔（tick）；减少多个开本连续造成的 TPS 冲击",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "world.load-max-mspt",
+      "key": "load-max-mspt",
+      "type": "数字",
+      "doc": "平均 MSPT 超过此值时暂缓新的副本世界加载，0 = 不检测负载\n等待超过 queue-timeout 后取消并退款，不在高负载下强行加载",
+      "aliases": [],
+      "required": false
+    },
+    {
       "path": "world.preload-spawn-chunks",
       "key": "preload-spawn-chunks",
       "type": "布尔",
@@ -190,6 +222,38 @@
       "key": "view-distance",
       "type": "数字",
       "doc": "编辑世界的视距（区块），0 = 跟随服务端设置；只影响编辑会话。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "backup",
+      "key": "backup",
+      "type": "映射",
+      "doc": "自动备份保留策略：限制备份数量并清理过期备份。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "backup.max-per-source",
+      "key": "max-per-source",
+      "type": "数字",
+      "doc": "每个来源保留的最新备份数量上限。来源按副本或模板及备份类型分别计算。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "backup.max-total",
+      "key": "max-total",
+      "type": "数字",
+      "doc": "bak/ 下自动备份的总数量上限。",
+      "aliases": [],
+      "required": false
+    },
+    {
+      "path": "backup.max-age-days",
+      "key": "max-age-days",
+      "type": "数字",
+      "doc": "自动备份保留天数；超过期限的旧备份会被清理，每个来源的最新一份仍会保留。",
       "aliases": [],
       "required": false
     },
@@ -450,7 +514,7 @@
       "path": "cross-server.start-delay",
       "key": "start-delay",
       "type": "数字",
-      "doc": "队长发起进本后，等多少秒才真正开始（克隆世界 + 传送）。\n为什么需要它：跨服队员接受邀请后，客户端要经历\"接受 → 代理调度 → B 服保存数据\n→ 传送 → A 服登录\"整整一串流程，几秒内人还没到位；队长那边若立刻开本，\n队员落位时副本已经跑起来了（甚至门口那波怪已经被队友打完）。\n这段时间里队长可以用 /ld enter cancel 取消，倒计时结束前不会动任何东西。",
+      "doc": "队长发起进本后，给跨服队员准备的倒计时秒数（默认 3 秒）。\n倒计时开始时就异步预加载地图，同时请求跨服队员传送；倒计时结束后\n地图准备好才统一把已经抵达的成员传入副本。接受邀请本身不会传送。\n这段时间里队长可以用 /ld enter cancel 取消，倒计时结束前不会动任何东西。",
       "aliases": [],
       "required": false
     },
@@ -631,7 +695,7 @@
       "path": "statistics.max-events-per-instance",
       "key": "max-events-per-instance",
       "type": "数字",
-      "doc": "单场副本最多记录多少条战斗明细（按 玩家×类型 聚合后依然超限时截断）。\n上限存在的意义：防止某个刷怪量异常的副本把 combat_event 表撑爆。",
+      "doc": "单场副本最多保留多少个唯一聚合明细键（玩家×类型×目标）。\n同一键的伤害/治疗/击杀会持续累计，即使超过 2000 次也不会截断；\n只有超出键数配额的新组合才跳过明细，副本内实时统计始终不受影响。",
       "aliases": [],
       "required": false
     },

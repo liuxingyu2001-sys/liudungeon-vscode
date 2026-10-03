@@ -1456,6 +1456,8 @@ const REWARD_KNOWN_KEYS = new Set([
   'items', '物品', 'item', 'id',
   'money', '金钱', '金币',
   'exp', '经验',
+  'min_damage', 'minimum_damage', '最低伤害',
+  'min_damage_percent', '最低伤害占比',
   'commands', '命令',
   'options', '选项',
   '保底', 'pity',

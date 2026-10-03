@@ -1812,7 +1812,7 @@
           "奖励"
         ]
       },
-      "example": "rewards:\n  通关奖励:\n    items:\n      - type: item\n        id: DIAMOND\n        amount: 5\n    money: 1000\n    exp: 500\n    commands:\n      - \"give %player% golden_apple 3\"\n  随机宝箱:\n    type: random\n    保底:\n      次数: 30\n      必出: 传说\n    options:\n      传说: { weight: 5, items: [{ type: mythic_item, id: epic_weapon, amount: 1 }] }\n",
+      "example": "rewards:\n  通关奖励:\n    min_damage: 100\n    min_damage_percent: 1\n    items:\n      - type: item\n        id: DIAMOND\n        amount: 5\n    money: 1000\n    exp: 500\n    commands:\n      - \"give %player% golden_apple 3\"\n  随机宝箱:\n    type: random\n    保底:\n      次数: 30\n      必出: 传说\n    options:\n      传说: { weight: 5, items: [{ type: mythic_item, id: epic_weapon, amount: 1 }] }\n",
       "nodes": [
         {
           "path": "rewards",
@@ -1835,6 +1835,48 @@
           ],
           "aliases": [
             "类型"
+          ],
+          "required": false
+        },
+        {
+          "path": "rewards.<奖励名>.min_damage",
+          "key": "min_damage",
+          "type": "数字",
+          "doc": "玩家最低输出伤害；0 表示不限制",
+          "aliases": [
+            "minimum_damage",
+            "最低伤害"
+          ],
+          "required": false
+        },
+        {
+          "path": "rewards.<奖励名>.min_damage_percent",
+          "key": "min_damage_percent",
+          "type": "数字",
+          "doc": "玩家输出占全队总输出的最低百分比，范围 0-100；0 表示不限制",
+          "aliases": [
+            "最低伤害占比"
+          ],
+          "required": false
+        },
+        {
+          "path": "rewards.<奖励名>.min_damage",
+          "key": "min_damage",
+          "type": "数字",
+          "doc": "玩家最低输出伤害；0 表示不限制",
+          "aliases": [
+            "minimum_damage",
+            "最低伤害"
+          ],
+          "required": false
+        },
+        {
+          "path": "rewards.<奖励名>.min_damage_percent",
+          "key": "min_damage_percent",
+          "type": "数字",
+          "doc": "玩家输出占全队总输出的最低百分比，范围 0-100；0 表示不限制",
+          "aliases": [
+            "最低伤害占比"
           ],
           "required": false
         },
@@ -2039,6 +2081,250 @@
           ],
           "aliases": [
             "scope"
+          ],
+          "required": false
+        }
+      ]
+    },
+    {
+      "file": "buffs.yml",
+      "title": "增益点",
+      "summary": "在区域/点位随机刷新可拾取的增益；支持物品/文字/CraftEngine/ModelEngine 显示与吸血",
+      "containerAliases": {
+        "buffs": [
+          "buffs",
+          "增益",
+          "增益点"
+        ]
+      },
+      "containerOptional": true,
+      "example": "buffs:\n  生命祝福:\n    location: '0,64,0'\n    spawn:\n      delay: 3s\n      interval: 25s\n      max: 2\n      duration: 45s\n      radius: 4\n    pickup_radius: 1.6\n    once: false\n    message: '&a你拾取了 &f生命祝福'\n    display:\n      type: item\n      item: GOLDEN_APPLE\n      text: '&a生命祝福'\n      scale: 1.2\n    effects:\n      - REGENERATION 10s 1\n      - LIFESTEAL 15s 0.2\n",
+      "nodes": [
+        {
+          "path": "buffs",
+          "key": "buffs",
+          "type": "映射",
+          "doc": "增益点容器；增益点名即 key，最多 64 个",
+          "aliases": [
+            "增益",
+            "增益点"
+          ],
+          "required": false
+        },
+        {
+          "path": "buffs.<增益点名>.location",
+          "key": "location",
+          "type": "文本",
+          "doc": "位置：区域名（区域内随机找落脚点）/ 区域名.点位名 / x,y,z",
+          "aliases": [
+            "位置",
+            "区域",
+            "zone"
+          ],
+          "required": true
+        },
+        {
+          "path": "buffs.<增益点名>.spawn",
+          "key": "spawn",
+          "type": "映射",
+          "doc": "刷新节奏子段（也可把内部键直接写在增益点下）",
+          "aliases": [
+            "刷新"
+          ],
+          "required": false
+        },
+        {
+          "path": "buffs.<增益点名>.spawn.delay",
+          "key": "delay",
+          "type": "时间",
+          "doc": "开局后首次刷新的延迟（如 3s）",
+          "aliases": [
+            "首次延迟"
+          ],
+          "required": false
+        },
+        {
+          "path": "buffs.<增益点名>.spawn.interval",
+          "key": "interval",
+          "type": "时间",
+          "doc": "刷新间隔；0 / 不写 = 只刷一次",
+          "aliases": [
+            "刷新间隔"
+          ],
+          "required": false
+        },
+        {
+          "path": "buffs.<增益点名>.spawn.amount",
+          "key": "amount",
+          "type": "数字",
+          "doc": "每次刷新几个，默认 1",
+          "aliases": [
+            "数量"
+          ],
+          "required": false
+        },
+        {
+          "path": "buffs.<增益点名>.spawn.max",
+          "key": "max",
+          "type": "数字",
+          "doc": "同时最多存在几个，默认 1",
+          "aliases": [
+            "上限",
+            "同时上限"
+          ],
+          "required": false
+        },
+        {
+          "path": "buffs.<增益点名>.spawn.duration",
+          "key": "duration",
+          "type": "时间",
+          "doc": "单个增益存在多久后自动消失；0 = 到副本结束",
+          "aliases": [
+            "存在时长"
+          ],
+          "required": false
+        },
+        {
+          "path": "buffs.<增益点名>.spawn.radius",
+          "key": "radius",
+          "type": "数字",
+          "doc": "在位置上随机散布半径（格）；0 = 精确落在点位",
+          "aliases": [
+            "散布半径",
+            "spawn_radius",
+            "spawn-radius"
+          ],
+          "required": false
+        },
+        {
+          "path": "buffs.<增益点名>.pickup_radius",
+          "key": "pickup_radius",
+          "type": "数字",
+          "doc": "玩家靠多近算拾取，默认 1.5 格",
+          "aliases": [
+            "pickup-radius",
+            "拾取半径"
+          ],
+          "required": false
+        },
+        {
+          "path": "buffs.<增益点名>.once",
+          "key": "once",
+          "type": "布尔",
+          "doc": "true = 每个玩家每场只能拾取一次",
+          "aliases": [
+            "仅一次"
+          ],
+          "required": false
+        },
+        {
+          "path": "buffs.<增益点名>.message",
+          "key": "message",
+          "type": "文本",
+          "doc": "拾取提示；{name} = 增益点名，{player} = 玩家名",
+          "aliases": [
+            "消息",
+            "提示"
+          ],
+          "required": false
+        },
+        {
+          "path": "buffs.<增益点名>.display",
+          "key": "display",
+          "type": "映射",
+          "doc": "显示子段（type / item / model / text / scale 也可直接写在增益点下）",
+          "aliases": [
+            "显示设置"
+          ],
+          "required": false
+        },
+        {
+          "path": "buffs.<增益点名>.display.type",
+          "key": "type",
+          "type": "枚举",
+          "doc": "显示方式；模型软依赖缺失时会自动回退成物品显示",
+          "values": [
+            "item",
+            "text",
+            "craft_engine",
+            "model_engine"
+          ],
+          "aliases": [
+            "display_type",
+            "display-type",
+            "显示方式",
+            "显示"
+          ],
+          "required": false
+        },
+        {
+          "path": "buffs.<增益点名>.display.item",
+          "key": "item",
+          "type": "文本",
+          "doc": "显示物品：原版材质名，或 mm:物品ID / ce:物品ID",
+          "aliases": [
+            "物品"
+          ],
+          "required": false
+        },
+        {
+          "path": "buffs.<增益点名>.display.model",
+          "key": "model",
+          "type": "文本",
+          "doc": "ModelEngine / CraftEngine 的模型 id",
+          "aliases": [
+            "模型"
+          ],
+          "required": false
+        },
+        {
+          "path": "buffs.<增益点名>.display.text",
+          "key": "text",
+          "type": "文本",
+          "doc": "额外悬浮文字；{name} 会被替换成增益点名",
+          "aliases": [
+            "文字"
+          ],
+          "required": false
+        },
+        {
+          "path": "buffs.<增益点名>.display.scale",
+          "key": "scale",
+          "type": "数字",
+          "doc": "显示缩放，默认 1.0（上限 10）",
+          "aliases": [
+            "缩放"
+          ],
+          "required": false
+        },
+        {
+          "path": "buffs.<增益点名>.effects",
+          "key": "effects",
+          "type": "列表",
+          "doc": "拾取后获得的效果。药水：'效果名 时长 等级'；吸血：'LIFESTEAL 时长 比例'（如 LIFESTEAL 15s 0.2）",
+          "aliases": [
+            "效果",
+            "增益"
+          ],
+          "required": false
+        },
+        {
+          "path": "buffs.<增益点名>.commands",
+          "key": "commands",
+          "type": "列表",
+          "doc": "拾取后以控制台身份执行的命令，支持 %player%",
+          "aliases": [
+            "命令"
+          ],
+          "required": false
+        },
+        {
+          "path": "buffs.<增益点名>.script",
+          "key": "script",
+          "type": "脚本",
+          "doc": "拾取时执行的脚本，触发者就是拾取者",
+          "aliases": [
+            "脚本"
           ],
           "required": false
         }
