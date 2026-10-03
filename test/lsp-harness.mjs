@@ -861,6 +861,7 @@ function labelDump(items) {
   check('增益点键补全含 effects', keyLabels.includes('effects'), keyLabels.join(','));
   check('增益点键补全含 pickup_radius', keyLabels.includes('pickup_radius'), keyLabels.join(','));
   check('增益点键补全含 on_spawn', keyLabels.includes('on_spawn'), keyLabels.join(','));
+  check('增益点键补全含 manual', keyLabels.includes('manual'), keyLabels.join(','));
   check('增益点键补全含 script', keyLabels.includes('script'), keyLabels.join(','));
   closeDoc(keysUri);
 
@@ -899,6 +900,13 @@ function labelDump(items) {
     !(aliasDiags ?? []).some((x) => x.code === 'unknown-key'),
     JSON.stringify(aliasDiags ?? []).slice(0, 300));
   closeDoc(aliasUri);
+
+  // manual 手动模式（中文别名 手动）：写了它就不能再报未知键
+  const manualUri = openDoc('buffs.yml', 'buffs:\n  生命祝福:\n    location: zone_3\n    manual: true\n    手动: true\n');
+  await new Promise((r) => setTimeout(r, 250));
+  const manualBad = client.diagnosticsFor(manualUri).filter((x) => x.code === 'unknown-key');
+  check('manual / 手动 不报未知键', manualBad.length === 0, JSON.stringify(manualBad).slice(0, 300));
+  closeDoc(manualUri);
 }
 
 // ---------- 用例 17：真实示例配置没有误报 ----------

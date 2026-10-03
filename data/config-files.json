@@ -2208,6 +2208,16 @@
           "required": false
         },
         {
+          "path": "buffs.<增益点名>.manual",
+          "key": "manual",
+          "type": "布尔",
+          "doc": "true = 不自动刷，只能被 action.spawn_buff('名字') 刷出（用于「每 45 秒随机挑一种祝福」这类玩法；此时 interval / delay 不生效）",
+          "aliases": [
+            "手动"
+          ],
+          "required": false
+        },
+        {
           "path": "buffs.<增益点名>.once",
           "key": "once",
           "type": "布尔",
