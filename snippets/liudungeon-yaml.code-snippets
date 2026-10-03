@@ -232,6 +232,8 @@
       "      item: GOLDEN_APPLE",
       "      text: '&a生命祝福'",
       "      scale: 1.2",
+      "    on_spawn:",
+      "      - \"action.message('@all', '&6生命祝福 &e已刷新')\"",
       "    effects:",
       "      - REGENERATION 10s 1",
       "      - LIFESTEAL 15s 0.2"

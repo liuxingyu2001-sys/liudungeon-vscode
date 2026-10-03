@@ -844,7 +844,7 @@ function labelDump(items) {
 
 // ---------- 用例 16f：buffs.yml 增益点 ----------
 {
-  const valid = 'buffs:\n  生命祝福:\n    location: 战斗区\n    pickup_radius: 1.6\n    once: true\n    display:\n      type: craft_engine\n      model: my_model\n    effects:\n      - REGENERATION 10s 1\n      - LIFESTEAL 15s 0.2\n';
+  const valid = 'buffs:\n  生命祝福:\n    location: 战斗区\n    pickup_radius: 1.6\n    once: true\n    display:\n      type: craft_engine\n      model: my_model\n    on_spawn:\n      - "action.message(\'@all\', \'&6生命祝福已刷新\')"\n    effects:\n      - REGENERATION 10s 1\n      - LIFESTEAL 15s 0.2\n';
   const uri = openDoc('buffs.yml', valid);
   await new Promise((r) => setTimeout(r, 250));
   const diags = client.diagnosticsFor(uri);
@@ -860,6 +860,8 @@ function labelDump(items) {
   check('增益点键补全含 display', keyLabels.includes('display'), keyLabels.join(','));
   check('增益点键补全含 effects', keyLabels.includes('effects'), keyLabels.join(','));
   check('增益点键补全含 pickup_radius', keyLabels.includes('pickup_radius'), keyLabels.join(','));
+  check('增益点键补全含 on_spawn', keyLabels.includes('on_spawn'), keyLabels.join(','));
+  check('增益点键补全含 script', keyLabels.includes('script'), keyLabels.join(','));
   closeDoc(keysUri);
 
   // display.type 的枚举取值
@@ -886,6 +888,17 @@ function labelDump(items) {
   const badMethods = client.diagnosticsFor(scriptUri).filter((x) => x.code === 'unknown-method');
   check('spawn_buff / clear_buffs 被认作已实现的方法', badMethods.length === 0, JSON.stringify(badMethods).slice(0, 300));
   closeDoc(scriptUri);
+
+  // on_spawn 的中文别名也要认（插件读 on_spawn / on-spawn / 生成脚本 / 刷新脚本）
+  const aliasUri = openDoc('buffs.yml', 'buffs:\n  斗兽祝福:\n    location: 战斗区\n    生成脚本:\n      - "action.title(\'@all\', \'祝福刷新\')"\n');
+  const aliasDiags = await client.waitFor(() => {
+    const d = client.diagnosticsFor(aliasUri);
+    return d.length > 0 ? d : undefined;
+  });
+  check('生成脚本 别名不报未知键',
+    !(aliasDiags ?? []).some((x) => x.code === 'unknown-key'),
+    JSON.stringify(aliasDiags ?? []).slice(0, 300));
+  closeDoc(aliasUri);
 }
 
 // ---------- 用例 17：真实示例配置没有误报 ----------

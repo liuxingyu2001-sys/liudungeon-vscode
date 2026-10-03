@@ -2089,7 +2089,7 @@
     {
       "file": "buffs.yml",
       "title": "增益点",
-      "summary": "在区域/点位随机刷新可拾取的增益；支持物品/文字/CraftEngine/ModelEngine 显示与吸血",
+      "summary": "在区域/点位随机刷新可拾取的增益；支持物品/文字/CraftEngine/ModelEngine 显示、吸血，以及刷出/拾取两个脚本钩子",
       "containerAliases": {
         "buffs": [
           "buffs",
@@ -2098,7 +2098,7 @@
         ]
       },
       "containerOptional": true,
-      "example": "buffs:\n  生命祝福:\n    location: '0,64,0'\n    spawn:\n      delay: 3s\n      interval: 25s\n      max: 2\n      duration: 45s\n      radius: 4\n    pickup_radius: 1.6\n    once: false\n    message: '&a你拾取了 &f生命祝福'\n    display:\n      type: item\n      item: GOLDEN_APPLE\n      text: '&a生命祝福'\n      scale: 1.2\n    effects:\n      - REGENERATION 10s 1\n      - LIFESTEAL 15s 0.2\n",
+      "example": "buffs:\n  生命祝福:\n    location: '0,64,0'\n    spawn:\n      delay: 3s\n      interval: 25s\n      max: 2\n      duration: 45s\n      radius: 4\n    pickup_radius: 1.6\n    once: false\n    message: '&a你拾取了 &f生命祝福'\n    display:\n      type: item\n      item: GOLDEN_APPLE\n      text: '&a生命祝福'\n      scale: 1.2\n    on_spawn:\n      - \"action.message('@all', '&6生命祝福 &e已刷新')\"\n    effects:\n      - REGENERATION 10s 1\n      - LIFESTEAL 15s 0.2\n",
       "nodes": [
         {
           "path": "buffs",
@@ -2319,10 +2319,23 @@
           "required": false
         },
         {
+          "path": "buffs.<增益点名>.on_spawn",
+          "key": "on_spawn",
+          "type": "脚本",
+          "doc": "刷出这个增益点时执行的脚本（每次刷出一个就跑一次；触发者 = 离刷新点最近的在线成员，无人在线时为 null）。要与「拾取时」区分开：拾取用 script",
+          "aliases": [
+            "on-spawn",
+            "生成脚本",
+            "刷新脚本"
+          ],
+          "required": false,
+          "example": "action.message('@all', '&6生命祝福 &e已刷新，前往 &f主厅 &e拾取')"
+        },
+        {
           "path": "buffs.<增益点名>.script",
           "key": "script",
           "type": "脚本",
-          "doc": "拾取时执行的脚本，触发者就是拾取者",
+          "doc": "拾取时执行的脚本，触发者就是拾取者（刷出时执行用 on_spawn）",
           "aliases": [
             "脚本"
           ],
