@@ -1907,6 +1907,116 @@
       "category": "世界 / 工具 / 流程",
       "aliases": [],
       "example": "var s = action.applyPlaceholders('&e{player.name} 触发了机关')"
+    },
+    {
+      "name": "damage_mobs",
+      "signature": "damage_mobs(locationRef, radius, damage)",
+      "params": [
+        {
+          "name": "locationRef",
+          "type": "文本",
+          "doc": "区域.点位 或 x,y,z"
+        },
+        {
+          "name": "radius",
+          "type": "数字",
+          "doc": "半径（格，最大 64）"
+        },
+        {
+          "name": "damage",
+          "type": "数字",
+          "doc": "每只怪物受到的伤害"
+        }
+      ],
+      "returns": "void",
+      "doc": "对点位半径内的所有怪物造成伤害（炮塔/陷阱/AOE）；不点燃、不炸地形、不碰玩家，击杀走既有死亡链路",
+      "category": "塔防",
+      "aliases": [],
+      "example": "action.damage_mobs('塔区.炮塔A', 8, 15)"
+    },
+    {
+      "name": "add_money",
+      "signature": "add_money(amount)",
+      "params": [
+        {
+          "name": "amount",
+          "type": "数字",
+          "doc": "加多少钱"
+        }
+      ],
+      "returns": "void",
+      "doc": "队伍经济：加钱（波次奖励 / 击杀奖励）",
+      "category": "塔防",
+      "aliases": [],
+      "example": "action.add_money(50)"
+    },
+    {
+      "name": "spend_money",
+      "signature": "spend_money(amount)",
+      "params": [
+        {
+          "name": "amount",
+          "type": "数字",
+          "doc": "花多少钱"
+        }
+      ],
+      "returns": "boolean",
+      "doc": "扣款；余额不足返回 false 且不动账（建塔/升级先扣款再生效就不会白嫖）",
+      "category": "塔防",
+      "aliases": [],
+      "example": "if (action.spend_money(100)) action.message('@all', '&a建造成功')"
+    },
+    {
+      "name": "get_money",
+      "signature": "get_money()",
+      "params": [],
+      "returns": "double",
+      "doc": "队伍经济：查余额",
+      "category": "塔防",
+      "aliases": [],
+      "example": "action.get_money()"
+    },
+    {
+      "name": "next_wave",
+      "signature": "next_wave()",
+      "params": [],
+      "returns": "void",
+      "doc": "塔防：提前开下一波（跳过波次间隔）；当前波还在打时无效",
+      "category": "塔防",
+      "aliases": [],
+      "example": "action.next_wave()"
+    },
+    {
+      "name": "heal_core",
+      "signature": "heal_core(amount)",
+      "params": [
+        {
+          "name": "amount",
+          "type": "数字",
+          "doc": "修复多少血"
+        }
+      ],
+      "returns": "void",
+      "doc": "塔防：修复核心",
+      "category": "塔防",
+      "aliases": [],
+      "example": "action.heal_core(300)"
+    },
+    {
+      "name": "damage_core",
+      "signature": "damage_core(amount)",
+      "params": [
+        {
+          "name": "amount",
+          "type": "数字",
+          "doc": "伤害多少血"
+        }
+      ],
+      "returns": "void",
+      "doc": "塔防：伤害核心（核心归零即判负）",
+      "category": "塔防",
+      "aliases": [],
+      "example": "action.damage_core(500)"
     }
   ],
   "selectors": [

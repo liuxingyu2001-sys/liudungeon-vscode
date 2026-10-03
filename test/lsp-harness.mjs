@@ -909,12 +909,79 @@ function labelDump(items) {
   closeDoc(manualUri);
 }
 
+// ---------- 用例 16g：tower.yml 塔防模式 ----------
+{
+  const valid = 'core:\n  point: \'中央.核心\'\n  hp: 3000\n  damage_per_mob: 20\npath:\n  - \'入口A.出怪点\'\n  - \'中央.核心\'\nmove:\n  speed: 4.0\n  attack_players: when_near\n  attack_range: 6.0\n  fight_seconds: 6\nwaves:\n  - group: wave_1\n    delay: 10s\n    reward: 50\n    announce: \'&c{wave} 来袭！\'\n    end_script:\n      - "action.title(\'@all\', \'波次清空\')"\nfirst_delay: 10s\nwave_gap: 5s\nendless: false\nendless_scale: 1.25\non_win:\n  - "action.complete_dungeon()"\nwave_start:\n  - "action.actionbar(\'@all\', \'&e波次开始\')"\n';
+  const uri = openDoc('tower.yml', valid);
+  await new Promise((r) => setTimeout(r, 250));
+  const diags = client.diagnosticsFor(uri);
+  check('塔防合法键不报未知键',
+    !diags.some((x) => x.code === 'unknown-key'), JSON.stringify(diags).slice(0, 400));
+  closeDoc(uri);
+
+  // 根级键补全
+  const topUri = openDoc('tower.yml', '\n');
+  const topLabels = labels(await completions(topUri, 0, 0));
+  check('塔防根级补全含 core', topLabels.includes('core'), topLabels.join(','));
+  check('塔防根级补全含 path', topLabels.includes('path'), topLabels.join(','));
+  check('塔防根级补全含 waves', topLabels.includes('waves'), topLabels.join(','));
+  check('塔防根级补全含 wave_gap', topLabels.includes('wave_gap'), topLabels.join(','));
+  check('塔防根级补全含 on_lose', topLabels.includes('on_lose'), topLabels.join(','));
+  closeDoc(topUri);
+
+  // 波次条目键补全
+  const waveUri = openDoc('tower.yml', 'waves:\n  - group: wave_1\n    \n');
+  const waveLabels = labels(await completions(waveUri, 2, 4));
+  check('波次条目补全含 reward', waveLabels.includes('reward'), waveLabels.join(','));
+  check('波次条目补全含 announce', waveLabels.includes('announce'), waveLabels.join(','));
+  check('波次条目补全含 end_script', waveLabels.includes('end_script'), waveLabels.join(','));
+  check('波次条目补全不含 core.hologram', !waveLabels.includes('hologram'), waveLabels.join(','));
+  closeDoc(waveUri);
+
+  // 仇恨模式枚举
+  const atkUri = openDoc('tower.yml', 'move:\n  attack_players: \n');
+  const atkLabels = labels(await completions(atkUri, 1, 18));
+  check('仇恨模式枚举含 when_near', atkLabels.includes('when_near'), atkLabels.join(','));
+  check('仇恨模式枚举含 always', atkLabels.includes('always'), atkLabels.join(','));
+  check('仇恨模式枚举含 false', atkLabels.includes('false'), atkLabels.join(','));
+  closeDoc(atkUri);
+
+  // 拼错的键仍要报
+  const typoUri = openDoc('tower.yml', 'core:\n  hp: 3000\n  damage_per_mob: 20\n  hologra: true\n');
+  const typo = await client.waitFor(() => {
+    const d = client.diagnosticsFor(typoUri).filter((x) => x.code === 'unknown-key');
+    return d.length >= 1 ? d : undefined;
+  });
+  check('塔防拼错的键报未知键', Boolean(typo), JSON.stringify(typo ?? []).slice(0, 300));
+  closeDoc(typoUri);
+
+  // 中文别名不误报（核心 / 路径 / 波次 / 首波延迟）
+  const cnUri = openDoc('tower.yml', '核心:\n  位置: 中央.核心\n  血量: 3000\n路径:\n  - 中央.核心\n  - 入口A.出怪点\n波次:\n  - 怪物组: wave_1\n首波延迟: 10s\n');
+  await new Promise((r) => setTimeout(r, 250));
+  const cnBad = client.diagnosticsFor(cnUri).filter((x) => x.code === 'unknown-key');
+  check('塔防中文别名不报未知键', cnBad.length === 0, JSON.stringify(cnBad).slice(0, 300));
+  closeDoc(cnUri);
+
+  // 脚本接口：塔防方法不能被当成不存在的方法
+  const scriptUri = openDoc('scripts.yml', "start: |-\n  action.damage_mobs('塔区.炮塔A', 8, 15);\n  action.spend_money(100);\n  action.next_wave();\n  action.heal_core(300);\n  action.add_money(50);\n  action.get_money();\n  action.damage_core(10)\n");
+  await new Promise((r) => setTimeout(r, 250));
+  const badMethods = client.diagnosticsFor(scriptUri).filter((x) => x.code === 'unknown-method');
+  check('塔防 action 方法被认作已实现', badMethods.length === 0, JSON.stringify(badMethods).slice(0, 300));
+  closeDoc(scriptUri);
+
+  const dungeonUri = openDoc('tasks.yml', "循环任务:\n  检查:\n    script: |-\n      dungeon.getCoreHp();\n      dungeon.getWave();\n      dungeon.getMoney();\n      dungeon.getTowerAlive()\n");
+  await new Promise((r) => setTimeout(r, 250));
+  const badDungeon = client.diagnosticsFor(dungeonUri).filter((x) => x.code === 'unknown-method');
+  check('塔防 dungeon 查询被认作已实现', badDungeon.length === 0, JSON.stringify(badDungeon).slice(0, 300));
+  closeDoc(dungeonUri);
+}
+
 // ---------- 用例 17：真实示例配置没有误报 ----------
 {
   for (const uri of openUris) closeDoc(uri);
   openUris.length = 0;
   await new Promise((r) => setTimeout(r, 150));
-  for (const n of ['config.yml', 'monsters.yml', 'scripts.yml', 'rewards.yml', 'buffs.yml', 'zones.yml', 'obstacles.yml', 'interacts.yml', 'tasks.yml', 'stages.yml']) {
+  for (const n of ['config.yml', 'monsters.yml', 'scripts.yml', 'rewards.yml', 'buffs.yml', 'tower.yml', 'zones.yml', 'obstacles.yml', 'interacts.yml', 'tasks.yml', 'stages.yml']) {
     let text;
     try {
       text = readFileSync(join(DUNGEON_ROOT, n), 'utf8');
@@ -1033,7 +1100,9 @@ function labelDump(items) {
     newName: 'wave_2',
   });
   const changedFiles = Object.keys(edit?.changes ?? {});
-  check('重命名同时改 monsters.yml 与 scripts.yml', changedFiles.length === 2, changedFiles.map((u) => u.split('/').pop()).join(','));
+  check('重命名同时改 monsters.yml 与 scripts.yml（塔防波次引用也一起改）',
+    changedFiles.length === 3 && changedFiles.some((u) => u.endsWith('tower.yml')),
+    changedFiles.map((u) => u.split('/').pop()).join(','));
   const mEdits = edit?.changes?.[mUri] ?? [];
   const sEdits = edit?.changes?.[sUri] ?? [];
   check('monsters.yml 改定义键 + trigger_group 值', mEdits.length === 2, JSON.stringify(mEdits));
@@ -1354,7 +1423,7 @@ function labelDump(items) {
   const config = JSON.parse(readFileSync('data/config-files.json', 'utf8'));
   check('action API 方法数 >= 60', action.methods.length >= 60, `实际 ${action.methods.length}`);
   check('dungeon API 方法数 >= 45', dungeon.methods.length >= 45, `实际 ${dungeon.methods.length}`);
-  check('配置文件覆盖 12 个文件', config.files.length === 12, `实际 ${config.files.length}`);
+  check('配置文件覆盖 13 个文件', config.files.length === 13, `实际 ${config.files.length}`);
   check('配置节点数 >= 200', config.files.reduce((n, f) => n + f.nodes.length, 0) >= 200, '');
   check('生命周期钩子 7 个', config.scriptHooks.length === 7, `实际 ${config.scriptHooks.length}`);
   check('中文条件关键词 >= 30', config.conditions.keywords.length >= 30, `实际 ${config.conditions.keywords.length}`);

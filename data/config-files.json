@@ -2354,6 +2354,368 @@
       ]
     },
     {
+      "file": "tower.yml",
+      "title": "塔防模式",
+      "summary": "保护核心、按波次清怪：怪物沿路径点位插值推进、到达后围攻啃血、核心归零判负；波次就是 monsters.yml 的怪物组",
+      "containerAliases": {
+        "tower": [
+          "tower",
+          "塔防"
+        ]
+      },
+      "containerOptional": true,
+      "example": "core:\n  point: '中央.核心'\n  hp: 3000\n  name: '&6水晶核心'\n  damage_per_mob: 20\npath:\n  - '入口A.出怪点'\n  - '路口.转弯'\n  - '中央.核心'\nmove:\n  speed: 4.0\n  attack_players: when_near\n  attack_range: 6.0\n  fight_seconds: 6\nwaves:\n  - group: wave_1\n    delay: 10s\n    reward: 50\n    announce: '&c{wave} 来袭！'\n  - group: wave_2\n    speed: 1.3\n    reward: 80\nfirst_delay: 10s\nwave_gap: 5s\nendless: false\n",
+      "nodes": [
+        {
+          "path": "enabled",
+          "key": "enabled",
+          "type": "布尔",
+          "doc": "塔防模式开关；false = 完全不启用（等价于不写 tower.yml）",
+          "aliases": [
+            "启用"
+          ],
+          "required": false
+        },
+        {
+          "path": "core_point",
+          "key": "core_point",
+          "type": "文本",
+          "doc": "核心点位的简写（等价于 core.point；两者都写时 core.point 赢）",
+          "aliases": [
+            "核心点位"
+          ],
+          "required": false
+        },
+        {
+          "path": "core",
+          "key": "core",
+          "type": "映射",
+          "doc": "保护目标（塔防没有核心就不会启动）",
+          "aliases": [
+            "核心"
+          ],
+          "required": true
+        },
+        {
+          "path": "core.point",
+          "key": "point",
+          "type": "文本",
+          "doc": "核心位置：区域.点位 或 x,y,z",
+          "aliases": [
+            "位置",
+            "点位"
+          ],
+          "required": true
+        },
+        {
+          "path": "core.hp",
+          "key": "hp",
+          "type": "数字",
+          "doc": "核心血量；归零 = 失败（上限 1000000）",
+          "aliases": [
+            "血量"
+          ],
+          "required": false
+        },
+        {
+          "path": "core.name",
+          "key": "name",
+          "type": "文本",
+          "doc": "头顶血条第一行（支持 & 颜色）",
+          "aliases": [
+            "名称"
+          ],
+          "required": false
+        },
+        {
+          "path": "core.hologram",
+          "key": "hologram",
+          "type": "布尔",
+          "doc": "是否显示头顶血条",
+          "aliases": [
+            "血条",
+            "悬浮血条"
+          ],
+          "required": false
+        },
+        {
+          "path": "core.damage_per_mob",
+          "key": "damage_per_mob",
+          "type": "数字",
+          "doc": "每只围攻怪每秒啃多少血；0 = 只堵门不掉血",
+          "aliases": [
+            "damage-per-mob",
+            "每秒伤害"
+          ],
+          "required": false
+        },
+        {
+          "path": "path",
+          "key": "path",
+          "type": "列表",
+          "doc": "行进路线：怪物按顺序沿这些点位（区域.点位 / x,y,z）走向核心，至少 2 个",
+          "aliases": [
+            "路径",
+            "路线"
+          ],
+          "required": true
+        },
+        {
+          "path": "move",
+          "key": "move",
+          "type": "映射",
+          "doc": "行进与仇恨设置",
+          "aliases": [
+            "移动"
+          ],
+          "required": false
+        },
+        {
+          "path": "move.speed",
+          "key": "speed",
+          "type": "数字",
+          "doc": "行进速度（格/秒，默认 4.0，上限 20）",
+          "aliases": [
+            "速度"
+          ],
+          "required": false
+        },
+        {
+          "path": "move.attack_players",
+          "key": "attack_players",
+          "type": "枚举",
+          "doc": "仇恨模式：玩家进半径转头打人 / 纯冲核心 / 保持原版追人",
+          "values": [
+            "when_near",
+            "false",
+            "always",
+            "总是",
+            "追人",
+            "否",
+            "冲核心"
+          ],
+          "aliases": [
+            "attack-players",
+            "仇恨"
+          ],
+          "required": false
+        },
+        {
+          "path": "move.attack_range",
+          "key": "attack_range",
+          "type": "数字",
+          "doc": "when_near：玩家进这个半径（格）就转头打人",
+          "aliases": [
+            "attack-range",
+            "攻击半径"
+          ],
+          "required": false
+        },
+        {
+          "path": "move.fight_seconds",
+          "key": "fight_seconds",
+          "type": "数字",
+          "doc": "交战多久后回到路径继续冲核心（秒）",
+          "aliases": [
+            "fight-seconds",
+            "交战时长"
+          ],
+          "required": false
+        },
+        {
+          "path": "attack_players",
+          "key": "attack_players",
+          "type": "文本",
+          "doc": "简写：等价于 move.attack_players（写了它就不看 move 段的同名键）",
+          "aliases": [
+            "attack-players",
+            "仇恨"
+          ],
+          "required": false
+        },
+        {
+          "path": "waves",
+          "key": "waves",
+          "type": "列表",
+          "doc": "波次：按顺序开怪物组，等清空再开下一波；组名写 monsters.yml 里的怪物组（不要给这些组配 repeat / condition）",
+          "aliases": [
+            "波次"
+          ],
+          "required": true
+        },
+        {
+          "path": "waves[].group",
+          "key": "group",
+          "type": "文本",
+          "doc": "本波的怪物组名（monsters.yml）",
+          "aliases": [
+            "组",
+            "怪物组"
+          ],
+          "required": true
+        },
+        {
+          "path": "waves[].name",
+          "key": "name",
+          "type": "文本",
+          "doc": "波名（公告 {wave} 用；不写默认「第 N 波」）",
+          "aliases": [
+            "名称"
+          ],
+          "required": false
+        },
+        {
+          "path": "waves[].delay",
+          "key": "delay",
+          "type": "时间",
+          "doc": "上一波清空后隔多久开这一波（不写用全局 wave_gap）",
+          "aliases": [
+            "延迟"
+          ],
+          "required": false
+        },
+        {
+          "path": "waves[].reward",
+          "key": "reward",
+          "type": "数字",
+          "doc": "清空本波发放的队伍金钱",
+          "aliases": [
+            "奖励",
+            "金钱"
+          ],
+          "required": false
+        },
+        {
+          "path": "waves[].speed",
+          "key": "speed",
+          "type": "数字",
+          "doc": "本波行进速度倍率（1.0 = 全局 speed）",
+          "aliases": [
+            "速度倍率"
+          ],
+          "required": false
+        },
+        {
+          "path": "waves[].announce",
+          "key": "announce",
+          "type": "列表",
+          "doc": "开波公告（支持 & 颜色与 {wave} 占位符；不写默认「第 N 波 来袭！」）",
+          "aliases": [
+            "公告"
+          ],
+          "required": false
+        },
+        {
+          "path": "waves[].script",
+          "key": "script",
+          "type": "列表",
+          "doc": "本波开始时执行的脚本（触发者 = 离核心最近的在线成员）",
+          "aliases": [
+            "脚本"
+          ],
+          "required": false
+        },
+        {
+          "path": "waves[].end_script",
+          "key": "end_script",
+          "type": "列表",
+          "doc": "本波清空时执行的脚本",
+          "aliases": [
+            "end-script",
+            "结束脚本"
+          ],
+          "required": false
+        },
+        {
+          "path": "first_delay",
+          "key": "first_delay",
+          "type": "时间",
+          "doc": "开本到第一波的准备时间",
+          "aliases": [
+            "first-delay",
+            "首波延迟"
+          ],
+          "required": false
+        },
+        {
+          "path": "wave_gap",
+          "key": "wave_gap",
+          "type": "时间",
+          "doc": "波次默认间隔（波次写了 delay 以波次为准）",
+          "aliases": [
+            "wave-gap",
+            "波次间隔"
+          ],
+          "required": false
+        },
+        {
+          "path": "endless",
+          "key": "endless",
+          "type": "布尔",
+          "doc": "无尽模式：波次轮转、数量按 endless_scale 放大、永不自动通关",
+          "aliases": [
+            "无尽"
+          ],
+          "required": false
+        },
+        {
+          "path": "endless_scale",
+          "key": "endless_scale",
+          "type": "数字",
+          "doc": "无尽模式每转一轮的数量倍率（1.25 = +25%/轮）",
+          "aliases": [
+            "endless-scale",
+            "无尽倍率"
+          ],
+          "required": false
+        },
+        {
+          "path": "on_win",
+          "key": "on_win",
+          "type": "列表",
+          "doc": "全部波次清空时执行；不写默认 action.complete_dungeon()",
+          "aliases": [
+            "on-win",
+            "通关脚本"
+          ],
+          "required": false
+        },
+        {
+          "path": "on_lose",
+          "key": "on_lose",
+          "type": "列表",
+          "doc": "核心被摧毁时执行；不写默认 action.fail_dungeon('核心被摧毁')",
+          "aliases": [
+            "on-lose",
+            "失败脚本"
+          ],
+          "required": false
+        },
+        {
+          "path": "wave_start",
+          "key": "wave_start",
+          "type": "列表",
+          "doc": "每波开始都跑（与波次 script 叠加）",
+          "aliases": [
+            "wave-start",
+            "波次开始脚本"
+          ],
+          "required": false
+        },
+        {
+          "path": "wave_end",
+          "key": "wave_end",
+          "type": "列表",
+          "doc": "每波清空都跑（与波次 end_script 叠加）",
+          "aliases": [
+            "wave-end",
+            "波次结束脚本"
+          ],
+          "required": false
+        }
+      ]
+    },
+    {
       "file": "scripts.yml",
       "title": "生命周期脚本钩子",
       "summary": "在开本、通关、失败、死亡与退出等节点执行脚本",

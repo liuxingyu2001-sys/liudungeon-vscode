@@ -240,6 +240,37 @@
     ],
     "description": "增益点 —— 最小可用模板"
   },
+  "ld-toweryml": {
+    "prefix": "ld-toweryml",
+    "body": [
+      "core:",
+      "  point: '中央.核心'",
+      "  hp: 3000",
+      "  name: '&6水晶核心'",
+      "  damage_per_mob: 20",
+      "path:",
+      "  - '入口A.出怪点'",
+      "  - '路口.转弯'",
+      "  - '中央.核心'",
+      "move:",
+      "  speed: 4.0",
+      "  attack_players: when_near",
+      "  attack_range: 6.0",
+      "  fight_seconds: 6",
+      "waves:",
+      "  - group: wave_1",
+      "    delay: 10s",
+      "    reward: 50",
+      "    announce: '&c{wave} 来袭！'",
+      "  - group: wave_2",
+      "    speed: 1.3",
+      "    reward: 80",
+      "first_delay: 10s",
+      "wave_gap: 5s",
+      "endless: false"
+    ],
+    "description": "塔防模式 —— 最小可用模板"
+  },
   "ld-scriptsyml": {
     "prefix": "ld-scriptsyml",
     "body": [

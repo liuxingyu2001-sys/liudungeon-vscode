@@ -664,6 +664,86 @@
       "category": "变量",
       "aliases": [],
       "example": "dungeon.setVariable('难度', 3)"
+    },
+    {
+      "name": "getCoreHp",
+      "signature": "getCoreHp()",
+      "params": [],
+      "returns": "double 核心当前血量",
+      "doc": "核心当前血量（非塔防副本 0）",
+      "category": "塔防查询",
+      "aliases": [],
+      "example": "dungeon.getCoreHp()"
+    },
+    {
+      "name": "getCoreMax",
+      "signature": "getCoreMax()",
+      "params": [],
+      "returns": "double 核心血量上限",
+      "doc": "核心血量上限（非塔防副本 0）",
+      "category": "塔防查询",
+      "aliases": [],
+      "example": "dungeon.getCoreMax()"
+    },
+    {
+      "name": "getWave",
+      "signature": "getWave()",
+      "params": [],
+      "returns": "int 当前波",
+      "doc": "当前波（1 基；0 = 尚未开始）",
+      "category": "塔防查询",
+      "aliases": [],
+      "example": "dungeon.getWave()"
+    },
+    {
+      "name": "getWaveCount",
+      "signature": "getWaveCount()",
+      "params": [],
+      "returns": "int 总波数",
+      "doc": "总波数（无尽模式是单轮波数）",
+      "category": "塔防查询",
+      "aliases": [],
+      "example": "dungeon.getWaveCount()"
+    },
+    {
+      "name": "isWaveActive",
+      "signature": "isWaveActive()",
+      "params": [],
+      "returns": "boolean 当前波是否在打",
+      "doc": "当前波是否还在打",
+      "category": "塔防查询",
+      "aliases": [],
+      "example": "dungeon.isWaveActive()"
+    },
+    {
+      "name": "isEndless",
+      "signature": "isEndless()",
+      "params": [],
+      "returns": "boolean 是否无尽",
+      "doc": "是否无尽模式",
+      "category": "塔防查询",
+      "aliases": [],
+      "example": "dungeon.isEndless()"
+    },
+    {
+      "name": "getMoney",
+      "signature": "getMoney()",
+      "params": [],
+      "returns": "double 队伍经济余额",
+      "doc": "队伍经济余额",
+      "category": "塔防查询",
+      "aliases": [],
+      "example": "dungeon.getMoney()"
+    },
+    {
+      "name": "getTowerAlive",
+      "signature": "getTowerAlive()",
+      "params": [],
+      "returns": "int 行进中怪物数",
+      "doc": "行进中的怪物数（含围攻核心的）",
+      "category": "塔防查询",
+      "aliases": [],
+      "example": "dungeon.getTowerAlive()"
     }
   ],
   "selectors": [],
